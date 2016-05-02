@@ -368,8 +368,8 @@ wire [LIOWidth-1:0] liobits_sig;
 assign ARDUINO_IO[LIOWidth-1:0] = liobits_sig;
 
 
-//HostMot2 #(.IOWidth(IOWidth),.IOPorts(IOPorts)) HostMot2_inst
-HostMot2 HostMot2_inst
+//HostMot3 #(.IOWidth(IOWidth),.IOPorts(IOPorts)) HostMot3_inst
+HostMot3 HostMot3_inst
 (
 	.ibus(hm_datai) ,	// input [buswidth-1:0] ibus_sig
 	.obus(hm_datao) ,	// output [buswidth-1:0] obus_sig
@@ -391,34 +391,34 @@ HostMot2 HostMot2_inst
 	.leds(GPIO_0[35:34]) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
 );
 /*
-defparam HostMot2_inst.ThePinDesc = PinDesc;
-defparam HostMot2_inst.TheModuleID =  "ModuleID";
-defparam HostMot2_inst.IDROMType = 3;
-defparam HostMot2_inst.SepClocks = "true";
-defparam HostMot2_inst.OneWS = "true";
-defparam HostMot2_inst.UseIRQLogic = "true";
-defparam HostMot2_inst.PWMRefWidth = 13;
-defparam HostMot2_inst.UseWatchDog = "true";
-defparam HostMot2_inst.OffsetToModules = 64;
-defparam HostMot2_inst.OffsetToPinDesc = 448;
-defparam HostMot2_inst.ClockHigh = "ClockHigh25";
-defparam HostMot2_inst.ClockMed = "ClockMed25";
-defparam HostMot2_inst.ClockLow = "ClockLow25";
-defparam HostMot2_inst.BoardNameLow = BoardNameMESA;
-defparam HostMot2_inst.BoardNameHigh = "BoardName5i25";
-defparam HostMot2_inst.FPGASize = 9;
-defparam HostMot2_inst.FPGAPins = 144;
-defparam HostMot2_inst.IOPorts = 1;
-defparam HostMot2_inst.IOWidth = 34;
-defparam HostMot2_inst.LIOWidth = 6;
-defparam HostMot2_inst.PortWidth = 34;
-defparam HostMot2_inst.BusWidth = 32;
-defparam HostMot2_inst.AddrWidth = 16;
-defparam HostMot2_inst.InstStride0 = 4;
-defparam HostMot2_inst.InstStride1 = 64;
-defparam HostMot2_inst.RegStride0 = 256;
-defparam HostMot2_inst.RegStride1 = 256;
-defparam HostMot2_inst.LEDCount = 0;
+defparam HostMot3_inst.ThePinDesc = PinDesc;
+defparam HostMot3_inst.TheModuleID =  "ModuleID";
+defparam HostMot3_inst.IDROMType = 3;
+defparam HostMot3_inst.SepClocks = "true";
+defparam HostMot3_inst.OneWS = "true";
+defparam HostMot3_inst.UseIRQLogic = "true";
+defparam HostMot3_inst.PWMRefWidth = 13;
+defparam HostMot3_inst.UseWatchDog = "true";
+defparam HostMot3_inst.OffsetToModules = 64;
+defparam HostMot3_inst.OffsetToPinDesc = 448;
+defparam HostMot3_inst.ClockHigh = "ClockHigh25";
+defparam HostMot3_inst.ClockMed = "ClockMed25";
+defparam HostMot3_inst.ClockLow = "ClockLow25";
+defparam HostMot3_inst.BoardNameLow = BoardNameMESA;
+defparam HostMot3_inst.BoardNameHigh = "BoardName5i25";
+defparam HostMot3_inst.FPGASize = 9;
+defparam HostMot3_inst.FPGAPins = 144;
+defparam HostMot3_inst.IOPorts = 1;
+defparam HostMot3_inst.IOWidth = 34;
+defparam HostMot3_inst.LIOWidth = 6;
+defparam HostMot3_inst.PortWidth = 34;
+defparam HostMot3_inst.BusWidth = 32;
+defparam HostMot3_inst.AddrWidth = 16;
+defparam HostMot3_inst.InstStride0 = 4;
+defparam HostMot3_inst.InstStride1 = 64;
+defparam HostMot3_inst.RegStride0 = 256;
+defparam HostMot3_inst.RegStride1 = 256;
+defparam HostMot3_inst.LEDCount = 0;
 */
 
 endmodule

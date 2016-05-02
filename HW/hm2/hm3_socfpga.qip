@@ -20,8 +20,8 @@ set_global_assignment -name VHDL_FILE ../../hm2/hostmot3.vhd
 # Wrappers:
 
 set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeStepgens.vhd
-#set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakePwmgens.vhd
-#set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeQcounters.vhd
+set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakePwmgens.vhd
+set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeQCounters.vhd
 
 
 # HM2 cores:
