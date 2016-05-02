@@ -59,8 +59,8 @@ entity MakeStepgens is
 		QCounters: integer;
 		UseProbe: boolean);
 	Port (
-		ibus : in std_logic_vector(BusWidth -1 downto 0);
-		obus : out std_logic_vector(BusWidth -1 downto 0);
+		ibus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
+		obus : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
 		A : in std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
