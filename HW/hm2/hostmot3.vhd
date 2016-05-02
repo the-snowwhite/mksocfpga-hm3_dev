@@ -548,315 +548,63 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		end process;	
 	end generate;
 
-			
-	makestepgens: if StepGens >0 generate
-	signal LoadStepGenRate: std_logic_vector(StepGens -1 downto 0);
-	signal ReadStepGenRate: std_logic_vector(StepGens -1 downto 0);
-	signal LoadStepGenAccum: std_logic_vector(StepGens -1 downto 0);
-	signal ReadStepGenAccum: std_logic_vector(StepGens -1 downto 0);
-	signal LoadStepGenMode: std_logic_vector(StepGens -1 downto 0);
-	signal ReadStepGenMode: std_logic_vector(StepGens -1 downto 0);
-	signal LoadStepGenDSUTime: std_logic_vector(StepGens -1 downto 0);
-	signal ReadStepGenDSUTime: std_logic_vector(StepGens -1 downto 0);
-	signal LoadStepGenDHLDTime: std_logic_vector(StepGens -1 downto 0);
-	signal ReadStepGenDHLDTime: std_logic_vector(StepGens -1 downto 0);
-	signal LoadStepGenPulseATime: std_logic_vector(StepGens -1 downto 0);
-	signal ReadStepGenPulseATime: std_logic_vector(StepGens -1 downto 0);
-	signal LoadStepGenPulseITime: std_logic_vector(StepGens -1 downto 0);
-	signal ReadStepGenPulseITime: std_logic_vector(StepGens -1 downto 0);
-	signal LoadStepGenTableMax: std_logic_vector(StepGens -1 downto 0);
-	signal ReadStepGenTableMax: std_logic_vector(StepGens -1 downto 0);
-	signal LoadStepGenTable: std_logic_vector(StepGens -1 downto 0);
-	signal ReadStepGenTable: std_logic_vector(StepGens -1 downto 0);
-	type StepGenOutType is array(StepGens-1 downto 0) of std_logic_vector(StepGenTableWidth-1 downto 0);
-	signal StepGenOut : StepGenOutType;
-	signal StepGenIndex: std_logic_vector(StepGens -1 downto 0);
--- Step generator related signals
 
-	signal StepGenRateSel: std_logic;
-	signal StepGenAccumSel: std_logic;
-	signal StepGenModeSel: std_logic;
-	signal StepGenDSUTimeSel: std_logic;
-	signal StepGenDHLDTimeSel: std_logic;
-	signal StepGenPulseATimeSel: std_logic;
-	signal StepGenPulseITimeSel: std_logic;
-	signal StepGenTableMaxSel: std_logic;
-	signal StepGenTableSel: std_logic;
-
--- Step generators master rate related signals
-
-	signal LoadStepGenBasicRate: std_logic;
-	signal ReadStepGenBasicRate: std_logic;
-	signal StepGenBasicRate: std_logic;
-	begin
-		makeStepGenPreScaler:  if UseStepGenPreScaler generate
-			StepRategen : entity work.RateGen port map(
-				ibus => ibus,
-				obus => obus,
-				loadbasicrate => LoadStepGenBasicRate,
-				readbasicrate => ReadStepGenBasicRate,
-				hold => '0',
-				basicrate => StepGenBasicRate,
-				clk => clklow);
-			end generate;
-
-		generatestepgens: for i in 0 to StepGens-1 generate
-			usg: if UseStepGenPreScaler and not(UseStepgenIndex or UseStepgenProbe) generate
-		   stepgenx: entity work.stepgen
-			generic map (
-				buswidth => BusWidth,
-				timersize => 14,			-- = ~480 usec at 33 MHz, ~320 at 50 Mhz 
-				tablewidth => StepGenTableWidth,
-				asize => 48,
-				rsize => 32 
-				)
-			port map (
-				clk => clklow,
-				ibus => ibus,
-				obus 	=>	 obus,
-				loadsteprate => LoadStepGenRate(i),
-				loadaccum => LoadStepGenAccum(i),
-				loadstepmode => LoadStepGenMode(i),
-				loaddirsetuptime => LoadStepGenDSUTime(i),
-				loaddirholdtime => LoadStepGenDHLDTime(i),
-				loadpulseactivetime => LoadStepGenPulseATime(i),
-				loadpulseidletime => LoadStepGenPulseITime(i),
-				loadtable => LoadStepGenTable(i),
-				loadtablemax => LoadStepGenTableMax(i),
-				readsteprate => ReadStepGenRate(i),
-				readaccum => ReadStepGenAccum(i),
-				readstepmode => ReadStepGenMode(i),
-				readdirsetuptime => ReadStepGenDSUTime(i),
-				readdirholdtime => ReadStepGenDHLDTime(i),
-				readpulseactivetime => ReadStepGenPulseATime(i),
-				readpulseidletime => ReadStepGenPulseITime(i),
-				readtable => ReadStepGenTable(i),
-				readtablemax => ReadStepGenTableMax(i),
-				basicrate => StepGenBasicRate,
-				hold => '0',
-				stout => StepGenOut(i)
-				);
-			end generate usg;
-		
-			nusg: if not UseStepGenPreScaler and not(UseStepgenIndex or UseStepgenProbe) generate
-			stepgenx: entity work.stepgen
-			generic map (	
-				buswidth => BusWidth,
-				timersize => 14,			-- = ~480 usec at 33 MHz, ~320 at 50 Mhz 
-				tablewidth => StepGenTableWidth,
-				asize => 48,
-				rsize => 32 			
-				)
-			port map (
-				clk => clklow,
-				ibus => ibus,
-				obus 	=>	 obus,
-				loadsteprate => LoadStepGenRate(i),
-				loadaccum => LoadStepGenAccum(i),
-				loadstepmode => LoadStepGenMode(i),
-				loaddirsetuptime => LoadStepGenDSUTime(i),
-				loaddirholdtime => LoadStepGenDHLDTime(i),
-				loadpulseactivetime => LoadStepGenPulseATime(i),
-				loadpulseidletime => LoadStepGenPulseITime(i),
-				loadtable => LoadStepGenTable(i),
-				loadtablemax => LoadStepGenTableMax(i),
-				readsteprate => ReadStepGenRate(i),
-				readaccum => ReadStepGenAccum(i),
-				readstepmode => ReadStepGenMode(i),
-				readdirsetuptime => ReadStepGenDSUTime(i),
-				readdirholdtime => ReadStepGenDHLDTime(i),
-				readpulseactivetime => ReadStepGenPulseATime(i),
-				readpulseidletime => ReadStepGenPulseITime(i),
-				readtable => ReadStepGenTable(i),
-				readtablemax => ReadStepGenTableMax(i),
-				basicrate => '1',
-				hold => '0',
-				stout => StepGenOut(i)  -- densely packed starting with I/O bit 0
-				);
-			end generate nusg;
-
-			usgi: if UseStepGenPreScaler and (UseStepgenIndex or UseStepgenProbe) generate
-		   stepgenx: entity work.stepgeni
-			generic map (
-				buswidth => BusWidth,
-				timersize => 14,			-- = ~480 usec at 33 MHz, ~320 at 50 Mhz 
-				tablewidth => StepGenTableWidth,
-				asize => 48,
-				rsize => 32,
-				lsize =>16
-				)
-			port map (
-				clk => clklow,
-				ibus => ibus,
-				obus 	=>	 obus,
-				loadsteprate => LoadStepGenRate(i),
-				loadaccum => LoadStepGenAccum(i),
-				loadstepmode => LoadStepGenMode(i),
-				loaddirsetuptime => LoadStepGenDSUTime(i),
-				loaddirholdtime => LoadStepGenDHLDTime(i),
-				loadpulseactivetime => LoadStepGenPulseATime(i),
-				loadpulseidletime => LoadStepGenPulseITime(i),
-				loadtable => LoadStepGenTable(i),
-				loadtablemax => LoadStepGenTableMax(i),
-				readsteprate => ReadStepGenRate(i),
-				readaccum => ReadStepGenAccum(i),
-				readstepmode => ReadStepGenMode(i),
-				readdirsetuptime => ReadStepGenDSUTime(i),
-				readdirholdtime => ReadStepGenDHLDTime(i),
-				readpulseactivetime => ReadStepGenPulseATime(i),
-				readpulseidletime => ReadStepGenPulseITime(i),
-				readtable => ReadStepGenTable(i),
-				readtablemax => ReadStepGenTableMax(i),
-				basicrate => StepGenBasicRate,
-				hold => '0',
-				stout => StepGenOut(i),
-				index => StepGenIndex(i),
-				probe => probe
-				);
-			end generate usgi;
-
-			nusgi: if not UseStepGenPreScaler and not(UseStepgenIndex or UseStepgenProbe) generate
-			stepgenx: entity work.stepgeni
-			generic map (	
-				buswidth => BusWidth,
-				timersize => 14,			-- = ~480 usec at 33 MHz, ~320 at 50 Mhz 
-				tablewidth => StepGenTableWidth,
-				asize => 48,
-				rsize => 32, 			
-				lsize =>16
-				)
-			port map (
-				clk => clklow,
-				ibus => ibus,
-				obus 	=>	 obus,
-				loadsteprate => LoadStepGenRate(i),
-				loadaccum => LoadStepGenAccum(i),
-				loadstepmode => LoadStepGenMode(i),
-				loaddirsetuptime => LoadStepGenDSUTime(i),
-				loaddirholdtime => LoadStepGenDHLDTime(i),
-				loadpulseactivetime => LoadStepGenPulseATime(i),
-				loadpulseidletime => LoadStepGenPulseITime(i),
-				loadtable => LoadStepGenTable(i),
-				loadtablemax => LoadStepGenTableMax(i),
-				readsteprate => ReadStepGenRate(i),
-				readaccum => ReadStepGenAccum(i),
-				readstepmode => ReadStepGenMode(i),
-				readdirsetuptime => ReadStepGenDSUTime(i),
-				readdirholdtime => ReadStepGenDHLDTime(i),
-				readpulseactivetime => ReadStepGenPulseATime(i),
-				readpulseidletime => ReadStepGenPulseITime(i),
-				readtable => ReadStepGenTable(i),
-				readtablemax => ReadStepGenTableMax(i),
-				basicrate => '1',
-				hold => '0',
-				stout => StepGenOut(i),  -- densely packed starting with I/O bit 0
-				index => StepGenIndex(i),
-				probe => probe
-				);
-			end generate nusgi;
-		end generate generatestepgens;
-		
-		StepGenDecodeProcess : process (A,readstb,writestb,StepGenRateSel, StepGenAccumSel, StepGenModeSel,
-                                 			StepGenDSUTimeSel, StepGenDHLDTimeSel, StepGenPulseATimeSel, 
-			                                 StepGenPulseITimeSel, StepGenTableSel, StepGenTableMaxSel)
-		begin
-			if A(15 downto 8) = StepGenRateAddr then	 --  stepgen rate register select
-				StepGenRateSel <= '1';
-			else
-				StepGenRateSel <= '0';
-			end if;
-			if A(15 downto 8) = StepGenAccumAddr then	 --  stepgen Accumumlator low select
-				StepGenAccumSel <= '1';
-			else
-				StepGenAccumSel <= '0';
-			end if;
-			if A(15 downto 8) = StepGenModeAddr then	 --  stepgen mode register select
-				StepGenModeSel <= '1';
-			else
-				StepGenModeSel <= '0';
-			end if;
-			if A(15 downto 8) = StepGenDSUTimeAddr then	 --  stepgen Dir setup time register select
-				StepGenDSUTimeSel <= '1';
-			else
-				StepGenDSUTimeSel <= '0';
-			end if;
-			if A(15 downto 8) =StepGenDHLDTimeAddr then	 --  stepgen Dir hold time register select
-				StepGenDHLDTimeSel <= '1';
-			else
-				StepGenDHLDTimeSel <= '0';
-			end if;
-			if A(15 downto 8) = StepGenPulseATimeAddr then	 --  stepgen pulse width register select
-				StepGenPulseATimeSel <= '1';
-			else
-				StepGenPulseATimeSel <= '0';
-			end if;
-			if A(15 downto 8) = StepGenPulseITimeAddr then	 --  stepgen pulse width register select
-				StepGenPulseITimeSel <= '1';
-			else
-				StepGenPulseITimeSel <= '0';
-			end if;
-			if A(15 downto 8) = StepGenTableAddr then	 --  stepgen pulse width register select
-				StepGenTableSel <= '1';
-			else
-				StepGenTableSel <= '0';
-			end if;
-			if A(15 downto 8) = StepGenTableMaxAddr then	 --  stepgen pulse width register select
-				StepGenTableMaxSel <= '1';
-			else
-				StepGenTableMaxSel <= '0';
-			end if;
-			if A(15 downto 8) = StepGenBasicRateAddr and writestb = '1' then	 --  
-				LoadStepGenBasicRate <= '1';
-			else
-				LoadStepGenBasicRate <= '0';
-			end if;
-			if A(15 downto 8) = StepGenBasicRateAddr and readstb = '1' then	 --  
-				ReadStepGenBasicRate <= '1';
-			else
-				ReadStepGenBasicRate <= '0';
-			end if;			
-			LoadStepGenRate <= OneOfNDecode(STEPGENs,StepGenRateSel,writestb,A(7 downto 2)); 	-- 64 max
-			ReadStepGenRate <= OneOfNDecode(STEPGENs,StepGenRateSel,readstb,A(7 downto 2)); 		-- Note: all the reads are decoded here
-			LoadStepGenAccum <= OneOfNDecode(STEPGENs,StepGenAccumSel,writestb,A(7 downto 2));	-- but most are commented out in the 
-			ReadStepGenAccum <= OneOfNDecode(STEPGENs,StepGenAccumSel,readstb,A(7 downto 2));	-- stepgen module hardware for space reasons
-			LoadStepGenMode <= OneOfNDecode(STEPGENs,StepGenModeSel,writestb,A(7 downto 2));			 
-			ReadStepGenMode <= OneOfNDecode(STEPGENs,StepGenModeSel,Readstb,A(7 downto 2));	
-			LoadStepGenDSUTime <= OneOfNDecode(STEPGENs,StepGenDSUTimeSel,writestb,A(7 downto 2));
-			ReadStepGenDSUTime <= OneOfNDecode(STEPGENs,StepGenDSUTimeSel,Readstb,A(7 downto 2));
-			LoadStepGenDHLDTime <= OneOfNDecode(STEPGENs,StepGenDHLDTimeSel,writestb,A(7 downto 2));
-			ReadStepGenDHLDTime <= OneOfNDecode(STEPGENs,StepGenDHLDTimeSel,Readstb,A(7 downto 2));
-			LoadStepGenPulseATime <= OneOfNDecode(STEPGENs,StepGenPulseATimeSel,writestb,A(7 downto 2));
-			ReadStepGenPulseATime <= OneOfNDecode(STEPGENs,StepGenPulseATimeSel,Readstb,A(7 downto 2));
-			LoadStepGenPulseITime <= OneOfNDecode(STEPGENs,StepGenPulseITimeSel,writestb,A(7 downto 2));
-			ReadStepGenPulseITime <= OneOfNDecode(STEPGENs,StepGenPulseITimeSel,Readstb,A(7 downto 2));
-			LoadStepGenTable <= OneOfNDecode(STEPGENs,StepGenTableSel,writestb,A(7 downto 2));
-			ReadStepGenTable <= OneOfNDecode(STEPGENs,StepGenTableSel,Readstb,A(7 downto 2));
-			LoadStepGenTableMax <= OneOfNDecode(STEPGENs,StepGenTableMaxSel,writestb,A(7 downto 2));
-			ReadStepGenTableMax <= OneOfNDecode(STEPGENs,StepGenTableMaxSel,Readstb,A(7 downto 2));
-		end process StepGenDecodeProcess;
-		
-		DoStepgenPins: process(IOBits,StepGenOut)
-		begin	
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins 
-				if ThePinDesc(i)(15 downto 8) = StepGenTag then											
-					if (ThePinDesc(i)(7 downto 0) and x"80") /= 0 then -- only for outputs 
-						AltData(i) <= StepGenOut(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(6 downto 0))-1);						
-					end if;
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
-						when StepGenIndexPin =>
-							StepGenIndex(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
-						when StepGenProbePin =>
-							Probe <= IOBits(i);	-- only 1 please!
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-		
-	end generate makestepgens;
-
-
-
+	MakeStepgens : entity work.MakeStepgens
+	generic map (
+		ThePinDesc => ThePinDesc,
+		ClockHigh => ClockHigh,
+		ClockMed => ClockMed,
+		ClockLow  => ClockLow,
+		buswidth  => BusWidth,
+		addrwidth  => AddrWidth,
+		iowidth  => IOWidth,
+		STEPGENs  => STEPGENs,
+ 		StepGenTableWidth => StepGenTableWidth,
+ 		UseStepGenPreScaler => UseStepGenPreScaler,
+ 		UseStepgenIndex => UseStepgenIndex,
+ 		UseStepgenProbe => UseStepgenProbe,
+		PWMGens  => PWMGens,
+		PWMRefWidth  => PWMRefWidth,
+ 		timersize  => 14,
+ 		asize  => 48,
+ 		rsize  => 32
+-- 		StepGenRateAddr  => StepGenRateAddr,
+-- 		StepGenAccumAddr  => StepGenAccumAddr,
+-- 		StepGenModeAddr  => StepGenModeAddr,
+-- 		StepGenDSUTimeAddr  => StepGenDSUTimeAddr,
+-- 		StepGenDHLDTimeAddr  => StepGenDHLDTimeAddr,
+-- 		StepGenPulseATimeAddr  => StepGenPulseATimeAddr,
+-- 		StepGenPulseITimeAddr  => StepGenPulseITimeAddr,
+-- 		StepGenTableAddr  => StepGenTableAddr,
+-- 		StepGenTableMaxAddr  => StepGenTableMaxAddr,
+--		PWMRateAddr  => PWMRateAddr,
+--		PDMRateAddr  => PDMRateAddr,
+--		PWMEnasAddr  => PWMEnasAddr,
+--		PWMValAddr  => PWMValAddr,
+--		PWMCRAddr  => PWMCRAddr,
+--		PWMRefWidth  => PWMRefWidth,
+--		UsePWMEnas  => UsePWMEnas,
+--		QCounterAddr  => QCounterAddr,
+--		QCounterCCRAddr  => QCounterCCRAddr,
+--		UseProbe  => UseProbe,
+--		TSDivAddr  => TSDivAddr
+		)
+		port map (
+			ibus => ibus,
+			obus => obus,
+			A => A,
+			readstb =>	 readstb,
+			writestb =>	 writestb,
+			AltData =>	 AltData,
+			IOBits =>	 IOBits,
+			clklow 	=>	 clklow,
+			clkmed 	=>	 clkmed,
+			clkhigh	=>	 clkhigh,
+			PRobe 	=>	 PRobe
+		);
+	
+	
+	
 	makeqcounters: if QCounters >0 generate
 	signal LoadQCounter: std_logic_vector(QCounters-1 downto 0);
 	signal ReadQCounter: std_logic_vector(QCounters-1 downto 0);

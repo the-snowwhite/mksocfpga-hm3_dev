@@ -14,10 +14,19 @@ set_global_assignment -name QIP_FILE "../../cv-megawizard/lpm-ip/lpm_shiftreg16.
 # HM2 VHDL Setup and config probe functions:
 set_global_assignment -name QIP_FILE ../../hm2/functions/hm2_functions.qip
 
+# HM3 topfile
+set_global_assignment -name VHDL_FILE ../../hm2/hostmot3.vhd
+
+# Wrappers:
+
+set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeStepgens.vhd
+#set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakePwmgens.vhd
+#set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeQcounters.vhd
+
+
 # HM2 cores:
 set_global_assignment -name VHDL_FILE ../../hm2/kubstepgenzi.vhd
 set_global_assignment -name VHDL_FILE ../../hm2/kubstepgenz.vhd
-set_global_assignment -name VHDL_FILE ../../hm2/hostmot2.vhd
 set_global_assignment -name VHDL_FILE ../../hm2/wordrb.vhd
 set_global_assignment -name VHDL_FILE ../../hm2/wordpr.vhd
 set_global_assignment -name VHDL_FILE ../../hm2/watchdog.vhd
