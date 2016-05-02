@@ -1,0 +1,21 @@
+/dts-v1/;/plugin/;
+
+/ {
+   fragment@0 {
+      target = <&base_fpga_region>;
+      #address-cells = <1>;
+      #size-cells = <1>;
+      __overlay__ {
+         #address-cells = <1>;
+         #size-cells = <1>;
+         firmware-name = "/boot/socfpga.rbf";
+         hm2reg_io_0: hm2-socfpga@0xff240000 {
+            compatible = "machkt,hm2reg-io-1.0";
+            reg = <0xff240000 0x00010000>;
+            clocks = <&osc1>;
+            address_width = <14>;
+            data_width = <32>;
+         };
+      };
+   };
+};
