@@ -27,11 +27,14 @@ entity MakePWMgens is
 		UseStepGenPreScaler: boolean;
 		UseStepgenIndex: boolean;
 		UseStepgenProbe: boolean;
-		PWMGens: integer;
-		PWMRefWidth  : integer;
 		timersize: integer;			-- = ~480 usec at 33 MHz, ~320 at 50 Mhz
 		asize: integer;
-		rsize: integer);
+		rsize: integer;
+		PWMGens: integer;
+		PWMRefWidth  : integer;
+  		UsePWMEnas : boolean;
+		QCounters: integer;
+		UseProbe: boolean);
 	Port (
 		ibus : in std_logic_vector(BusWidth -1 downto 0);
 		obus : out std_logic_vector(BusWidth -1 downto 0);
@@ -121,14 +124,6 @@ architecture dataflow of MakePWMgens is
 			pwmoutb => PWMGenOutB(i)
 			);
 		end generate;
-
-	LooseEnds: process(A,clklow)
-
-	begin
-		if rising_edge(clklow) then
-			A <= addr;
-		end if;
-	end process;
 
 		PWMDecodeProcess : process (A,Readstb,writestb,PWMValSel, PWMCRSel)
 		begin

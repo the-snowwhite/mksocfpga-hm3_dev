@@ -15,33 +15,12 @@ use work.IDROMConst.all;
 use work.oneofndecode.all;
 
 entity MakeStepgens is
---   	generic (
--- 		BusWidth : integer := 32;
--- 		AddrWidth : integer := 16;
--- 		IOWidth: integer := 34;
--- 		STEPGENs : integer := 8;
--- 		PWMGens  : integer := 2;
--- 		StepGenTableWidth : integer := 2;
--- 		usestepgenprescaler : boolean := false;
--- 		UseStepgenIndex : boolean := false;
--- 		UseStepgenProbe : boolean := false;
--- 		StepGenRateAddr : std_Logic_Vector(7 downto 0) := StepGenRateAddr;
--- 		StepGenAccumAddr : std_Logic_Vector(7 downto 0) := StepGenAccumAddr;
--- 		StepGenModeAddr : std_Logic_Vector(7 downto 0) := StepGenModeAddr;
--- 		StepGenDSUTimeAddr : std_Logic_Vector(7 downto 0) := StepGenDSUTimeAddr;
--- 		StepGenDHLDTimeAddr : std_Logic_Vector(7 downto 0) := StepGenDHLDTimeAddr;
--- 		StepGenPulseATimeAddr : std_Logic_Vector(7 downto 0) := StepGenPulseATimeAddr;
--- 		StepGenPulseITimeAddr : std_Logic_Vector(7 downto 0) := StepGenPulseITimeAddr;
--- 		StepGenTableAddr : std_Logic_Vector(7 downto 0) := StepGenTableAddr;
--- 		StepGenTableMaxAddr : std_Logic_Vector(7 downto 0) := StepGenTableMaxAddr;
--- 		StepGenBasicRateAddr : std_Logic_Vector(7 downto 0) := StepGenBasicRateAddr;
 --  		PWMRateAddr : std_Logic_Vector(7 downto 0) := PWMRateAddr;
 --  		PDMRateAddr : std_Logic_Vector(7 downto 0) := PDMRateAddr;
 --  		PWMEnasAddr : std_Logic_Vector(7 downto 0) := PWMEnasAddr;
 --  		PWMValAddr : std_Logic_Vector(7 downto 0) := PWMValAddr;
 --  		PWMCRAddr : std_Logic_Vector(7 downto 0) := PWMCRAddr;
 --  		PWMRefWidth : integer := 13;
---  		UsePWMEnas : boolean := false;
 --  		QCounterAddr : std_Logic_Vector(7 downto 0) := QCounterAddr;
 --  		QCounterCCRAddr : std_Logic_Vector(7 downto 0) := QCounterCCRAddr;
 --  		UseProbe : boolean := false;
@@ -71,11 +50,14 @@ entity MakeStepgens is
 		UseStepGenPreScaler: boolean;
 		UseStepgenIndex: boolean;
 		UseStepgenProbe: boolean;
-		PWMGens: integer;
-		PWMRefWidth  : integer;
 		timersize: integer;			-- = ~480 usec at 33 MHz, ~320 at 50 Mhz
 		asize: integer;
-		rsize: integer);
+		rsize: integer;
+		PWMGens: integer;
+		PWMRefWidth  : integer;
+  		UsePWMEnas : boolean;
+		QCounters: integer;
+		UseProbe: boolean);
 	Port (
 		ibus : in std_logic_vector(BusWidth -1 downto 0);
 		obus : out std_logic_vector(BusWidth -1 downto 0);
@@ -97,9 +79,7 @@ architecture dataflow of MakeStepgens is
 -- Signals
 
 -- I/O port related signals
---	signal A: std_logic_vector(AddrWidth -1 downto 2);
 	signal RefCountBus : std_logic_vector(PWMRefWidth-1 downto 0);
---	signal AltData :  std_logic_vector(IOWidth-1 downto 0) := (others => '0');	signal IOBits: std_logic_vector (IOWidth -1 downto 0);
 
 	begin
 	makeSTEPGENs: if STEPGENs >0 generate
@@ -309,14 +289,6 @@ architecture dataflow of MakeStepgens is
 			end generate nusgi;
 		end generate generateSTEPGENs;
 
--- 	LooseEnds: process(A,clklow)
---
--- 	begin
--- 		if rising_edge(clklow) then
--- 			A <= addr;
--- 		end if;
--- 	end process;
---
 		StepGenDecodeProcess : process (A,readstb,writestb,StepGenRateSel, StepGenAccumSel, StepGenModeSel,
                                  			StepGenDSUTimeSel, StepGenDHLDTimeSel, StepGenPulseATimeSel,
 			                                 StepGenPulseITimeSel, StepGenTableSel, StepGenTableMaxSel)
