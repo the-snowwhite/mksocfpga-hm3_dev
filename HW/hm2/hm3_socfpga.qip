@@ -22,6 +22,7 @@ set_global_assignment -name VHDL_FILE ../../hm2/hostmot3.vhd
 set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeStepgens.vhd
 set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakePwmgens.vhd
 set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeQCounters.vhd
+set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeIOPorts.vhd
 
 
 # HM2 cores:

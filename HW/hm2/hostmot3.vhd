@@ -91,7 +91,7 @@ entity HostMot3 is
 		ThePinDesc: PinDescType := PinDesc;
 		TheModuleID: ModuleIDType := ModuleID;
 		IDROMType: integer := 3;
-	   SepClocks: boolean := true;
+		SepClocks: boolean := true;
 		OneWS: boolean := true;
 		UseStepGenPrescaler : boolean := true;
 		UseIRQLogic: boolean := true;
@@ -147,6 +147,8 @@ architecture dataflow of HostMot3 is
 
 -- decodes --
 --	IDROM related signals
+signal A: std_logic_vector(addrwidth -1 downto 2);
+
 	-- Extract the number of modules of each type from the ModuleID
 constant StepGens: integer := NumberOfModules(TheModuleID,StepGenTag);
 constant QCounters: integer := NumberOfModules(TheModuleID,QCountTag);
@@ -178,10 +180,10 @@ constant	Twiddlers: integer := NumberOfModules(TheModuleID,TwiddlerTag);
 constant InputsPerTwiddler: integer := MaxInputPinsPerModule(ThePinDesc,TwiddlerTag)+MaxIOPinsPerModule(ThePinDesc,TwiddlerTag);
 constant OutputsPerTwiddler: integer := MaxOutputPinsPerModule(ThePinDesc,TwiddlerTag); -- MaxOutputsPer pin counts I/O pins also
 constant RegsPerTwiddler: integer := 4;	-- until I find a per instance way of doing this
-constant DAQFIFOs: integer := NumberOfModules(TheModuleID,DAQFIFOTag);
-constant DAQFIFOWidth: integer := MaxInputPinsPerModule(ThePinDesc,DAQFIFOTag); -- until I find a per instance way of doing this
+-- constant DAQFIFOs: integer := NumberOfModules(TheModuleID,DAQFIFOTag);
+-- constant DAQFIFOWidth: integer := MaxInputPinsPerModule(ThePinDesc,DAQFIFOTag); -- until I find a per instance way of doing this
 constant	UseDemandModeDMA: boolean := ModuleExists(TheModuleID,DMDMATag);		-- demand mode DMA must be explicitly included in the module ID
-constant NDRQs: integer := NumberOfModules(TheModuleID,DAQFIFOTag); -- + any other drq sources that are used
+-- constant NDRQs: integer := NumberOfModules(TheModuleID,DAQFIFOTag); -- + any other drq sources that are used
 constant BinOscs: integer := NumberOfModules(TheModuleID,BinOscTag);
 constant BinOscWidth: integer := MaxOutputPinsPerModule(ThePinDesc,BinOscTag);
 constant HM2DPLLs: integer := NumberOfModules(TheModuleID,HM2DPLLTag);
@@ -202,58 +204,15 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 -- all these signals should be put in per module components
 -- to reduce clutter
 
-	signal A: std_logic_vector(addrwidth -1 downto 2);
-	signal LoadIDROM: std_logic;
-	signal ReadIDROM: std_logic;
-
-	signal LoadIDROMWEn: std_logic;
-	signal ReadIDROMWEn: std_logic;
-
-	signal IDROMWEn: std_logic_vector(0 downto 0);
-	signal ROMAdd: std_logic_vector(7 downto 0);
-
 -- I/O port related signals
 
 	signal AltData :  std_logic_vector(IOWidth-1 downto 0) := (others => '0');
-	signal PortSel: std_logic;
-	signal LoadPortCmd: std_logic_vector(IOPorts -1 downto 0);
-	signal ReadPortCmd: std_logic_vector(IOPorts -1 downto 0);
-
-	signal DDRSel: std_logic;
-	signal LoadDDRCmd: std_logic_vector(IOPorts -1 downto 0);
-	signal ReadDDRCmd: std_logic_vector(IOPorts -1 downto 0);
-	signal AltDataSrcSel: std_logic;
-	signal LoadAltDataSrcCmd: std_logic_vector(IOPorts -1 downto 0);
-	signal OpenDrainModeSel: std_logic;
-	signal LoadOpenDrainModeCmd: std_logic_vector(IOPorts -1 downto 0);
-	signal OutputInvSel: std_logic;
-	signal LoadOutputInvCmd: std_logic_vector(IOPorts -1 downto 0);
 
 -- qcounter related signals
 	signal Probe : std_logic; -- hs probe input for counters,stepgens etc
 
 -- PWM related signals (this is global because its shared by two modules)
 	signal RefCountBus : std_logic_vector(PWMRefWidth-1 downto 0);
-
---- Watchdog related signals
-	signal LoadWDTime : std_logic;
-	signal ReadWDTime : std_logic;
-	signal LoadWDStatus : std_logic;
-	signal ReadWDStatus : std_logic;
-	signal WDCookie: std_logic;
-	signal WDBite : std_logic;
-	signal WDLatchedBite : std_logic;
-
---- Demand mode DMA related signals
-	signal LoadDMDMAMode: std_logic;
-	signal ReadDMDMAMode: std_logic;
-	signal DRQSources: std_logic_vector(NDRQs -1 downto 0);
-
---- ID related signals
-	signal ReadID : std_logic;
-
---- LED related signals
-	signal LoadLEDS : std_logic;
 
 -- Timer related signals
 	signal DPLLTimers: std_logic_vector(3 downto 0);
@@ -273,131 +232,68 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 
 
 	begin
-	ahosmotid : entity work.hostmotid
-		generic map (
-			buswidth => BusWidth,
-			cookie => Cookie,
-			namelow => HostMotNameLow ,
-			namehigh => HostMotNameHigh,
-			idromoffset => IDROMOffset
-			)
-		port map (
-			readid => ReadID,
-			addr => A(3 downto 2),
-			obus => obus
-			);
 
-
-	makeoports: for i in 0 to IOPorts -1 generate
-		oportx: entity work.WordPR
-		generic map (
-			size => PortWidth,
-			buswidth => BusWidth
-			)
+	MakeIOPorts : entity work.MakeIOPorts
+	generic map (
+		ThePinDesc => ThePinDesc,
+		TheModuleID => TheModuleID,
+		IDROMType => IDROMType,
+		OffsetToModules => OffsetToModules,
+		OffsetToPinDesc => OffsetToPinDesc,
+		ClockHigh => ClockHigh,
+		ClockLow => ClockLow,
+		BoardNameLow => BoardNameLow,
+		BoardNameHigh => BoardNameHigh,
+		FPGASize => FPGASize,
+		FPGAPins => FPGAPins,
+		IOPorts => IOPorts,
+		IOWidth => IOWidth,
+		PortWidth => PortWidth,
+		InstStride0 => InstStride0,
+		InstStride1 => InstStride1,
+		RegStride0 => RegStride0,
+		RegStride1 => RegStride1,
+--
+		ClockMed => ClockMed,
+		buswidth  => BusWidth,
+		addrwidth  => AddrWidth,
+		STEPGENs  => STEPGENs,
+ 		StepGenTableWidth => StepGenTableWidth,
+ 		UseStepGenPreScaler => UseStepGenPreScaler,
+ 		UseStepgenIndex => UseStepgenIndex,
+ 		UseStepgenProbe => UseStepgenProbe,
+ 		timersize  => 14,
+ 		asize  => 48,
+ 		rsize  => 32,
+		PWMGens  => PWMGens,
+		PWMRefWidth  => PWMRefWidth,
+		UsePWMEnas  => UsePWMEnas,
+		QCounters  => QCounters,
+		UseProbe  => UseProbe,
+		UseWatchDog  => UseWatchDog,
+		UseDemandModeDMA  => UseDemandModeDMA,
+		UseIRQlogic  => UseIRQlogic,
+		LEDCount  => LEDCount
+		)
 		port map (
-			clear => WDBite,
-			clk => clklow,
 			ibus => ibus,
 			obus => obus,
-			loadport => LoadPortCmd(i),
-			loadddr => LoadDDRCmd(i),
-			loadaltdatasrc => LoadAltDataSrcCmd(i),
-			loadopendrainmode => LoadOpenDrainModeCmd(i),
-			loadinvert => LoadOutputInvCmd(i),
-			readddr => ReadDDRCmd(i),
-			portdata => IOBits((((i+1)*PortWidth) -1) downto (i*PortWidth)),
-			altdata => Altdata((((i+1)*PortWidth) -1) downto (i*PortWidth))
-			);
-	end generate;
+			addr => addr,
+			Aout => A,
+			readstb =>	 readstb,
+			writestb =>	 writestb,
+			AltData =>	 AltData,
+			IOBits =>	 IOBits,
+			clklow 	=>	 clklow,
+			clkmed 	=>	 clkmed,
+			clkhigh	=>	 clkhigh,
+			PRobe 	=>	 PRobe,
+			demandmode => demandmode,		-- passed directly to top
+			dreq =>	dreq,
+			RateSources =>	RateSources,
+			LEDS =>	leds
+		);
 
-	makeiports: for i in 0 to IOPorts -1 generate
-		iportx: entity work.WordRB
-		generic map (size => PortWidth,
-						 buswidth => BusWidth)
-		port map (
-		obus => obus,
-		readport => ReadPortCmd(i),
-		portdata => IOBits((((i+1)*PortWidth) -1) downto (i*PortWidth))
- 		);
-	end generate;
-
-	makewatchdog: if UseWatchDog generate
-		wdogabittus: entity work.watchdog
-		generic map ( buswidth => BusWidth)
-
-		port map (
-			clk => clklow,
-			ibus => ibus,
-			obus => obus,
-			loadtime => LoadWDTime,
-			readtime => ReadWDTime,
-			loadstatus=> LoadWDStatus,
-			readstatus=> ReadWDStatus,
-			cookie => WDCookie,
-			wdbite => WDBite,
-			wdlatchedbite => WDLatchedBite
-			);
-		end generate;
-
-	makedrqlogic: if UseDemandModeDMA generate
-		somolddrqlogic: entity work.dmdrqlogic
-		generic map( ndrqs => NDRQs )
-		port map(
-			clk => clklow,
-			ibus => ibus,
-			obus => obus,
-			loadmode => LoadDMDMAMode,
-			readmode => ReadDMDMAMode,
-			drqsources => DRQSources,
-			dreqout => dreq,					-- passed directly to top
-			demandmode => demandmode		-- passed directly to top
-			);
-		end generate;
-
-	makenodrqlogic: if not UseDemandModeDMA generate
-		dreq <= '0';							-- passed directly to top
-		demandmode <= '0';					-- passed directly to top
-	end generate;
-
-	makeirqlogic: if UseIRQlogic generate
-	signal LoadIRQStatus : std_logic;
-	signal ReadIrqStatus : std_logic;
-	signal ClearIRQ : std_logic;
-	begin
-	somoldirqlogic: entity work.irqlogics
-		generic map(
-			buswidth =>  BusWidth
-				)
-		port map (
-			clk => clklow,
-			ibus => ibus,
-         obus =>  obus,
-         loadstatus => LoadIRqStatus,
-         readstatus => ReadIRqStatus,
-         clear =>  ClearIRQ,
-         ratesource => RateSources, -- DPLL timer channels, channel 4 is refout
-         int => INT);
-
-		IRQDecodePRocess: process(A,readstb,writestb)
-		begin
-			if A(15 downto 8) = IRQStatusAddr and writestb = '1' then	 --
-				LoadIRQStatus <= '1';
-			else
-				LoadIRQStatus <= '0';
-			end if;
-			if A(15 downto 8) = IRQStatusAddr and readstb = '1' then	 --
-				ReadIrqStatus <= '1';
-			else
-				ReadIrqStatus <= '0';
-			end if;
-			if A(15 downto 8) = ClearIRQAddr and writestb = '1' then	 --
-				ClearIRQ <= '1';
-			else
-				ClearIRQ <= '0';
-			end if;
-		end process;
-
-	end generate;
 
 	makehm2dpllmod:  if HM2DPLLs >0  generate
 	signal LoadDPLLBaseRate: std_logic;
@@ -1698,89 +1594,6 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		end process;
 	end generate;
 
-	makedaqfifomod:  if DAQFIFOs >0  generate
-	signal ReadDAQFIFO: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal ReadDAQFIFOCount: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal ClearDAQFIFO: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal LoadDAQFIFOMode: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal ReadDAQFIFOMode: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal PushDAQFIFOFrac: std_logic_vector(DAQFIFOs-1 downto 0);
-	type DAQFIFODataType is array(DAQFIFOs-1 downto 0) of std_logic_vector(DAQFIFOWidth-1 downto 0);
-	signal DAQFIFOData: DAQFIFODataType;
-	signal DAQFIFOFull: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal DAQFIFOStrobe: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal DAQFIFODataSel : std_logic;
-	signal DAQFIFOCountSel : std_logic;
-	signal DAQFIFOModeSel : std_logic;
-	signal DAQFIFOReq: std_logic_vector(DAQFIFOs-1 downto 0);
-	begin
-		DRQSources <= DAQFIFOReq;			-- this will grow as other demand mode DMA sources are added
-		makedaqfifos: for i in 0 to DAQFIFOs -1 generate
-			adaqfifo: entity work.DAQFIFO16				-- need to parametize width
-			generic map (
-				depth => 2048									-- this needs to be in module header
-				)
-			port  map (
-				clk => clklow,
-				ibus => ibus,
-				obus => obus,
-				readfifo => ReadDAQFIFO(i),
-				readfifocount => ReadDAQFIFOCount(i),
-				clearfifo =>  ClearDAQFIFO(i),
-				loadmode =>  LoadDAQFIFOMode(i),
-				readmode =>  ReadDAQFIFOMode(i) ,
-				pushfrac =>  PushDAQFIFOFrac(i),
-				daqdata =>   DAQFIFOData(i),
-				daqfull =>   DAQFIFOFull(i),
-				daqreq => 	 DAQFIFOReq(i),
-				daqstrobe => DAQFIFOStrobe(i)
-				);
-		end generate;
-
-		DAQFIFODecodeProcess : process (A,Readstb,writestb,DAQFIFODataSel,DAQFIFOCountSel,DAQFIFOModeSel)
-		begin
-			if A(15 downto 8) = DAQFIFODataAddr then
-				DAQFIFODataSel <= '1';
-			else
-				DAQFIFODataSel <= '0';
-			end if;
-			if A(15 downto 8) = DAQFIFOCountAddr then
-				DAQFIFOCountSel <= '1';
-			else
-				DAQFIFOCountSel <= '0';
-			end if;
-			if A(15 downto 8) = DAQFIFOModeAddr then
-				DAQFIFOModeSel <= '1';
-			else
-				DAQFIFOModeSel <= '0';
-			end if;
-			ReadDAQFIFO <= OneOfNDecode(DAQFIFOs,DAQFIFODataSel,Readstb,A(7 downto 6));	-- 16 addresses per fifo to allow burst reads
-			PushDAQFIFOFrac <= OneOfNDecode(DAQFIFOs,DAQFIFODataSel,writestb,A(5 downto 2));
-			ReadDAQFIFOCount <= OneOfNDecode(DAQFIFOs,DAQFIFOCountSel,Readstb,A(5 downto 2));
-			ClearDAQFIFO <= OneOfNDecode(DAQFIFOs,DAQFIFOCountSel,writestb,A(5 downto 2));
-			ReadDAQFIFOMode <= OneOfNDecode(DAQFIFOs,DAQFIFOModeSel,Readstb,A(5 downto 2));
-			LoadDAQFIFOMode <= OneOfNDecode(DAQFIFOs,DAQFIFOModeSel,writestb,A(5 downto 2));
-		end process DAQFIFODecodeProcess;
-
-		DoDAQFIFOPins: process(DAQFIFOFull, IOBits)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = DAQFIFOTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					if (ThePinDesc(i)(7 downto 0) and x"C0") = x"00" then 	-- DAQ data matches 0X .. 3X
-						DAQFIFOData(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBits(i);		-- 16 max ports
-					end if;
-					if ThePinDesc(i)(7 downto 0) = DAQFIFOStrobePin then
-						 DAQFIFOStrobe(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
-					end if;
-					if ThePinDesc(i)(7 downto 0) = DAQFIFOFullPin then
-						AltData(i) <= DAQFIFOFull(conv_integer(ThePinDesc(i)(23 downto 16)));
-					end if;
-				end if;
-			end loop;
-		end process;
-
-	end generate;
-
 -------------------------------------Standard UART---------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------
 
@@ -2731,77 +2544,6 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 
 	end generate;
 
-
-	LEDReg : entity work.boutreg
-	generic map (
-		size => LEDCount,
-		buswidth => LEDCount,
-		invert => true)
-	port map (
-		clk  => clklow,
-		ibus => ibus(BusWidth-1 downto BusWidth-LEDCount),
-		obus => obus(BusWidth-1 downto BusWidth-LEDCount),
-		load => LoadLEDs,
-		read => '0',
-		clear => '0',
-		dout => LEDS
-		);
-
-
-	IDROMWP : entity work.boutreg
- 		generic map (
-			size => 1,
-			buswidth => BusWidth,
-			invert => false
-			)
-		port map (
-			clk  => clklow,
-         ibus => ibus,
-         obus => obus,
-         load => LoadIDROMWEn,
-         read => ReadIDROMWEn,
-			clear => '0',
-         dout => IDROMWen
-		);
-
-
-	IDROM : entity work.IDROM
-		generic map (
-			idromtype => IDROMType,
-			offsettomodules => OffsetToModules,
-			offsettopindesc => OffsetToPinDesc,
-			boardnamelow => BoardNameLow,
-			boardnameHigh => BoardNameHigh,
-			fpgasize => FPGASize,
-			fpgapins => FPGAPins,
-			ioports => IOPorts,
-			iowidth => IOWidth,
-			portwidth => PortWidth,
-			clocklow => ClockLow,
-			clockhigh => ClockHigh,
-			inststride0 => InstStride0,
-			inststride1 => InstStride1,
-			regstride0 => RegStride0,
-			regstride1 => RegStride1,
-			pindesc => ThePinDesc,
-			moduleid => TheModuleID)
-		port map (
-			clk  => clklow,
-			we   => LoadIDROM,
-			re   => ReadIDROM,
-			radd => addr(9 downto 2),
-			wadd => A(9 downto 2),
-			din  => ibus,
-			dout => obus
-		);
-
-   LooseEnds: process(A,clklow)
-	begin
-		if rising_edge(clklow) then
-			A <= addr;
-		end if;
-	end process;
-
 --   MuxedEncMIM: if  MuxedQCountersMIM > 0 generate
 --
 --		EncoderDeMuxMIM: process(clklow)
@@ -2829,144 +2571,6 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 --		end process;
 --	end generate;
 
-
-	Decode: process(A,writestb, IDROMWEn, readstb)
-	begin
-		-- basic multi decodes are at 256 byte increments (64 longs)
-		-- first decode is 256 x 32 ID ROM
-		-- these need to all be updated to the decoded strobe function instead of if_then_else
-
-		if (A(15 downto 10) = IDROMAddr(7 downto 2)) and writestb = '1' and IDROMWEn = "1" then	 -- 400 Hex
-			LoadIDROM <= '1';
-		else
-			LoadIDROM <= '0';
-		end if;
-		if (A(15 downto 10) = IDROMAddr(7 downto 2)) and readstb = '1' then	 --
-			ReadIDROM <= '1';
-		else
-			ReadIDROM <= '0';
-		end if;
-
-		if A(15 downto 8) = PortAddr then  -- basic I/O port select
-			PortSel <= '1';
-		else
-			PortSel <= '0';
-		end if;
-
-		if A(15 downto 8) = DDRAddr then	 -- DDR register select
-			DDRSel <= '1';
-		else
-			DDRSel <= '0';
-		end if;
-
-		if A(15 downto 8) = AltDataSrcAddr then  -- Alt data source register select
-			AltDataSrcSel <= '1';
-		else
-			AltDataSrcSel <= '0';
-		end if;
-
-		if A(15 downto 8) = OpenDrainModeAddr then	 --  OpenDrain  register select
-			OpendrainModeSel <= '1';
-		else
-			OpenDrainModeSel <= '0';
-		end if;
-
-		if A(15 downto 8) = OutputInvAddr then	 --  IO invert register select
-			OutputInvSel <= '1';
-		else
-			OutputInvSel <= '0';
-		end if;
-
-		if A(15 downto 8) = ReadIDAddr and readstb = '1' then	 --
-			ReadID <= '1';
-		else
-			ReadID <= '0';
-		end if;
-
-		if A(15 downto 8) = WatchdogTimeAddr and readstb = '1' then	 --
-			ReadWDTime <= '1';
-		else
-			ReadWDTime <= '0';
-		end if;
-		if A(15 downto 8) = WatchdogTimeAddr and writestb = '1' then	 --
-			LoadWDTime <= '1';
-		else
-			LoadWDTime <= '0';
-		end if;
-
-		if A(15 downto 8) = WatchdogStatusAddr and readstb = '1' then	 --
-			ReadWDStatus <= '1';
-		else
-			ReadWDStatus <= '0';
-		end if;
-		if A(15 downto 8) = WatchdogStatusAddr and writestb = '1' then	 --
-			LoadWDStatus <= '1';
-		else
-			LoadWDStatus <= '0';
-		end if;
-
-		if A(15 downto 8) = WatchdogCookieAddr and writestb = '1' then	 --
-			WDCookie <= '1';
-		else
-			WDCookie <= '0';
-		end if;
-
-		if A(15 downto 8) = DMDMAModeAddr and writestb = '1' then	 --
-			LoadDMDMAMode <= '1';
-		else
-			LoadDMDMAMode <= '0';
-		end if;
-
-		if A(15 downto 8) = DMDMAModeAddr and readstb = '1' then	 --
-			ReadDMDMAMode <= '1';
-		else
-			ReadDMDMAMode <= '0';
-		end if;
-
-		if A(15 downto 8) = IDROMWEnAddr and writestb = '1' then	 --
-			LoadIDROMWEn <= '1';
-		else
-			LoadIDROMWEn <= '0';
-		end if;
-
-		if A(15 downto 8) = IDROMWEnAddr and readstb = '1' then	 --
-			ReadIDROMWEn <= '1';
-		else
-			ReadIDROMWEn <= '0';
-		end if;
-
-		if A(15 downto 8) = LEDAddr and writestb = '1' then	 --
-			LoadLEDs <= '1';
-		else
-			LoadLEDs <= '0';
-		end if;
-
-	end process;
-
-	PortDecode: process (A,readstb,writestb,PortSel, DDRSel, AltDataSrcSel, OpenDrainModeSel, OutputInvSel)
-	begin
-
-		LoadPortCMD <= OneOfNDecode(IOPorts,PortSel,writestb,A(4 downto 2)); -- 8 max
-		ReadPortCMD <= OneOfNDecode(IOPorts,PortSel,readstb,A(4 downto 2));
-		LoadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,writestb,A(4 downto 2));
-		ReadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,readstb,A(4 downto 2));
-
-		LoadAltDataSrcCMD <= OneOfNDecode(IOPorts,AltDataSrcSel,writestb,A(4 downto 2));
-		LoadOpenDrainModeCMD <= OneOfNDecode(IOPorts,OpenDrainModeSel,writestb,A(4 downto 2));
-		LoadOutputInvCMD <= OneOfNDecode(IOPorts,OutputInvSel,writestb,A(4 downto 2));
-
-	end process PortDecode;
-
-	dotieupint: if not UseIRQLogic generate
-		tieupint : process(clklow)
-		begin
-			INT <= '1';
-		end process;
-	end generate;
-
-	drqrouting: if UseDemandModeDMA generate
-
-	end generate;
 
 end dataflow;
 
