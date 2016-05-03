@@ -31,27 +31,31 @@ put a line like this in /etc/fstab:
 
 cat hm2reg_uio.dts
 
-	/dts-v1/;/plugin/;
+/dts-v1/ /plugin/;
 
-	/ {
-	fragment@0 {
-		target = <&base_fpga_region>;
+/ {
+   fragment@0 {
+      target-path = "/soc/base_fpga_region";
 		#address-cells = <1>;
 		#size-cells = <1>;
-		__overlay__ {
+      __overlay__ {
 			#address-cells = <1>;
 			#size-cells = <1>;
-			firmware-name = "/boot/socfpga.rbf";
-			hm2reg_io_0: hm2-socfpga@0xff240000 {
+
+			ranges = <0x00040000 0xff240000 0x00010000>;
+			firmware-name = "socfpga/socfpga.rbf";
+
+			hm2reg_io_0: hm2-socfpg0@0x40000 {
 				compatible = "machkt,hm2reg-io-1.0";
-				reg = <0xff240000 0x00010000>;
+				reg = <0x40000 0x10000>;
 				clocks = <&osc1>;
 				address_width = <14>;
 				data_width = <32>;
 			};
 		};
 	};
-	};
+};
+
 
 the latest wotking version of the device-tree-tools (v1.4.1) can be installed like this:
 
