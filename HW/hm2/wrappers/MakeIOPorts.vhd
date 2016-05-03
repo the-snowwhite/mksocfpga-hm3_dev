@@ -61,15 +61,16 @@ entity MakeIOPorts is
 		LEDCount: integer);
 	Port (
 -- 		inbus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
--- 		outbus : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
 		ibus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
-		obus : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
+		obustop : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
+ 		obusint : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
 		addr : in std_logic_vector(AddrWidth -1 downto 2);
- 		Aout : out std_logic_vector(AddrWidth -1 downto 2);
+ 		Aint : out std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		AltData :  inout std_logic_vector(iowidth-1 downto 0) := (others => '0');
-		IOBits :  inout std_logic_vector(iowidth-1 downto 0) := (others => '0');
+		AltData :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		iobitstop :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		IOBitsint :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 		clklow : in std_logic;
 		clkmed : in std_logic;
 		clkhigh : in std_logic;
@@ -86,7 +87,7 @@ end MakeIOPorts;
 architecture dataflow of MakeIOPorts is
 
 -- Signals
-	signal A: std_logic_vector(addrwidth -1 downto 2);
+ 	signal Adr: std_logic_vector(AddrWidth -1 downto 2);
 	signal PortSel: std_logic;
 
 -- I/O port related signals
@@ -117,7 +118,7 @@ architecture dataflow of MakeIOPorts is
 	signal LoadLEDS : std_logic;
 
 --- IDRom
--- 	signal A: std_logic_vector(addrwidth -1 downto 2);
+-- 	signal A: std_logic_vector(AddrWidth -1 downto 2);
 	signal LoadIDROM: std_logic;
 	signal ReadIDROM: std_logic;
 
@@ -154,8 +155,8 @@ architecture dataflow of MakeIOPorts is
 	)
 	port map (
 		readid => ReadID,
-		addr => A(3 downto 2),
-		obus => obus
+		addr => Adr(3 downto 2),
+		obus => obustop
 	);
 
 	makeoports: for i in 0 to IOPorts -1 generate
@@ -168,26 +169,28 @@ architecture dataflow of MakeIOPorts is
 			clear => WDBite,
 			clk => clklow,
 			ibus => ibus,
-			obus => obus,
+			obus => obustop,
 			loadport => LoadPortCmd(i),
 			loadddr => LoadDDRCmd(i),
 			loadaltdatasrc => LoadAltDataSrcCmd(i),
 			loadopendrainmode => LoadOpenDrainModeCmd(i),
 			loadinvert => LoadOutputInvCmd(i),
 			readddr => ReadDDRCmd(i),
-			portdata => IOBits((((i+1)*PortWidth) -1) downto (i*PortWidth)),
-			altdata => Altdata((((i+1)*PortWidth) -1) downto (i*PortWidth))
+			portdata => iobitstop((((i+1)*PortWidth) -1) downto (i*PortWidth)),
+			altdata => AltData((((i+1)*PortWidth) -1) downto (i*PortWidth))
 			);
 	end generate;
 
 	makeiports: for i in 0 to IOPorts -1 generate
 		iportx: entity work.WordRB
-		generic map (size => PortWidth,
-						 buswidth => BusWidth)
+		generic map (
+			size => PortWidth,
+			buswidth => BusWidth
+		)
 		port map (
-		obus => obus,
+		obus => obustop,
 		readport => ReadPortCmd(i),
-		portdata => IOBits((((i+1)*PortWidth) -1) downto (i*PortWidth))
+		portdata => iobitstop((((i+1)*PortWidth) -1) downto (i*PortWidth))
  		);
 	end generate;
 
@@ -199,7 +202,7 @@ architecture dataflow of MakeIOPorts is
 		port map (
 			clk => clklow,
 			ibus => ibus,
-			obus => obus,
+			obus => obustop,
 			loadtime => LoadWDTime,
 			readtime => ReadWDTime,
 			loadstatus=> LoadWDStatus,
@@ -216,7 +219,7 @@ architecture dataflow of MakeIOPorts is
 		port map(
 			clk => clklow,
 			ibus => ibus,
-			obus => obus,
+			obus => obustop,
 			loadmode => LoadDMDMAMode,
 			readmode => ReadDMDMAMode,
 			drqsources => DRQSources,
@@ -242,26 +245,26 @@ architecture dataflow of MakeIOPorts is
 		port map (
 			clk => clklow,
 			ibus => ibus,
-         obus =>  obus,
+         obus =>  obustop,
          loadstatus => LoadIRqStatus,
          readstatus => ReadIRqStatus,
          clear =>  ClearIRQ,
          ratesource => RateSources, -- DPLL timer channels, channel 4 is refout
          int => INT);
 
-		IRQDecodePRocess: process(A,readstb,writestb)
+		IRQDecodePRocess: process(Adr,readstb,writestb)
 		begin
-			if A(15 downto 8) = IRQStatusAddr and writestb = '1' then	 --
+			if Adr(15 downto 8) = IRQStatusAddr and writestb = '1' then	 --
 				LoadIRQStatus <= '1';
 			else
 				LoadIRQStatus <= '0';
 			end if;
-			if A(15 downto 8) = IRQStatusAddr and readstb = '1' then	 --
+			if Adr(15 downto 8) = IRQStatusAddr and readstb = '1' then	 --
 				ReadIrqStatus <= '1';
 			else
 				ReadIrqStatus <= '0';
 			end if;
-			if A(15 downto 8) = ClearIRQAddr and writestb = '1' then	 --
+			if Adr(15 downto 8) = ClearIRQAddr and writestb = '1' then	 --
 				ClearIRQ <= '1';
 			else
 				ClearIRQ <= '0';
@@ -295,9 +298,9 @@ architecture dataflow of MakeIOPorts is
 			we   => LoadIDROM,
 			re   => ReadIDROM,
 			radd => addr(9 downto 2),
-			wadd => A(9 downto 2),
+			wadd => Adr(9 downto 2),
 			din  => ibus,
-			dout => obus
+			dout => obustop
 		);
 
 	IDROMWP : entity work.boutreg
@@ -309,127 +312,127 @@ architecture dataflow of MakeIOPorts is
 		port map (
 			clk  => clklow,
          ibus => ibus,
-         obus => obus,
+         obus => obustop,
          load => LoadIDROMWEn,
          read => ReadIDROMWEn,
 			clear => '0',
          dout => IDROMWen
 		);
 
-   LooseEnds: process(A,clklow)
+   LooseEnds: process(Aint,clklow)
 	begin
 		if rising_edge(clklow) then
-			A <= addr;
-			Aout <= addr;
+			Aint <= addr;
+			Adr <= addr;
 		end if;
 	end process;
 
-	Decode: process(A,writestb, IDROMWEn, readstb)
+	Decode: process(Adr,writestb, IDROMWEn, readstb)
 	begin
 		-- basic multi decodes are at 256 byte increments (64 longs)
 		-- first decode is 256 x 32 ID ROM
 		-- these need to all be updated to the decoded strobe function instead of if_then_else
 
-		if (A(15 downto 10) = IDROMAddr(7 downto 2)) and writestb = '1' and IDROMWEn = "1" then	 -- 400 Hex
+		if (Adr(15 downto 10) = IDROMAddr(7 downto 2)) and writestb = '1' and IDROMWEn = "1" then	 -- 400 Hex
 			LoadIDROM <= '1';
 		else
 			LoadIDROM <= '0';
 		end if;
-		if (A(15 downto 10) = IDROMAddr(7 downto 2)) and readstb = '1' then	 --
+		if (Adr(15 downto 10) = IDROMAddr(7 downto 2)) and readstb = '1' then	 --
 			ReadIDROM <= '1';
 		else
 			ReadIDROM <= '0';
 		end if;
 
-		if A(15 downto 8) = PortAddr then  -- basic I/O port select
+		if Adr(15 downto 8) = PortAddr then  -- basic I/O port select
 			PortSel <= '1';
 		else
 			PortSel <= '0';
 		end if;
 
-		if A(15 downto 8) = DDRAddr then	 -- DDR register select
+		if Adr(15 downto 8) = DDRAddr then	 -- DDR register select
 			DDRSel <= '1';
 		else
 			DDRSel <= '0';
 		end if;
 
-		if A(15 downto 8) = AltDataSrcAddr then  -- Alt data source register select
+		if Adr(15 downto 8) = AltDataSrcAddr then  -- Alt data source register select
 			AltDataSrcSel <= '1';
 		else
 			AltDataSrcSel <= '0';
 		end if;
 
-		if A(15 downto 8) = OpenDrainModeAddr then	 --  OpenDrain  register select
+		if Adr(15 downto 8) = OpenDrainModeAddr then	 --  OpenDrain  register select
 			OpendrainModeSel <= '1';
 		else
 			OpenDrainModeSel <= '0';
 		end if;
 
-		if A(15 downto 8) = OutputInvAddr then	 --  IO invert register select
+		if Adr(15 downto 8) = OutputInvAddr then	 --  IO invert register select
 			OutputInvSel <= '1';
 		else
 			OutputInvSel <= '0';
 		end if;
 
-		if A(15 downto 8) = ReadIDAddr and readstb = '1' then	 --
+		if Adr(15 downto 8) = ReadIDAddr and readstb = '1' then	 --
 			ReadID <= '1';
 		else
 			ReadID <= '0';
 		end if;
 
-		if A(15 downto 8) = WatchdogTimeAddr and readstb = '1' then	 --
+		if Adr(15 downto 8) = WatchdogTimeAddr and readstb = '1' then	 --
 			ReadWDTime <= '1';
 		else
 			ReadWDTime <= '0';
 		end if;
-		if A(15 downto 8) = WatchdogTimeAddr and writestb = '1' then	 --
+		if Adr(15 downto 8) = WatchdogTimeAddr and writestb = '1' then	 --
 			LoadWDTime <= '1';
 		else
 			LoadWDTime <= '0';
 		end if;
 
-		if A(15 downto 8) = WatchdogStatusAddr and readstb = '1' then	 --
+		if Adr(15 downto 8) = WatchdogStatusAddr and readstb = '1' then	 --
 			ReadWDStatus <= '1';
 		else
 			ReadWDStatus <= '0';
 		end if;
-		if A(15 downto 8) = WatchdogStatusAddr and writestb = '1' then	 --
+		if Adr(15 downto 8) = WatchdogStatusAddr and writestb = '1' then	 --
 			LoadWDStatus <= '1';
 		else
 			LoadWDStatus <= '0';
 		end if;
 
-		if A(15 downto 8) = WatchdogCookieAddr and writestb = '1' then	 --
+		if Adr(15 downto 8) = WatchdogCookieAddr and writestb = '1' then	 --
 			WDCookie <= '1';
 		else
 			WDCookie <= '0';
 		end if;
 
-		if A(15 downto 8) = DMDMAModeAddr and writestb = '1' then	 --
+		if Adr(15 downto 8) = DMDMAModeAddr and writestb = '1' then	 --
 			LoadDMDMAMode <= '1';
 		else
 			LoadDMDMAMode <= '0';
 		end if;
 
-		if A(15 downto 8) = DMDMAModeAddr and readstb = '1' then	 --
+		if Adr(15 downto 8) = DMDMAModeAddr and readstb = '1' then	 --
 			ReadDMDMAMode <= '1';
 		else
 			ReadDMDMAMode <= '0';
 		end if;
 
-		if A(15 downto 8) = IDROMWEnAddr and writestb = '1' then	 --
+		if Adr(15 downto 8) = IDROMWEnAddr and writestb = '1' then	 --
 			LoadIDROMWEn <= '1';
 		else
 			LoadIDROMWEn <= '0';
 		end if;
 
-		if A(15 downto 8) = IDROMWEnAddr and readstb = '1' then	 --
+		if Adr(15 downto 8) = IDROMWEnAddr and readstb = '1' then	 --
 			ReadIDROMWEn <= '1';
 		else
 			ReadIDROMWEn <= '0';
 		end if;
 
-		if A(15 downto 8) = LEDAddr and writestb = '1' then	 --
+		if Adr(15 downto 8) = LEDAddr and writestb = '1' then	 --
 			LoadLEDs <= '1';
 		else
 			LoadLEDs <= '0';
@@ -437,17 +440,17 @@ architecture dataflow of MakeIOPorts is
 
 	end process;
 
-	PortDecode: process (A,readstb,writestb,PortSel, DDRSel, AltDataSrcSel, OpenDrainModeSel, OutputInvSel)
+	PortDecode: process (Adr,readstb,writestb,PortSel, DDRSel, AltDataSrcSel, OpenDrainModeSel, OutputInvSel)
 	begin
 
-		LoadPortCMD <= OneOfNDecode(IOPorts,PortSel,writestb,A(4 downto 2)); -- 8 max
-		ReadPortCMD <= OneOfNDecode(IOPorts,PortSel,readstb,A(4 downto 2));
-		LoadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,writestb,A(4 downto 2));
-		ReadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,readstb,A(4 downto 2));
+		LoadPortCMD <= OneOfNDecode(IOPorts,PortSel,writestb,Adr(4 downto 2)); -- 8 max
+		ReadPortCMD <= OneOfNDecode(IOPorts,PortSel,readstb,Adr(4 downto 2));
+		LoadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,writestb,Adr(4 downto 2));
+		ReadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,readstb,Adr(4 downto 2));
 
-		LoadAltDataSrcCMD <= OneOfNDecode(IOPorts,AltDataSrcSel,writestb,A(4 downto 2));
-		LoadOpenDrainModeCMD <= OneOfNDecode(IOPorts,OpenDrainModeSel,writestb,A(4 downto 2));
-		LoadOutputInvCMD <= OneOfNDecode(IOPorts,OutputInvSel,writestb,A(4 downto 2));
+		LoadAltDataSrcCMD <= OneOfNDecode(IOPorts,AltDataSrcSel,writestb,Adr(4 downto 2));
+		LoadOpenDrainModeCMD <= OneOfNDecode(IOPorts,OpenDrainModeSel,writestb,Adr(4 downto 2));
+		LoadOutputInvCMD <= OneOfNDecode(IOPorts,OutputInvSel,writestb,Adr(4 downto 2));
 
 	end process PortDecode;
 
@@ -487,7 +490,7 @@ architecture dataflow of MakeIOPorts is
 			port  map (
 				clk => clklow,
 				ibus => ibus,
-				obus => obus,
+				obus => obustop,
 				readfifo => ReadDAQFIFO(i),
 				readfifocount => ReadDAQFIFOCount(i),
 				clearfifo =>  ClearDAQFIFO(i),
@@ -501,40 +504,40 @@ architecture dataflow of MakeIOPorts is
 				);
 		end generate;
 
-		DAQFIFODecodeProcess : process (A,Readstb,writestb,DAQFIFODataSel,DAQFIFOCountSel,DAQFIFOModeSel)
+		DAQFIFODecodeProcess : process (Adr,Readstb,writestb,DAQFIFODataSel,DAQFIFOCountSel,DAQFIFOModeSel)
 		begin
-			if A(15 downto 8) = DAQFIFODataAddr then
+			if Adr(15 downto 8) = DAQFIFODataAddr then
 				DAQFIFODataSel <= '1';
 			else
 				DAQFIFODataSel <= '0';
 			end if;
-			if A(15 downto 8) = DAQFIFOCountAddr then
+			if Adr(15 downto 8) = DAQFIFOCountAddr then
 				DAQFIFOCountSel <= '1';
 			else
 				DAQFIFOCountSel <= '0';
 			end if;
-			if A(15 downto 8) = DAQFIFOModeAddr then
+			if Adr(15 downto 8) = DAQFIFOModeAddr then
 				DAQFIFOModeSel <= '1';
 			else
 				DAQFIFOModeSel <= '0';
 			end if;
-			ReadDAQFIFO <= OneOfNDecode(DAQFIFOs,DAQFIFODataSel,Readstb,A(7 downto 6));	-- 16 addresses per fifo to allow burst reads
-			PushDAQFIFOFrac <= OneOfNDecode(DAQFIFOs,DAQFIFODataSel,writestb,A(5 downto 2));
-			ReadDAQFIFOCount <= OneOfNDecode(DAQFIFOs,DAQFIFOCountSel,Readstb,A(5 downto 2));
-			ClearDAQFIFO <= OneOfNDecode(DAQFIFOs,DAQFIFOCountSel,writestb,A(5 downto 2));
-			ReadDAQFIFOMode <= OneOfNDecode(DAQFIFOs,DAQFIFOModeSel,Readstb,A(5 downto 2));
-			LoadDAQFIFOMode <= OneOfNDecode(DAQFIFOs,DAQFIFOModeSel,writestb,A(5 downto 2));
+			ReadDAQFIFO <= OneOfNDecode(DAQFIFOs,DAQFIFODataSel,Readstb,Adr(7 downto 6));	-- 16 addresses per fifo to allow burst reads
+			PushDAQFIFOFrac <= OneOfNDecode(DAQFIFOs,DAQFIFODataSel,writestb,Adr(5 downto 2));
+			ReadDAQFIFOCount <= OneOfNDecode(DAQFIFOs,DAQFIFOCountSel,Readstb,Adr(5 downto 2));
+			ClearDAQFIFO <= OneOfNDecode(DAQFIFOs,DAQFIFOCountSel,writestb,Adr(5 downto 2));
+			ReadDAQFIFOMode <= OneOfNDecode(DAQFIFOs,DAQFIFOModeSel,Readstb,Adr(5 downto 2));
+			LoadDAQFIFOMode <= OneOfNDecode(DAQFIFOs,DAQFIFOModeSel,writestb,Adr(5 downto 2));
 		end process DAQFIFODecodeProcess;
 
-		DoDAQFIFOPins: process(DAQFIFOFull, IOBits)
+		DoDAQFIFOPins: process(DAQFIFOFull, IOBitsint)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = DAQFIFOTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					if (ThePinDesc(i)(7 downto 0) and x"C0") = x"00" then 	-- DAQ data matches 0X .. 3X
-						DAQFIFOData(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBits(i);		-- 16 max ports
+						DAQFIFOData(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBitsint(i);		-- 16 max ports
 					end if;
 					if ThePinDesc(i)(7 downto 0) = DAQFIFOStrobePin then
-						 DAQFIFOStrobe(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+						 DAQFIFOStrobe(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 					end if;
 					if ThePinDesc(i)(7 downto 0) = DAQFIFOFullPin then
 						AltData(i) <= DAQFIFOFull(conv_integer(ThePinDesc(i)(23 downto 16)));
@@ -548,12 +551,12 @@ architecture dataflow of MakeIOPorts is
 	LEDReg : entity work.boutreg
 	generic map (
 		size => LEDCount,
-		buswidth => LEDCount,
+		BusWidth => LEDCount,
 		invert => true)
 	port map (
 		clk  => clklow,
 		ibus => ibus(BusWidth-1 downto BusWidth-LEDCount),
-		obus => obus(BusWidth-1 downto BusWidth-LEDCount),
+		obus => obustop(BusWidth-1 downto BusWidth-LEDCount),
 		load => LoadLEDs,
 		read => '0',
 		clear => '0',

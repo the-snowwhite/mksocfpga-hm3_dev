@@ -15,28 +15,6 @@ use work.IDROMConst.all;
 use work.oneofndecode.all;
 
 entity MakeStepgens is
---  		PWMRateAddr : std_Logic_Vector(7 downto 0) := PWMRateAddr;
---  		PDMRateAddr : std_Logic_Vector(7 downto 0) := PDMRateAddr;
---  		PWMEnasAddr : std_Logic_Vector(7 downto 0) := PWMEnasAddr;
---  		PWMValAddr : std_Logic_Vector(7 downto 0) := PWMValAddr;
---  		PWMCRAddr : std_Logic_Vector(7 downto 0) := PWMCRAddr;
---  		PWMRefWidth : integer := 13;
---  		QCounterAddr : std_Logic_Vector(7 downto 0) := QCounterAddr;
---  		QCounterCCRAddr : std_Logic_Vector(7 downto 0) := QCounterCCRAddr;
---  		UseProbe : boolean := false;
--- 		TSDivAddr : std_Logic_Vector(7 downto 0) := TSDivAddr
--- 	);
--- 	port (
--- 	ibus : in std_logic_vector(buswidth -1 downto 0);
--- 	obus : out std_logic_vector(buswidth -1 downto 0);
--- 	addr : in std_logic_vector(AddrWidth -1 downto 2);
--- 	clklow : in std_logic;
--- 	clkmed : in std_logic;
--- 	clkhigh : in std_logic;
--- 	readstb : in std_logic;
--- 	writestb : in std_logic;
--- 	Probe : inout std_logic
--- 	);
 	generic (
 		ThePinDesc: PinDescType := PinDesc;
   		ClockHigh: integer;
@@ -60,16 +38,17 @@ entity MakeStepgens is
 		UseProbe: boolean);
 	Port (
 		ibus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
-		obus : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
-		A : in std_logic_vector(AddrWidth -1 downto 2);
+		obusint : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
+		Aint: in std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		AltData :  inout std_logic_vector(iowidth-1 downto 0) := (others => '0');
-		IOBits :  inout std_logic_vector(iowidth-1 downto 0) := (others => '0');
+		AltData :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		IOBitsint :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 		clklow : in std_logic;
 		clkmed : in std_logic;
 		clkhigh : in std_logic;
-		Probe : inout std_logic);
+		Probe : inout std_logic
+	);
 
 end MakeStepgens;
 
@@ -125,7 +104,7 @@ architecture dataflow of MakeStepgens is
 		makeStepGenPreScaler:  if UseStepGenPreScaler generate
 			StepRategen : entity work.RateGen port map(
 				ibus => ibus,
-				obus => obus,
+				obus => obusint,
 				loadbasicrate => LoadStepGenBasicRate,
 				readbasicrate => ReadStepGenBasicRate,
 				hold => '0',
@@ -146,7 +125,7 @@ architecture dataflow of MakeStepgens is
 			port map (
 				clk => clklow,
 				ibus => ibus,
-				obus 	=>	 obus,
+				obus =>	obusint,
 				loadsteprate => LoadStepGenRate(i),
 				loadaccum => LoadStepGenAccum(i),
 				loadstepmode => LoadStepGenMode(i),
@@ -183,7 +162,7 @@ architecture dataflow of MakeStepgens is
 			port map (
 				clk => clklow,
 				ibus => ibus,
-				obus 	=>	 obus,
+				obus 	=>	 obusint,
 				loadsteprate => LoadStepGenRate(i),
 				loadaccum => LoadStepGenAccum(i),
 				loadstepmode => LoadStepGenMode(i),
@@ -221,7 +200,7 @@ architecture dataflow of MakeStepgens is
 			port map (
 				clk => clklow,
 				ibus => ibus,
-				obus 	=>	 obus,
+				obus 	=>	 obusint,
 				loadsteprate => LoadStepGenRate(i),
 				loadaccum => LoadStepGenAccum(i),
 				loadstepmode => LoadStepGenMode(i),
@@ -244,7 +223,7 @@ architecture dataflow of MakeStepgens is
 				hold => '0',
 				stout => StepGenOut(i),
 				index => StepGenIndex(i),
-				probe => probe
+				probe => Probe
 				);
 			end generate usgi;
 
@@ -261,7 +240,7 @@ architecture dataflow of MakeStepgens is
 			port map (
 				clk => clklow,
 				ibus => ibus,
-				obus 	=>	 obus,
+				obus 	=>	 obusint,
 				loadsteprate => LoadStepGenRate(i),
 				loadaccum => LoadStepGenAccum(i),
 				loadstepmode => LoadStepGenMode(i),
@@ -289,86 +268,86 @@ architecture dataflow of MakeStepgens is
 			end generate nusgi;
 		end generate generateSTEPGENs;
 
-		StepGenDecodeProcess : process (A,readstb,writestb,StepGenRateSel, StepGenAccumSel, StepGenModeSel,
+		StepGenDecodeProcess : process (Aint,readstb,writestb,StepGenRateSel, StepGenAccumSel, StepGenModeSel,
                                  			StepGenDSUTimeSel, StepGenDHLDTimeSel, StepGenPulseATimeSel,
 			                                 StepGenPulseITimeSel, StepGenTableSel, StepGenTableMaxSel)
 		begin
-			if A(15 downto 8) = StepGenRateAddr then	 --  stepgen rate register select
+			if Aint(15 downto 8) = StepGenRateAddr then	 --  stepgen rate register select
 				StepGenRateSel <= '1';
 			else
 				StepGenRateSel <= '0';
 			end if;
-			if A(15 downto 8) = StepGenAccumAddr then	 --  stepgen Accumumlator low select
+			if Aint(15 downto 8) = StepGenAccumAddr then	 --  stepgen Accumumlator low select
 				StepGenAccumSel <= '1';
 			else
 				StepGenAccumSel <= '0';
 			end if;
-			if A(15 downto 8) = StepGenModeAddr then	 --  stepgen mode register select
+			if Aint(15 downto 8) = StepGenModeAddr then	 --  stepgen mode register select
 				StepGenModeSel <= '1';
 			else
 				StepGenModeSel <= '0';
 			end if;
-			if A(15 downto 8) = StepGenDSUTimeAddr then	 --  stepgen Dir setup time register select
+			if Aint(15 downto 8) = StepGenDSUTimeAddr then	 --  stepgen Dir setup time register select
 				StepGenDSUTimeSel <= '1';
 			else
 				StepGenDSUTimeSel <= '0';
 			end if;
-			if A(15 downto 8) =StepGenDHLDTimeAddr then	 --  stepgen Dir hold time register select
+			if Aint(15 downto 8) =StepGenDHLDTimeAddr then	 --  stepgen Dir hold time register select
 				StepGenDHLDTimeSel <= '1';
 			else
 				StepGenDHLDTimeSel <= '0';
 			end if;
-			if A(15 downto 8) = StepGenPulseATimeAddr then	 --  stepgen pulse width register select
+			if Aint(15 downto 8) = StepGenPulseATimeAddr then	 --  stepgen pulse width register select
 				StepGenPulseATimeSel <= '1';
 			else
 				StepGenPulseATimeSel <= '0';
 			end if;
-			if A(15 downto 8) = StepGenPulseITimeAddr then	 --  stepgen pulse width register select
+			if Aint(15 downto 8) = StepGenPulseITimeAddr then	 --  stepgen pulse width register select
 				StepGenPulseITimeSel <= '1';
 			else
 				StepGenPulseITimeSel <= '0';
 			end if;
-			if A(15 downto 8) = StepGenTableAddr then	 --  stepgen pulse width register select
+			if Aint(15 downto 8) = StepGenTableAddr then	 --  stepgen pulse width register select
 				StepGenTableSel <= '1';
 			else
 				StepGenTableSel <= '0';
 			end if;
-			if A(15 downto 8) = StepGenTableMaxAddr then	 --  stepgen pulse width register select
+			if Aint(15 downto 8) = StepGenTableMaxAddr then	 --  stepgen pulse width register select
 				StepGenTableMaxSel <= '1';
 			else
 				StepGenTableMaxSel <= '0';
 			end if;
-			if A(15 downto 8) = StepGenBasicRateAddr and writestb = '1' then	 --
+			if Aint(15 downto 8) = StepGenBasicRateAddr and writestb = '1' then	 --
 				LoadStepGenBasicRate <= '1';
 			else
 				LoadStepGenBasicRate <= '0';
 			end if;
-			if A(15 downto 8) = StepGenBasicRateAddr and readstb = '1' then	 --
+			if Aint(15 downto 8) = StepGenBasicRateAddr and readstb = '1' then	 --
 				ReadStepGenBasicRate <= '1';
 			else
 				ReadStepGenBasicRate <= '0';
 			end if;
-			LoadStepGenRate <= OneOfNDecode(STEPGENs,StepGenRateSel,writestb,A(7 downto 2)); 	-- 64 max
-			ReadStepGenRate <= OneOfNDecode(STEPGENs,StepGenRateSel,readstb,A(7 downto 2)); 		-- Note: all the reads are decoded here
-			LoadStepGenAccum <= OneOfNDecode(STEPGENs,StepGenAccumSel,writestb,A(7 downto 2));	-- but most are commented out in the
-			ReadStepGenAccum <= OneOfNDecode(STEPGENs,StepGenAccumSel,readstb,A(7 downto 2));	-- stepgen module hardware for space reasons
-			LoadStepGenMode <= OneOfNDecode(STEPGENs,StepGenModeSel,writestb,A(7 downto 2));
-			ReadStepGenMode <= OneOfNDecode(STEPGENs,StepGenModeSel,Readstb,A(7 downto 2));
-			LoadStepGenDSUTime <= OneOfNDecode(STEPGENs,StepGenDSUTimeSel,writestb,A(7 downto 2));
-			ReadStepGenDSUTime <= OneOfNDecode(STEPGENs,StepGenDSUTimeSel,Readstb,A(7 downto 2));
-			LoadStepGenDHLDTime <= OneOfNDecode(STEPGENs,StepGenDHLDTimeSel,writestb,A(7 downto 2));
-			ReadStepGenDHLDTime <= OneOfNDecode(STEPGENs,StepGenDHLDTimeSel,Readstb,A(7 downto 2));
-			LoadStepGenPulseATime <= OneOfNDecode(STEPGENs,StepGenPulseATimeSel,writestb,A(7 downto 2));
-			ReadStepGenPulseATime <= OneOfNDecode(STEPGENs,StepGenPulseATimeSel,Readstb,A(7 downto 2));
-			LoadStepGenPulseITime <= OneOfNDecode(STEPGENs,StepGenPulseITimeSel,writestb,A(7 downto 2));
-			ReadStepGenPulseITime <= OneOfNDecode(STEPGENs,StepGenPulseITimeSel,Readstb,A(7 downto 2));
-			LoadStepGenTable <= OneOfNDecode(STEPGENs,StepGenTableSel,writestb,A(7 downto 2));
-			ReadStepGenTable <= OneOfNDecode(STEPGENs,StepGenTableSel,Readstb,A(7 downto 2));
-			LoadStepGenTableMax <= OneOfNDecode(STEPGENs,StepGenTableMaxSel,writestb,A(7 downto 2));
-			ReadStepGenTableMax <= OneOfNDecode(STEPGENs,StepGenTableMaxSel,Readstb,A(7 downto 2));
+			LoadStepGenRate <= OneOfNDecode(STEPGENs,StepGenRateSel,writestb,Aint(7 downto 2)); 	-- 64 max
+			ReadStepGenRate <= OneOfNDecode(STEPGENs,StepGenRateSel,readstb,Aint(7 downto 2)); 		-- Note: all the reads are decoded here
+			LoadStepGenAccum <= OneOfNDecode(STEPGENs,StepGenAccumSel,writestb,Aint(7 downto 2));	-- but most are commented out in the
+			ReadStepGenAccum <= OneOfNDecode(STEPGENs,StepGenAccumSel,readstb,Aint(7 downto 2));	-- stepgen module hardware for space reasons
+			LoadStepGenMode <= OneOfNDecode(STEPGENs,StepGenModeSel,writestb,Aint(7 downto 2));
+			ReadStepGenMode <= OneOfNDecode(STEPGENs,StepGenModeSel,Readstb,Aint(7 downto 2));
+			LoadStepGenDSUTime <= OneOfNDecode(STEPGENs,StepGenDSUTimeSel,writestb,Aint(7 downto 2));
+			ReadStepGenDSUTime <= OneOfNDecode(STEPGENs,StepGenDSUTimeSel,Readstb,Aint(7 downto 2));
+			LoadStepGenDHLDTime <= OneOfNDecode(STEPGENs,StepGenDHLDTimeSel,writestb,Aint(7 downto 2));
+			ReadStepGenDHLDTime <= OneOfNDecode(STEPGENs,StepGenDHLDTimeSel,Readstb,Aint(7 downto 2));
+			LoadStepGenPulseATime <= OneOfNDecode(STEPGENs,StepGenPulseATimeSel,writestb,Aint(7 downto 2));
+			ReadStepGenPulseATime <= OneOfNDecode(STEPGENs,StepGenPulseATimeSel,Readstb,Aint(7 downto 2));
+			LoadStepGenPulseITime <= OneOfNDecode(STEPGENs,StepGenPulseITimeSel,writestb,Aint(7 downto 2));
+			ReadStepGenPulseITime <= OneOfNDecode(STEPGENs,StepGenPulseITimeSel,Readstb,Aint(7 downto 2));
+			LoadStepGenTable <= OneOfNDecode(STEPGENs,StepGenTableSel,writestb,Aint(7 downto 2));
+			ReadStepGenTable <= OneOfNDecode(STEPGENs,StepGenTableSel,Readstb,Aint(7 downto 2));
+			LoadStepGenTableMax <= OneOfNDecode(STEPGENs,StepGenTableMaxSel,writestb,Aint(7 downto 2));
+			ReadStepGenTableMax <= OneOfNDecode(STEPGENs,StepGenTableMaxSel,Readstb,Aint(7 downto 2));
 		end process StepGenDecodeProcess;
 
-		DoStepgenPins: process(IOBits,StepGenOut)
+		DoStepgenPins: process(IOBitsint,StepGenOut)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = StepGenTag then
@@ -377,9 +356,9 @@ architecture dataflow of MakeStepgens is
 					end if;
 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
 						when StepGenIndexPin =>
-							StepGenIndex(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+							StepGenIndex(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when StepGenProbePin =>
-							Probe <= IOBits(i);	-- only 1 please!
+							Probe <= IOBitsint(i);	-- only 1 please!
 						when others => null;
 					end case;
 				end if;

@@ -122,9 +122,9 @@ entity HostMot3 is
    (
      -- Generic 32  bit bus interface signals --
 
-	ibus: in std_logic_vector(buswidth -1 downto 0);
-	obus: out std_logic_vector(buswidth -1 downto 0);
-	addr: in std_logic_vector(addrwidth -1 downto 2);
+	ibus: in std_logic_vector(BusWidth -1 downto 0);
+	obustop: out std_logic_vector(BusWidth -1 downto 0);
+	addr: in std_logic_vector(AddrWidth -1 downto 2);
 	readstb: in std_logic;
 	writestb: in std_logic;
 	clklow: in std_logic;
@@ -133,8 +133,8 @@ entity HostMot3 is
 	int: out std_logic;
 	dreq: out std_logic;
 	demandmode: out std_logic;
-	iobits: inout std_logic_vector (iowidth -1 downto 0);
-	liobits: inout std_logic_vector (liowidth -1 downto 0);
+	iobitstop: inout std_logic_vector (IOWidth -1 downto 0);
+	liobits: inout std_logic_vector (lIOWidth -1 downto 0);
 	rates: out std_logic_vector (4 downto 0);
 	leds: out std_logic_vector(ledcount-1 downto 0)
 	);
@@ -147,7 +147,10 @@ architecture dataflow of HostMot3 is
 
 -- decodes --
 --	IDROM related signals
-signal A: std_logic_vector(addrwidth -1 downto 2);
+signal Aint: std_logic_vector(AddrWidth -1 downto 2);
+
+signal obusint: std_logic_vector(BusWidth -1 downto 0);
+signal IOBitsint: std_logic_vector(IOWidth-1 downto 0);
 
 	-- Extract the number of modules of each type from the ModuleID
 constant StepGens: integer := NumberOfModules(TheModuleID,StepGenTag);
@@ -215,8 +218,8 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 	signal RefCountBus : std_logic_vector(PWMRefWidth-1 downto 0);
 
 -- Timer related signals
-	signal DPLLTimers: std_logic_vector(3 downto 0);
-	signal DPLLRefOut: std_logic;
+-- 	signal DPLLTimers: std_logic_vector(3 downto 0);
+-- 	signal DPLLRefOut: std_logic;
 	signal RateSources: std_logic_vector(4 downto 0);
 
 	function bitreverse(v: in std_logic_vector) -- Thanks: J. Bromley
@@ -255,8 +258,8 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		RegStride1 => RegStride1,
 --
 		ClockMed => ClockMed,
-		buswidth  => BusWidth,
-		addrwidth  => AddrWidth,
+		BusWidth  => BusWidth,
+		AddrWidth  => AddrWidth,
 		STEPGENs  => STEPGENs,
  		StepGenTableWidth => StepGenTableWidth,
  		UseStepGenPreScaler => UseStepGenPreScaler,
@@ -277,13 +280,15 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		)
 		port map (
 			ibus => ibus,
-			obus => obus,
+			obustop => obustop,
+			obusint => obusint,
 			addr => addr,
-			Aout => A,
+			Aint => Aint,
 			readstb =>	 readstb,
 			writestb =>	 writestb,
 			AltData =>	 AltData,
-			IOBits =>	 IOBits,
+			iobitstop =>	 iobitstop,
+			IOBitsint =>	 IOBitsint,
 			clklow 	=>	 clklow,
 			clkmed 	=>	 clkmed,
 			clkhigh	=>	 clkhigh,
@@ -294,155 +299,45 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			LEDS =>	leds
 		);
 
-
-	makehm2dpllmod:  if HM2DPLLs >0  generate
-	signal LoadDPLLBaseRate: std_logic;
-	signal ReadDPLLBaseRate: std_logic;
-	signal LoadDPLLPhase: std_logic;
-	signal ReadDPLLPhase: std_logic;
-	signal LoadDPLLControl0: std_logic;
-	signal ReadDPLLControl0: std_logic;
-	signal LoadDPLLControl1: std_logic;
-	signal ReadDPLLControl1: std_logic;
-	signal LoadDPLLTimers12: std_logic;
-	signal ReadDPLLTimers12: std_logic;
-	signal LoadDPLLTimers34: std_logic;
-	signal ReadDPLLTimers34: std_logic;
-	signal ReadSyncDPLL: std_logic;
-	signal WriteSyncDPLL: std_logic;
-	signal DPLLSyncIn: std_logic;
-
-	begin
-		hm2dpll: entity work.HM2DPLL
-		port  map (
-			clk => clklow,
-			ibus => ibus,
-			obus => obus,
-			loadbaserate => LoadDPLLBaseRate,
-			readbaserate => ReadDPLLBaseRate,
-			loadphase => LoadDPLLPhase,
-			readphase => ReadDPLLPhase,
-			loadcontrol0 => LoadDPLLControl0,
-			readcontrol0 => ReadDPLLControl0,
-			loadcontrol1 => LoadDPLLControl1,
-			readcontrol1 => ReadDPLLControl1,
-			loadtimers12 => LoadDPLLTimers12,
-			readtimers12 => ReadDPLLTimers12,
-			loadtimers34 => LoadDPLLTimers34,
-			readtimers34 => ReadDPLLTimers34,
-			syncwrite => WriteSyncDPLL,
-			syncread	=> ReadSyncDPLL,
-			syncin => DPLLSyncIn,
-			timerout => DPLLTimers,
-			refout	=> DPLLRefOut
-			);
-
-		HM2DPLLDecodeProcess : process (A,Readstb,writestb,DPLLTimers,RateSources,DPLLRefOut)
-		begin
-			if A(15 downto 8) = HM2DPLLBaseRateAddr and writestb = '1' then	 --
-				LoadDPLLBaseRate <= '1';
-			else
-				LoadDPLLBaseRate <= '0';
-			end if;
-			if A(15 downto 8) = HM2DPLLBaseRateAddr and readstb = '1' then	 --
-				ReadDPLLBaseRate <= '1';
-			else
-				ReadDPLLBaseRate <= '0';
-			end if;
-
-			if A(15 downto 8) = HM2PhaseErrAddr and writestb = '1' then	 --
-				LoadDPLLPhase <= '1';
-			else
-				LoadDPLLPhase <= '0';
-			end if;
-			if A(15 downto 8) = HM2PhaseErrAddr and readstb = '1' then	 --
-				ReadDPLLPhase <= '1';
-			else
-				ReadDPLLPhase <= '0';
-			end if;
-
-			if A(15 downto 8) = HM2DPLLControl0Addr and writestb = '1' then	 --
-				LoadDPLLControl0 <= '1';
-			else
-				LoadDPLLControl0 <= '0';
-			end if;
-			if A(15 downto 8) = HM2DPLLControl0Addr and readstb = '1' then	 --
-				ReadDPLLControl0 <= '1';
-			else
-				ReadDPLLControl0 <= '0';
-			end if;
-
-			if A(15 downto 8) = HM2DPLLControl1Addr and writestb = '1' then	 --
-				LoadDPLLControl1 <= '1';
-			else
-				LoadDPLLControl1 <= '0';
-			end if;
-			if A(15 downto 8) = HM2DPLLControl1Addr and readstb = '1' then	 --
-				ReadDPLLControl1 <= '1';
-			else
-				ReadDPLLControl1 <= '0';
-			end if;
-
-			if A(15 downto 8) = HM2DPLLTimer12Addr and writestb = '1' then	 --
-				LoadDPLLTimers12 <= '1';
-			else
-				LoadDPLLTimers12 <= '0';
-			end if;
-			if A(15 downto 8) = HM2DPLLTimer12Addr and readstb = '1' then	 --
-				ReadDPLLTimers12 <= '1';
-			else
-				ReadDPLLTimers12 <= '0';
-			end if;
-
-			if A(15 downto 8) = HM2DPLLTimer34Addr and writestb = '1' then	 --
-				LoadDPLLTimers34 <= '1';
-			else
-				LoadDPLLTimers34 <= '0';
-			end if;
-			if A(15 downto 8) = HM2DPLLTimer34Addr and readstb = '1' then	 --
-				ReadDPLLTimers34 <= '1';
-			else
-				ReadDPLLTimers34 <= '0';
-			end if;
-
-			if A(15 downto 8) = HM2DPLLSyncAddr and writestb = '1' then	 --
-				WriteSyncDPLL <= '1';
-			else
-				WriteSyncDPLL <= '0';
-			end if;
-			if A(15 downto 8) = HM2DPLLSyncAddr and readstb = '1' then	 --
-				ReadSyncDPLL <= '1';
-			else
-				ReadSyncDPLL <= '0';
-			end if;
-			RateSources <= DPLLTimers&DPLLRefOut;
-			rates <= RateSources;
-		end process HM2DPLLDecodeProcess;
-
-		DoHM2DPLLPins: process(DPLLTimers,DPLLRefOut)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = HM2DPLLTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					case (ThePinDesc(i)(7 downto 0)) is
-						when HM2DPLLSyncInPin =>
-							DPLLSyncIn <= IOBits(i);
-						when HM2DPLLRefOutPin =>
-							AltData(i) <= DPLLRefOut;
-						when HM2DPLLTimer1Pin =>
-							AltData(i) <= DPLLTimers(0);
-						when HM2DPLLTimer2Pin =>
-							AltData(i) <= DPLLTimers(1);
-						when HM2DPLLTimer3Pin =>
-							AltData(i) <= DPLLTimers(2);
-						when HM2DPLLTimer4Pin =>
-							AltData(i) <= DPLLTimers(3);
-						when others => null;
-
-					end case;
-				end if;
-			end loop;
-		end process;
-	end generate;
+	MakeHm2Dpllmods : entity work.MakeHm2Dpllmods
+	generic map (
+		ThePinDesc => ThePinDesc,
+		ClockHigh => ClockHigh,
+		ClockMed => ClockMed,
+		ClockLow  => ClockLow,
+		BusWidth  => BusWidth,
+		AddrWidth  => AddrWidth,
+		IOWidth  => IOWidth,
+		STEPGENs  => STEPGENs,
+ 		StepGenTableWidth => StepGenTableWidth,
+ 		UseStepGenPreScaler => UseStepGenPreScaler,
+ 		UseStepgenIndex => UseStepgenIndex,
+ 		UseStepgenProbe => UseStepgenProbe,
+ 		timersize  => 14,
+ 		asize  => 48,
+ 		rsize  => 32,
+		PWMGens  => PWMGens,
+		PWMRefWidth  => PWMRefWidth,
+		UsePWMEnas  => UsePWMEnas,
+		QCounters  => QCounters,
+		UseProbe  => UseProbe,
+		HM2DPLLs => HM2DPLLs
+		)
+		port map (
+			ibus  =>  ibus,
+			obusint  =>  obusint,
+			Aint  =>  Aint,
+			readstb  =>  readstb,
+			writestb  =>  writestb,
+			AltData  =>  AltData,
+			IOBitsint  =>  IOBitsint,
+			clklow  =>  clklow,
+			clkmed  =>  clkmed,
+			clkhigh  =>  clkhigh,
+			PRobe  =>  PRobe,
+			RateSources  =>  RateSources,
+			rates  =>  rates
+		);
 
 	MakeStepgens : entity work.MakeStepgens
 	generic map (
@@ -450,9 +345,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		ClockHigh => ClockHigh,
 		ClockMed => ClockMed,
 		ClockLow  => ClockLow,
-		buswidth  => BusWidth,
-		addrwidth  => AddrWidth,
-		iowidth  => IOWidth,
+		BusWidth  => BusWidth,
+		AddrWidth  => AddrWidth,
+		IOWidth  => IOWidth,
 		STEPGENs  => STEPGENs,
  		StepGenTableWidth => StepGenTableWidth,
  		UseStepGenPreScaler => UseStepGenPreScaler,
@@ -466,33 +361,15 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		UsePWMEnas  => UsePWMEnas,
 		QCounters  => QCounters,
 		UseProbe  => UseProbe
--- 		StepGenRateAddr  => StepGenRateAddr,
--- 		StepGenAccumAddr  => StepGenAccumAddr,
--- 		StepGenModeAddr  => StepGenModeAddr,
--- 		StepGenDSUTimeAddr  => StepGenDSUTimeAddr,
--- 		StepGenDHLDTimeAddr  => StepGenDHLDTimeAddr,
--- 		StepGenPulseATimeAddr  => StepGenPulseATimeAddr,
--- 		StepGenPulseITimeAddr  => StepGenPulseITimeAddr,
--- 		StepGenTableAddr  => StepGenTableAddr,
--- 		StepGenTableMaxAddr  => StepGenTableMaxAddr,
---		PWMRateAddr  => PWMRateAddr,
---		PDMRateAddr  => PDMRateAddr,
---		PWMEnasAddr  => PWMEnasAddr,
---		PWMValAddr  => PWMValAddr,
---		PWMCRAddr  => PWMCRAddr,
---		PWMRefWidth  => PWMRefWidth,
---		QCounterAddr  => QCounterAddr,
---		QCounterCCRAddr  => QCounterCCRAddr,
---		TSDivAddr  => TSDivAddr
 		)
 		port map (
 			ibus => ibus,
-			obus => obus,
-			A => A,
+			obusint => obusint,
+			Aint  => Aint,
 			readstb =>	 readstb,
 			writestb =>	 writestb,
 			AltData =>	 AltData,
-			IOBits =>	 IOBits,
+			IOBitsint => IOBitsint,
 			clklow 	=>	 clklow,
 			clkmed 	=>	 clkmed,
 			clkhigh	=>	 clkhigh,
@@ -505,9 +382,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		ClockHigh => ClockHigh,
 		ClockMed => ClockMed,
 		ClockLow  => ClockLow,
-		buswidth  => BusWidth,
-		addrwidth  => AddrWidth,
-		iowidth  => IOWidth,
+		BusWidth  => BusWidth,
+		AddrWidth  => AddrWidth,
+		IOWidth  => IOWidth,
 		STEPGENs  => STEPGENs,
  		StepGenTableWidth => StepGenTableWidth,
  		UseStepGenPreScaler => UseStepGenPreScaler,
@@ -521,33 +398,15 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		UsePWMEnas  => UsePWMEnas,
 		QCounters  => QCounters,
 		UseProbe  => UseProbe
--- 		StepGenRateAddr  => StepGenRateAddr,
--- 		StepGenAccumAddr  => StepGenAccumAddr,
--- 		StepGenModeAddr  => StepGenModeAddr,
--- 		StepGenDSUTimeAddr  => StepGenDSUTimeAddr,
--- 		StepGenDHLDTimeAddr  => StepGenDHLDTimeAddr,
--- 		StepGenPulseATimeAddr  => StepGenPulseATimeAddr,
--- 		StepGenPulseITimeAddr  => StepGenPulseITimeAddr,
--- 		StepGenTableAddr  => StepGenTableAddr,
--- 		StepGenTableMaxAddr  => StepGenTableMaxAddr,
---		PWMRateAddr  => PWMRateAddr,
---		PDMRateAddr  => PDMRateAddr,
---		PWMEnasAddr  => PWMEnasAddr,
---		PWMValAddr  => PWMValAddr,
---		PWMCRAddr  => PWMCRAddr,
---		PWMRefWidth  => PWMRefWidth,
---		QCounterAddr  => QCounterAddr,
---		QCounterCCRAddr  => QCounterCCRAddr,
---		TSDivAddr  => TSDivAddr
 		)
 		port map (
 			ibus => ibus,
-			obus => obus,
-			A => A,
+			obusint => obustop,
+			Aint  => Aint,
 			readstb =>	 readstb,
 			writestb =>	 writestb,
 			AltData =>	 AltData,
-			IOBits =>	 IOBits,
+			IOBitsint => iobitstop,
 			clklow 	=>	 clklow,
 			clkmed 	=>	 clkmed,
 			clkhigh	=>	 clkhigh,
@@ -587,7 +446,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		timestampx: entity work.timestamp
 			port map(
 				ibus => ibus(15 downto 0),
-				obus => obus(15 downto 0),
+				obus => obusint(15 downto 0),
 				loadtsdiv => LoadMuxedTSDiv,
 				readts => ReadMuxedTS,
 				readtsdiv => ReadMuxedTSDiv,
@@ -616,10 +475,10 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			makemuxedquadcounters: for i in 0 to MuxedQCounters-1 generate
 				qcounterx: entity work.qcounter
 				generic map (
-					buswidth => BusWidth
+					BusWidth => BusWidth
 				)
 				port map (
-					obus => obus,
+					obus => obusint,
 					ibus => ibus,
 					quada => DemuxedQuadA(i),
 					quadb => DemuxedQuadB(i),
@@ -640,10 +499,10 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			makemuxedquadcountersp: for i in 0 to MuxedQCounters-1 generate
 				qcounterx: entity work.qcounterp
 				generic map (
-					buswidth => BusWidth
+					BusWidth => BusWidth
 				)
 				port map (
-					obus => obus,
+					obus => obusint,
 					ibus => ibus,
 					quada => DemuxedQuadA(i),
 					quadb => DemuxedQuadB(i),
@@ -665,10 +524,10 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			makemuxedquadcountersmim: for i in 0 to MuxedQCountersMIM-1 generate
 				qcounterx: entity work.qcounter
 				generic map (
-					buswidth => BusWidth
+					BusWidth => BusWidth
 				)
 				port map (
-					obus => obus,
+					obus => obusint,
 					ibus => ibus,
 					quada => DemuxedQuadA(i),
 					quadb => DemuxedQuadB(i),
@@ -689,10 +548,10 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			makemuxedquadcountersmimp: for i in 0 to MuxedQCountersMIM-1 generate
 				qcounterx: entity work.qcounterp
 				generic map (
-					buswidth => BusWidth
+					BusWidth => BusWidth
 				)
 				port map (
-					obus => obus,
+					obus => obusint,
 					ibus => ibus,
 					quada => DemuxedQuadA(i),
 					quadb => DemuxedQuadB(i),
@@ -710,59 +569,59 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			end generate makemuxedquadcountersmimp;
 		end generate useprobe3;
 
-		MuxedQCounterDecodeProcess : process (A,Readstb,writestb,MuxedQCounterSel, MuxedQCounterCCRSel)
+		MuxedQCounterDecodeProcess : process (Aint,Readstb,writestb,MuxedQCounterSel, MuxedQCounterCCRSel)
 		begin
-			if A(15 downto 8) = MuxedQCounterAddr then	 --  QCounter select
+			if Aint(15 downto 8) = MuxedQCounterAddr then	 --  QCounter select
 				MuxedQCounterSel <= '1';
 			else
 				MuxedQCounterSel <= '0';
 			end if;
-			if A(15 downto 8) = MuxedQCounterCCRAddr then	 --  QCounter CCR register select
+			if Aint(15 downto 8) = MuxedQCounterCCRAddr then	 --  QCounter CCR register select
 				MuxedQCounterCCRSel <= '1';
 			else
 				MuxedQCounterCCRSel <= '0';
 			end if;
-			if A(15 downto 8) = MuxedTSDivAddr and writestb = '1' then	 --
+			if Aint(15 downto 8) = MuxedTSDivAddr and writestb = '1' then	 --
 				LoadMuxedTSDiv <= '1';
 			else
 				LoadMuxedTSDiv <= '0';
 			end if;
-			if A(15 downto 8) = MuxedTSDivAddr and readstb = '1' then	 --
+			if Aint(15 downto 8) = MuxedTSDivAddr and readstb = '1' then	 --
 				ReadMuxedTSDiv <= '1';
 			else
 				ReadMuxedTSDiv <= '0';
 			end if;
-			if A(15 downto 8) = MuxedTSAddr and readstb = '1' then	 --
+			if Aint(15 downto 8) = MuxedTSAddr and readstb = '1' then	 --
 				ReadMuxedTS <= '1';
 			else
 				ReadMuxedTS <= '0';
 			end if;
-			if A(15 downto 8) = MuxedQCRateAddr and writestb = '1' then	 --
+			if Aint(15 downto 8) = MuxedQCRateAddr and writestb = '1' then	 --
 				LoadMuxedQCountRate <= '1';
 			else
 				LoadMuxedQCountRate <= '0';
 			end if;
-			LoadMuxedQCounter <= OneOfNDecode(MuxedQCounters,MuxedQCounterSel,writestb,A(7 downto 2));  -- 64 max
-			ReadMuxedQCounter <= OneOfNDecode(MuxedQCounters,MuxedQCounterSel,Readstb,A(7 downto 2));
-			LoadMuxedQCounterCCR <= OneOfNDecode(MuxedQCounters,MuxedQCounterCCRSel,writestb,A(7 downto 2));
-			ReadMuxedQCounterCCR <= OneOfNDecode(MuxedQCounters,MuxedQCounterCCRSel,Readstb,A(7 downto 2));
+			LoadMuxedQCounter <= OneOfNDecode(MuxedQCounters,MuxedQCounterSel,writestb,Aint(7 downto 2));  -- 64 max
+			ReadMuxedQCounter <= OneOfNDecode(MuxedQCounters,MuxedQCounterSel,Readstb,Aint(7 downto 2));
+			LoadMuxedQCounterCCR <= OneOfNDecode(MuxedQCounters,MuxedQCounterCCRSel,writestb,Aint(7 downto 2));
+			ReadMuxedQCounterCCR <= OneOfNDecode(MuxedQCounters,MuxedQCounterCCRSel,Readstb,Aint(7 downto 2));
 		end process MuxedQCounterDecodeProcess;
 
-		DoMuxedQCounterPins: process(IOBits,MuxedQCtrSel)
+		DoMuxedQCounterPins: process(IOBitsint,MuxedQCtrSel)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = MuxedQCountTag then
 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
 						when MuxedQCountQAPin =>
-							MuxedQuadA(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+							MuxedQuadA(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when MuxedQCountQBPin =>
-							MuxedQuadB(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+							MuxedQuadB(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when MuxedQCountIdxPin =>
-							MuxedIndex(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+							MuxedIndex(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when MuxedQCountIdxMaskPin =>
-							MuxedIndexMask(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+							MuxedIndexMask(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when MuxedQCountProbePin =>
-							MuxedProbe <= IOBits(i); -- only 1 please!
+							MuxedProbe <= IOBitsint(i); -- only 1 please!
 						when others => null;
 					end case;
 				end if;
@@ -810,9 +669,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		ClockHigh => ClockHigh,
 		ClockMed => ClockMed,
 		ClockLow  => ClockLow,
-		buswidth  => BusWidth,
-		addrwidth  => AddrWidth,
-		iowidth  => IOWidth,
+		BusWidth  => BusWidth,
+		AddrWidth  => AddrWidth,
+		IOWidth  => IOWidth,
 		STEPGENs  => STEPGENs,
  		StepGenTableWidth => StepGenTableWidth,
  		UseStepGenPreScaler => UseStepGenPreScaler,
@@ -826,33 +685,15 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		UsePWMEnas  => UsePWMEnas,
 		QCounters  => QCounters,
 		UseProbe  => UseProbe
--- 		StepGenRateAddr  => StepGenRateAddr,
--- 		StepGenAccumAddr  => StepGenAccumAddr,
--- 		StepGenModeAddr  => StepGenModeAddr,
--- 		StepGenDSUTimeAddr  => StepGenDSUTimeAddr,
--- 		StepGenDHLDTimeAddr  => StepGenDHLDTimeAddr,
--- 		StepGenPulseATimeAddr  => StepGenPulseATimeAddr,
--- 		StepGenPulseITimeAddr  => StepGenPulseITimeAddr,
--- 		StepGenTableAddr  => StepGenTableAddr,
--- 		StepGenTableMaxAddr  => StepGenTableMaxAddr,
---		PWMRateAddr  => PWMRateAddr,
---		PDMRateAddr  => PDMRateAddr,
---		PWMEnasAddr  => PWMEnasAddr,
---		PWMValAddr  => PWMValAddr,
---		PWMCRAddr  => PWMCRAddr,
---		PWMRefWidth  => PWMRefWidth,
---		QCounterAddr  => QCounterAddr,
---		QCounterCCRAddr  => QCounterCCRAddr,
---		TSDivAddr  => TSDivAddr
 		)
 		port map (
 			ibus => ibus,
-			obus => obus,
-			A => A,
+			obusint => obusint,
+			Aint=> Aint,
 			readstb =>	 readstb,
 			writestb =>	 writestb,
 			AltData =>	 AltData,
-			IOBits =>	 IOBits,
+			IOBitsint =>	 IOBitsint,
 			clklow 	=>	 clklow,
 			clkmed 	=>	 clkmed,
 			clkhigh	=>	 clkhigh,
@@ -881,7 +722,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 	begin
 		tppwmref : entity work.pwmrefh
 		generic map (
-			buswidth => 16,
+			BusWidth => 16,
 			refwidth => 11			-- always 11 for TPPWM
 			)
 		port map (
@@ -898,9 +739,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port map (
 				clk => clklow,
 				hclk => clkhigh,
-				refcount	=> TPRefCountBus,
+				refcount => TPRefCountBus,
 				ibus => ibus,
-				obus => obus,
+				obus => obusint,
 				loadpwmreg => LoadTPPWMVal(i),
 				loadenareg => LoadTPPWMENA(i),
 				readenareg => ReadTPPWMENA(i),
@@ -918,32 +759,32 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		TPPWMDecodeProcess : process (A,Readstb,writestb,TPPWMValSel, TPPWMEnaSel,TPPWMDZSel)
+		TPPWMDecodeProcess : process (Aint,Readstb,writestb,TPPWMValSel, TPPWMEnaSel,TPPWMDZSel)
 		begin
-			if A(15 downto 8) = TPPWMValAddr then	 --  TPPWMVal select
+			if Aint(15 downto 8) = TPPWMValAddr then	 --  TPPWMVal select
 				TPPWMValSel <= '1';
 			else
 				TPPWMValSel <= '0';
 			end if;
-			if A(15 downto 8) = TPPWMEnaAddr then	 --  TPPWM mode register select
+			if Aint(15 downto 8) = TPPWMEnaAddr then	 --  TPPWM mode register select
 				TPPWMEnaSel <= '1';
 			else
 				TPPWMEnaSel <= '0';
 			end if;
-			if A(15 downto 8) = TPPWMDZAddr then	 --  TPPWMDZ mode register select
+			if Aint(15 downto 8) = TPPWMDZAddr then	 --  TPPWMDZ mode register select
 				TPPWMDZSel <= '1';
 			else
 				TPPWMDZSel <= '0';
 			end if;
-			if A(15 downto 8) = TPPWMRateAddr and writestb = '1' then	 --
+			if Aint(15 downto 8) = TPPWMRateAddr and writestb = '1' then	 --
 				LoadTPPWMRate <= '1';
 			else
 				LoadTPPWMRate <= '0';
 			end if;
-			LoadTPPWMVal <= OneOfNDecode(TPPWMGENs,TPPWMValSel,writestb,A(7 downto 2)); -- 64 max
-			LoadTPPWMEna <= OneOfNDecode(TPPWMGENs,TPPWMEnaSel,writestb,A(7 downto 2));
-			ReadTPPWMEna <= OneOfNDecode(TPPWMGENs,TPPWMEnaSel,Readstb,A(7 downto 2));
-			LoadTPPWMDZ <= OneOfNDecode(TPPWMGENs,TPPWMDZSel,writestb,A(7 downto 2));
+			LoadTPPWMVal <= OneOfNDecode(TPPWMGENs,TPPWMValSel,writestb,Aint(7 downto 2)); -- 64 max
+			LoadTPPWMEna <= OneOfNDecode(TPPWMGENs,TPPWMEnaSel,writestb,Aint(7 downto 2));
+			ReadTPPWMEna <= OneOfNDecode(TPPWMGENs,TPPWMEnaSel,Readstb,Aint(7 downto 2));
+			LoadTPPWMDZ <= OneOfNDecode(TPPWMGENs,TPPWMDZSel,writestb,Aint(7 downto 2));
 		end process TPPWMDecodeProcess;
 
 		DoTPPWMPins: process(TPPWMGenOutA,TPPWMGenOutB,TPPWMGenOutC,
@@ -967,7 +808,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 						when TPPWMEnaPin =>
 							AltData(i) <= TPPWMEna(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when TPPWMFaultPin =>
-							TPPWMFault(conv_integer(ThePinDesc(i)(23 downto 16))) <= iobits(i);
+							TPPWMFault(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when others => null;
 					end case;
 				end if;
@@ -995,11 +836,11 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		makespis: for i in 0 to SPIs -1 generate
 			aspi: entity work.SimpleSPI
 			generic map (
-				buswidth => BusWidth)
+				BusWidth => BusWidth)
 			port map (
 				clk  => clklow,
 				ibus => ibus,
-				obus => obus,
+				obus => obusint,
 				loadbitcount => LoadSPIBitCount(i),
 				loadbitrate => LoadSPIBitRate(i),
 				loaddata => LoadSPIData(i),
@@ -1014,29 +855,29 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		SPIDecodeProcess : process (A,Readstb,writestb,SPIDataSel,SPIBitCountSel,SPIBitRateSel)
+		SPIDecodeProcess : process (Aint,Readstb,writestb,SPIDataSel,SPIBitCountSel,SPIBitRateSel)
 		begin
-			if A(15 downto 8) = SPIDataAddr then	 --  SPI data register select
+			if Aint(15 downto 8) = SPIDataAddr then	 --  SPI data register select
 				SPIDataSel <= '1';
 			else
 				SPIDataSel <= '0';
 			end if;
-			if A(15 downto 8) = SPIBitCountAddr then	 --  SPI bit count register select
+			if Aint(15 downto 8) = SPIBitCountAddr then	 --  SPI bit count register select
 				SPIBitCountSel <= '1';
 			else
 				SPIBitCountSel <= '0';
 			end if;
-			if A(15 downto 8) = SPIBitrateAddr then	 --  SPI bit rate register select
+			if Aint(15 downto 8) = SPIBitrateAddr then	 --  SPI bit rate register select
 				SPIBitrateSel <= '1';
 			else
 				SPIBitrateSel <= '0';
 			end if;
-			LoadSPIData <= OneOfNDecode(SPIs,SPIDataSel,writestb,A(5 downto 2)); -- 16 max
-			ReadSPIData <= OneOfNDecode(SPIs,SPIDataSel,Readstb,A(5 downto 2));
-			LoadSPIBitCount <= OneOfNDecode(SPIs,SPIBitCountSel,writestb,A(5 downto 2));
-			ReadSPIBitCount <= OneOfNDecode(SPIs,SPIBitCountSel,Readstb,A(5 downto 2));
-			LoadSPIBitRate <= OneOfNDecode(SPIs,SPIBitRateSel,writestb,A(5 downto 2));
-			ReadSPIBitRate <= OneOfNDecode(SPIs,SPIBitRateSel,Readstb,A(5 downto 2));
+			LoadSPIData <= OneOfNDecode(SPIs,SPIDataSel,writestb,Aint(5 downto 2)); -- 16 max
+			ReadSPIData <= OneOfNDecode(SPIs,SPIDataSel,Readstb,Aint(5 downto 2));
+			LoadSPIBitCount <= OneOfNDecode(SPIs,SPIBitCountSel,writestb,Aint(5 downto 2));
+			ReadSPIBitCount <= OneOfNDecode(SPIs,SPIBitCountSel,Readstb,Aint(5 downto 2));
+			LoadSPIBitRate <= OneOfNDecode(SPIs,SPIBitRateSel,writestb,Aint(5 downto 2));
+			ReadSPIBitRate <= OneOfNDecode(SPIs,SPIBitRateSel,Readstb,Aint(5 downto 2));
 		end process SPIDecodeProcess;
 
 		DoSPIPins: process(SPIFrame,SPIOut,SPIClk)
@@ -1051,7 +892,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 						when SPIClkPin =>
 							AltData(i) <= SPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when SPIInPin =>
-							SPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+							SPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when others => null;
 					end case;
 				end if;
@@ -1083,8 +924,8 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port map (
 				clk  => clklow,
 				ibus => ibus,
-				obus => obus,
-				addr => A(5 downto 2),
+				obus => obusint,
+				addr => Aint(5 downto 2),
 				hostpush => LoadBSPIData(i),
 				hostpop => ReadBSPIData(i),
 				loaddesc => LoadBSPIDescriptor(i),
@@ -1099,31 +940,31 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		BSPIDecodeProcess : process (A,Readstb,writestb,BSPIDataSel,BSPIFIFOCountSel,BSPIDescriptorSel)
+		BSPIDecodeProcess : process (Aint,Readstb,writestb,BSPIDataSel,BSPIFIFOCountSel,BSPIDescriptorSel)
 		begin
-			if A(15 downto 8) = BSPIDataAddr then	 --  BSPI data register select
+			if Aint(15 downto 8) = BSPIDataAddr then	 --  BSPI data register select
 				BSPIDataSel <= '1';
 			else
 				BSPIDataSel <= '0';
 			end if;
-			if A(15 downto 8) = BSPIFIFOCountAddr then	 --  BSPI FIFO count register select
+			if Aint(15 downto 8) = BSPIFIFOCountAddr then	 --  BSPI FIFO count register select
 				BSPIFIFOCountSel <= '1';
 			else
 				BSPIFIFOCountSel <= '0';
 			end if;
-			if A(15 downto 8) = BSPIDescriptorAddr then	 --  BSPI channel descriptor register select
+			if Aint(15 downto 8) = BSPIDescriptorAddr then	 --  BSPI channel descriptor register select
 				BSPIDescriptorSel <= '1';
 			else
 				BSPIDescriptorSel <= '0';
 			end if;
-			LoadBSPIData <= OneOfNDecode(BSPIs,BSPIDataSel,writestb,A(7 downto 6)); -- 4 max
-			ReadBSPIData <= OneOfNDecode(BSPIs,BSPIDataSel,Readstb,A(7 downto 6));
-			LoadBSPIDescriptor<= OneOfNDecode(BSPIs,BSPIDescriptorSel,writestb,A(5 downto 2));
-			ReadBSPIFIFOCOunt <= OneOfNDecode(BSPIs,BSPIFIFOCountSel,Readstb,A(5 downto 2));
-			ClearBSPIFIFO <= OneOfNDecode(BSPIs,BSPIFIFOCountSel,writestb,A(5 downto 2));
+			LoadBSPIData <= OneOfNDecode(BSPIs,BSPIDataSel,writestb,Aint(7 downto 6)); -- 4 max
+			ReadBSPIData <= OneOfNDecode(BSPIs,BSPIDataSel,Readstb,Aint(7 downto 6));
+			LoadBSPIDescriptor<= OneOfNDecode(BSPIs,BSPIDescriptorSel,writestb,Aint(5 downto 2));
+			ReadBSPIFIFOCOunt <= OneOfNDecode(BSPIs,BSPIFIFOCountSel,Readstb,Aint(5 downto 2));
+			ClearBSPIFIFO <= OneOfNDecode(BSPIs,BSPIFIFOCountSel,writestb,Aint(5 downto 2));
 		end process BSPIDecodeProcess;
 
-		DoBSPIPins: process(BSPIFrame, BSPIOut, BSPIClk, BSPICS, IOBits)
+		DoBSPIPins: process(BSPIFrame, BSPIOut, BSPIClk, BSPICS, IOBitsint)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = BSPITag then
@@ -1135,7 +976,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 						when BSPIClkPin =>
 							AltData(i) <= BSPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when BSPIInPin =>
-							BSPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+							BSPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when others =>
 						   AltData(i) <= BSPICS(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(6 downto 0))-5);
 						   -- magic foo, magic foo, what on earth does it do?
@@ -1170,8 +1011,8 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port map (
 				clk  => clklow,
 				ibus => ibus,
-				obus => obus,
-				addr => A(5 downto 2),
+				obus => obusint,
+				addr => Aint(5 downto 2),
 				hostpush => LoadDBSPIData(i),
 				hostpop => ReadDBSPIData(i),
 				loaddesc => LoadDBSPIDescriptor(i),
@@ -1185,31 +1026,31 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		DBSPIDecodeProcess : process (A,Readstb,writestb,DBSPIDataSel,DBSPIFIFOCountSel,DBSPIDescriptorSel)
+		DBSPIDecodeProcess : process (Aint,Readstb,writestb,DBSPIDataSel,DBSPIFIFOCountSel,DBSPIDescriptorSel)
 		begin
-			if A(15 downto 8) = DBSPIDataAddr then	 --  DBSPI data register select
+			if Aint(15 downto 8) = DBSPIDataAddr then	 --  DBSPI data register select
 				DBSPIDataSel <= '1';
 			else
 				DBSPIDataSel <= '0';
 			end if;
-			if A(15 downto 8) = DBSPIFIFOCountAddr then	 --  DBSPI FIFO count register select
+			if Aint(15 downto 8) = DBSPIFIFOCountAddr then	 --  DBSPI FIFO count register select
 				DBSPIFIFOCountSel <= '1';
 			else
 				DBSPIFIFOCountSel <= '0';
 			end if;
-			if A(15 downto 8) = DBSPIDescriptorAddr then	 --  DBSPI channel descriptor register select
+			if Aint(15 downto 8) = DBSPIDescriptorAddr then	 --  DBSPI channel descriptor register select
 				DBSPIDescriptorSel <= '1';
 			else
 				DBSPIDescriptorSel <= '0';
 			end if;
-			LoadDBSPIData <= OneOfNDecode(DBSPIs,DBSPIDataSel,writestb,A(7 downto 6)); -- 4 max
-			ReadDBSPIData <= OneOfNDecode(DBSPIs,DBSPIDataSel,Readstb,A(7 downto 6));
-			LoadDBSPIDescriptor<= OneOfNDecode(DBSPIs,DBSPIDescriptorSel,writestb,A(5 downto 2));
-			ReadDBSPIFIFOCOunt <= OneOfNDecode(DBSPIs,DBSPIFIFOCountSel,Readstb,A(5 downto 2));
-			ClearDBSPIFIFO <= OneOfNDecode(DBSPIs,DBSPIFIFOCountSel,writestb,A(5 downto 2));
+			LoadDBSPIData <= OneOfNDecode(DBSPIs,DBSPIDataSel,writestb,Aint(7 downto 6)); -- 4 max
+			ReadDBSPIData <= OneOfNDecode(DBSPIs,DBSPIDataSel,Readstb,Aint(7 downto 6));
+			LoadDBSPIDescriptor<= OneOfNDecode(DBSPIs,DBSPIDescriptorSel,writestb,Aint(5 downto 2));
+			ReadDBSPIFIFOCOunt <= OneOfNDecode(DBSPIs,DBSPIFIFOCountSel,Readstb,Aint(5 downto 2));
+			ClearDBSPIFIFO <= OneOfNDecode(DBSPIs,DBSPIFIFOCountSel,writestb,Aint(5 downto 2));
 		end process DBSPIDecodeProcess;
 
-		DoDBSPIPins: process(DBSPIOut, DBSPIClk, DBSPICS, IOBits)
+		DoDBSPIPins: process(DBSPIOut, DBSPIClk, DBSPICS, IOBitsint)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = DBSPITag then
@@ -1218,7 +1059,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 							AltData(i) <= DBSPIOut(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when DBSPIClkPin =>
 							AltData(i) <= DBSPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));											when DBSPIInPin =>
-							DBSPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+							DBSPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when others =>
 							AltData(i) <= DBSPICS(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(6 downto 0))-5);
 				   		-- magic foo, magic foo, what on earth does it do?
@@ -1276,7 +1117,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port  map (
 				clk => clklow,
 				ibus => ibus,
-				obus => obus,
+				obus => obusint,
 				loadcontrol => LoadSSSIControl(i),
 				lstart => LoadSSSIData0(i),
 				pstart => GlobalPstartSSSI,
@@ -1291,48 +1132,48 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		SSSIDecodeProcess : process (A,Readstb,writestb,SSSIDataSel0,GlobalSSSIBusySel,
+		SSSIDecodeProcess : process (Aint,Readstb,writestb,SSSIDataSel0,GlobalSSSIBusySel,
 		                             SSSIBusyBits,SSSIDAvBits,SSSIDataSel1,SSSIControlSel)
 		begin
-			if A(15 downto 8) = SSSIDataAddr0 then	 --  SSSI data register select 0
+			if Aint(15 downto 8) = SSSIDataAddr0 then	 --  SSSI data register select 0
 				SSSIDataSel0 <= '1';
 			else
 				SSSIDataSel0 <= '0';
 			end if;
-			if A(15 downto 8) = SSSIDataAddr1 then	 --  SSSI data register select 1
+			if Aint(15 downto 8) = SSSIDataAddr1 then	 --  SSSI data register select 1
 				SSSIDataSel1 <= '1';
 			else
 				SSSIDataSel1 <= '0';
 			end if;
 
-			if A(15 downto 8) = SSSIControlAddr then	 --  SSSI control register select
+			if Aint(15 downto 8) = SSSIControlAddr then	 --  SSSI control register select
 				SSSIControlSel <= '1';
 			else
 				SSSIControlSel <= '0';
 			end if;
-			if A(15 downto 8) = SSSIGlobalPStartAddr and writestb = '1' then	 --
+			if Aint(15 downto 8) = SSSIGlobalPStartAddr and writestb = '1' then	 --
 				GlobalPStartSSSI <= '1';
 			else
 				GlobalPStartSSSI <= '0';
 			end if;
-			if A(15 downto 8) = SSSIGlobalPStartAddr and readstb = '1' then	 --
+			if Aint(15 downto 8) = SSSIGlobalPStartAddr and readstb = '1' then	 --
 				GlobalSSSIBusySel <= '1';
 			else
 				GlobalSSSIBusySel <= '0';
 			end if;
-			LoadSSSIData0 <= OneOfNDecode(SSSIs,SSSIDataSel0,writestb,A(7 downto 2)); -- 64 max
-			ReadSSSIData0 <= OneOfNDecode(SSSIs,SSSIDataSel0,Readstb,A(7 downto 2));
-			ReadSSSIData1 <= OneOfNDecode(SSSIs,SSSIDataSel1,Readstb,A(7 downto 2));
-			LoadSSSIControl <= OneOfNDecode(SSSIs,SSSIControlSel,writestb,A(7 downto 2));
-			ReadSSSIControl <= OneOfNDecode(SSSIs,SSSIControlSel,Readstb,A(7 downto 2));
-			obus <= (others => 'Z');
+			LoadSSSIData0 <= OneOfNDecode(SSSIs,SSSIDataSel0,writestb,Aint(7 downto 2)); -- 64 max
+			ReadSSSIData0 <= OneOfNDecode(SSSIs,SSSIDataSel0,Readstb,Aint(7 downto 2));
+			ReadSSSIData1 <= OneOfNDecode(SSSIs,SSSIDataSel1,Readstb,Aint(7 downto 2));
+			LoadSSSIControl <= OneOfNDecode(SSSIs,SSSIControlSel,writestb,Aint(7 downto 2));
+			ReadSSSIControl <= OneOfNDecode(SSSIs,SSSIControlSel,Readstb,Aint(7 downto 2));
+			obusint <= (others => 'Z');
 			if GlobalSSSIBusySel = '1' then
-				obus(SSSIs -1 downto 0) <= SSSIBusyBits;
-				obus(31 downto SSSIs) <= (others => '0');
+				obusint(SSSIs -1 downto 0) <= SSSIBusyBits;
+				obusint(31 downto SSSIs) <= (others => '0');
 			end if;
 		end process SSSIDecodeProcess;
 
-		DoSSIPins: process(SSSIClk, IOBits,SSSIDavBits)
+		DoSSIPins: process(SSSIClk, IOBitsint,SSSIDavBits)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = SSSITag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
@@ -1344,7 +1185,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 						when SSSIDAVPin =>
 							AltData(i) <= SSSIDAVBits(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when SSSIDataPin =>
-							SSSIData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+							SSSIData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when others => null;
 					end case;
 				end if;
@@ -1386,7 +1227,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port  map (
 				clk => clklow,
 				ibus => ibus,
-				obus => obus,
+				obus => obusint,
 				loadcontrol0 => LoadFAbsControl0(i),
 				loadcontrol1 => LoadFAbsControl1(i),
 				loadcontrol2 => LoadFAbsControl2(i),
@@ -1406,67 +1247,67 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		FAbsDecodeProcess : process (A,Readstb,writestb,FAbsDataSel0,FAbsDataSel1,FAbsDataSel2,
+		FAbsDecodeProcess : process (Aint,Readstb,writestb,FAbsDataSel0,FAbsDataSel1,FAbsDataSel2,
 												FAbsControlSel0,FAbsControlSel1,FAbsControlSel2,
 												GlobalFabsBusySel,FAbsBusyBits)
 		begin
-			if A(15 downto 8) = FAbsDataAddr0 then	 --  FAbs data register select
+			if Aint(15 downto 8) = FAbsDataAddr0 then	 --  FAbs data register select
 				FAbsDataSel0 <= '1';
 			else
 				FAbsDataSel0 <= '0';
 			end if;
-			if A(15 downto 8) = FAbsDataAddr1 then	 --  FAbs data register select
+			if Aint(15 downto 8) = FAbsDataAddr1 then	 --  FAbs data register select
 				FAbsDataSel1 <= '1';
 			else
 				FAbsDataSel1 <= '0';
 			end if;
-			if A(15 downto 8) = FAbsDataAddr2 then	 --  FAbs data register select
+			if Aint(15 downto 8) = FAbsDataAddr2 then	 --  FAbs data register select
 				FAbsDataSel2 <= '1';
 			else
 				FAbsDataSel2 <= '0';
 			end if;
-			if A(15 downto 8) = FAbsControlAddr0 then	 --  FAbs control register 0 select
+			if Aint(15 downto 8) = FAbsControlAddr0 then	 --  FAbs control register 0 select
 				FAbsControlSel0 <= '1';
 			else
 				FAbsControlSel0 <= '0';
 			end if;
-			if A(15 downto 8) = FAbsControlAddr1 then	 --  FAbs control register 1 select
+			if Aint(15 downto 8) = FAbsControlAddr1 then	 --  FAbs control register 1 select
 				FAbsControlSel1 <= '1';
 			else
 				FAbsControlSel1 <= '0';
 			end if;
-			if A(15 downto 8) = FAbsDataAddr2 then	 	--  FAbs control register 2 select
+			if Aint(15 downto 8) = FAbsDataAddr2 then	 	--  FAbs control register 2 select
 				FAbsControlSel2 <= '1';
 			else
 				FAbsControlSel2 <= '0';
 			end if;
-			if A(15 downto 8) = FAbsGlobalPStartAddr and writestb = '1' then	 --
+			if Aint(15 downto 8) = FAbsGlobalPStartAddr and writestb = '1' then	 --
 				GlobalPStartFAbs <= '1';
 			else
 				GlobalPStartFAbs <= '0';
 			end if;
-			if A(15 downto 8) = FAbsGlobalPStartAddr and readstb = '1' then	 --
+			if Aint(15 downto 8) = FAbsGlobalPStartAddr and readstb = '1' then	 --
 				GlobalFAbsBusySel <= '1';
 			else
 				GlobalFAbsBusySel <= '0';
 			end if;
-			LoadFAbsData0 <= OneOfNDecode(FAbss,FAbsDataSel0,writestb,A(7 downto 2)); -- 64 max
-			ReadFAbsData0 <= OneOfNDecode(FAbss,FAbsDataSel0,Readstb,A(7 downto 2));
-			ReadFAbsData1 <= OneOfNDecode(FAbss,FAbsDataSel1,Readstb,A(7 downto 2));
-			ReadFAbsData2 <= OneOfNDecode(FAbss,FAbsDataSel2,Readstb,A(7 downto 2));
-			LoadFAbsControl0 <= OneOfNDecode(FAbss,FAbsControlSel0,writestb,A(7 downto 2));
-			LoadFAbsControl1 <= OneOfNDecode(FAbss,FAbsControlSel1,writestb,A(7 downto 2));
-			LoadFAbsControl2 <= OneOfNDecode(FAbss,FAbsControlSel2,writestb,A(7 downto 2));
-			ReadFAbsControl0 <= OneOfNDecode(FAbss,FAbsControlSel0,Readstb,A(7 downto 2));
-			ReadFAbsControl1 <= OneOfNDecode(FAbss,FAbsControlSel1,Readstb,A(7 downto 2));
-			obus <= (others => 'Z');
+			LoadFAbsData0 <= OneOfNDecode(FAbss,FAbsDataSel0,writestb,Aint(7 downto 2)); -- 64 max
+			ReadFAbsData0 <= OneOfNDecode(FAbss,FAbsDataSel0,Readstb,Aint(7 downto 2));
+			ReadFAbsData1 <= OneOfNDecode(FAbss,FAbsDataSel1,Readstb,Aint(7 downto 2));
+			ReadFAbsData2 <= OneOfNDecode(FAbss,FAbsDataSel2,Readstb,Aint(7 downto 2));
+			LoadFAbsControl0 <= OneOfNDecode(FAbss,FAbsControlSel0,writestb,Aint(7 downto 2));
+			LoadFAbsControl1 <= OneOfNDecode(FAbss,FAbsControlSel1,writestb,Aint(7 downto 2));
+			LoadFAbsControl2 <= OneOfNDecode(FAbss,FAbsControlSel2,writestb,Aint(7 downto 2));
+			ReadFAbsControl0 <= OneOfNDecode(FAbss,FAbsControlSel0,Readstb,Aint(7 downto 2));
+			ReadFAbsControl1 <= OneOfNDecode(FAbss,FAbsControlSel1,Readstb,Aint(7 downto 2));
+			obusint <= (others => 'Z');
 			if GlobalFabsBusySel = '1' then
-				obus(FAbss -1 downto 0) <= FAbsBusyBits;
-				obus(31 downto FAbss) <= (others => '0');
+				obusint(FAbss -1 downto 0) <= FAbsBusyBits;
+				obusint(31 downto FAbss) <= (others => '0');
 			end if;
 		end process FAbsDecodeProcess;
 
-		DoFAbsPins: process(FAbsRequest,FAbsTestClk,IOBits)
+		DoFAbsPins: process(FAbsRequest,FAbsTestClk,IOBitsint)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = FAbsTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
@@ -1480,7 +1321,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 						when FAbsDAVPin =>
 							AltData(i) <= FAbsDAVBits(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when FAbsDataPin =>
-							FAbsData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+							FAbsData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when others => null;
 					end case;
 				end if;
@@ -1515,7 +1356,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				clk => clklow,
 				hclk => clkhigh,
 				ibus => ibus,
-				obus => obus,
+				obus => obusint,
 				poplifo => ReadBISSData(i),
 				lstart => LoadBISSData(i),
 				pstart => GlobalPstartBISS,
@@ -1531,50 +1372,50 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		BISSDecodeProcess : process (A,Readstb,writestb,BISSControlSel0,BISSControlSel1,
+		BISSDecodeProcess : process (Aint,Readstb,writestb,BISSControlSel0,BISSControlSel1,
 											  BISSDataSel,GlobalBISSBusySel,BISSBusyBits)
 		begin
-			if A(15 downto 8) = BISSDataAddr then	 --  BISS data register select
+			if Aint(15 downto 8) = BISSDataAddr then	 --  BISS data register select
 				BISSDataSel <= '1';
 			else
 				BISSDataSel <= '0';
 			end if;
-			if A(15 downto 8) = BISSControlAddr0 then	 --  BISS control register select
+			if Aint(15 downto 8) = BISSControlAddr0 then	 --  BISS control register select
 				BISSControlSel0 <= '1';
 			else
 				BISSControlSel0 <= '0';
 			end if;
-			if A(15 downto 8) = BISSControlAddr1 then	 --  BISS control register select
+			if Aint(15 downto 8) = BISSControlAddr1 then	 --  BISS control register select
 				BISSControlSel1 <= '1';
 			else
 				BISSControlSel1 <= '0';
 			end if;
-			if A(15 downto 8) = BISSGlobalPStartAddr and writestb = '1' then	 --
+			if Aint(15 downto 8) = BISSGlobalPStartAddr and writestb = '1' then	 --
 				GlobalPStartBISS <= '1';
 			else
 				GlobalPStartBISS <= '0';
 			end if;
-			if A(15 downto 8) = BISSGlobalPStartAddr and readstb = '1' then	 --
+			if Aint(15 downto 8) = BISSGlobalPStartAddr and readstb = '1' then	 --
 				GlobalBISSBusySel <= '1';
 			else
 				GlobalBISSBusySel <= '0';
 			end if;
 
-			obus <= (others => 'Z');
+			obusint <= (others => 'Z');
 			if GlobalBISSBusySel = '1' then
-				obus(BISSs -1 downto 0) <= BISSBusyBits;
-				obus(31 downto BISSs) <= (others => '0');
+				obusint(BISSs -1 downto 0) <= BISSBusyBits;
+				obusint(31 downto BISSs) <= (others => '0');
 			end if;
 
-			LoadBISSData <= OneOfNDecode(BISSs,BISSDataSel,writestb,A(5 downto 2));
-			ReadBISSData <= OneOfNDecode(BISSs,BISSDataSel,Readstb,A(5 downto 2));
-			LoadBISSControl0 <= OneOfNDecode(BISSs,BISSControlSel0,writestb,A(5 downto 2));
-			LoadBISSControl1 <= OneOfNDecode(BISSs,BISSControlSel1,writestb,A(5 downto 2));
-			ReadBISSControl0 <= OneOfNDecode(BISSs,BISSControlSel0,Readstb,A(5 downto 2));
-			ReadBISSControl1 <= OneOfNDecode(BISSs,BISSControlSel1,Readstb,A(5 downto 2));
+			LoadBISSData <= OneOfNDecode(BISSs,BISSDataSel,writestb,Aint(5 downto 2));
+			ReadBISSData <= OneOfNDecode(BISSs,BISSDataSel,Readstb,Aint(5 downto 2));
+			LoadBISSControl0 <= OneOfNDecode(BISSs,BISSControlSel0,writestb,Aint(5 downto 2));
+			LoadBISSControl1 <= OneOfNDecode(BISSs,BISSControlSel1,writestb,Aint(5 downto 2));
+			ReadBISSControl0 <= OneOfNDecode(BISSs,BISSControlSel0,Readstb,Aint(5 downto 2));
+			ReadBISSControl1 <= OneOfNDecode(BISSs,BISSControlSel1,Readstb,Aint(5 downto 2));
 		end process BISSDecodeProcess;
 
-		DoBISSPins: process(BISSClk, IOBits)
+		DoBISSPins: process(BISSClk, IOBitsint)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = BISSTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
@@ -1586,7 +1427,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 						when BISSDAVPin =>
 							AltData(i) <= BISSDAVBits(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when BISSDataPin =>
-							BISSData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+							BISSData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when others => null;
 					end case;
 				end if;
@@ -1632,8 +1473,8 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port map (
 				clk => clklow,
 				ibus => ibus,
-				obus => obus,
-				addr => A(3 downto 2),
+				obus => obusint,
+				addr => Aint(3 downto 2),
 				popfifo => LoadUARTRData(i),
 				loadbitrate => LoadUARTRBitRate(i),
 				readbitrate => ReadUARTRBitrate(i),
@@ -1647,42 +1488,42 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		UARTRDecodeProcess : process (A,Readstb,writestb,UARTRDataSel,UARTRBitRateSel,UARTRFIFOCountSel,UARTRModeRegSel)
+		UARTRDecodeProcess : process (Aint,Readstb,writestb,UARTRDataSel,UARTRBitRateSel,UARTRFIFOCountSel,UARTRModeRegSel)
 		begin
-			if A(15 downto 8) = UARTRDataAddr then	 --  UART RX data register select
+			if Aint(15 downto 8) = UARTRDataAddr then	 --  UART RX data register select
 				UARTRDataSel <= '1';
 			else
 				UARTRDataSel <= '0';
 			end if;
-			if A(15 downto 8) = UARTRFIFOCountAddr then	 --  UART RX FIFO count register select
+			if Aint(15 downto 8) = UARTRFIFOCountAddr then	 --  UART RX FIFO count register select
 				UARTRFIFOCountSel <= '1';
 			else
 				UARTRFIFOCountSel <= '0';
 			end if;
-			if A(15 downto 8) = UARTRBitrateAddr then	 --  UART RX bit rate register select
+			if Aint(15 downto 8) = UARTRBitrateAddr then	 --  UART RX bit rate register select
 				UARTRBitrateSel <= '1';
 			else
 				UARTRBitrateSel <= '0';
 			end if;
-			if A(15 downto 8) = UARTRModeRegAddr then	 --  UART RX status register select
+			if Aint(15 downto 8) = UARTRModeRegAddr then	 --  UART RX status register select
 				UARTRModeRegSel <= '1';
 			else
 				UARTRModeRegSel <= '0';
-			end if;			LoadUARTRData <= OneOfNDecode(UARTs,UARTRDataSel,Readstb,A(7 downto 4));
-			LoadUARTRBitRate <= OneOfNDecode(UARTs,UARTRBitRateSel,writestb,A(7 downto 4));
-			ReadUARTRBitrate <= OneOfNDecode(UARTs,UARTRBitRateSel,Readstb,A(7 downto 4));
-			ClearUARTRFIFO <= OneOfNDecode(UARTs,UARTRFIFOCountSel,writestb,A(7 downto 4));
-			ReadUARTRFIFOCount <= OneOfNDecode(UARTs,UARTRFIFOCountSel,Readstb,A(7 downto 4));
-			LoadUARTRModeReg <= OneOfNDecode(UARTs,UARTRModeRegSel,writestb,A(7 downto 4));
-			ReadUARTRModeReg <= OneOfNDecode(UARTs,UARTRModeRegSel,Readstb,A(7 downto 4));
+			end if;			LoadUARTRData <= OneOfNDecode(UARTs,UARTRDataSel,Readstb,Aint(7 downto 4));
+			LoadUARTRBitRate <= OneOfNDecode(UARTs,UARTRBitRateSel,writestb,Aint(7 downto 4));
+			ReadUARTRBitrate <= OneOfNDecode(UARTs,UARTRBitRateSel,Readstb,Aint(7 downto 4));
+			ClearUARTRFIFO <= OneOfNDecode(UARTs,UARTRFIFOCountSel,writestb,Aint(7 downto 4));
+			ReadUARTRFIFOCount <= OneOfNDecode(UARTs,UARTRFIFOCountSel,Readstb,Aint(7 downto 4));
+			LoadUARTRModeReg <= OneOfNDecode(UARTs,UARTRModeRegSel,writestb,Aint(7 downto 4));
+			ReadUARTRModeReg <= OneOfNDecode(UARTs,UARTRModeRegSel,Readstb,Aint(7 downto 4));
 		end process UARTRDecodeProcess;
 
-		DoUARTRPins: process(IOBits)
+		DoUARTRPins: process(IOBitsint)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = UARTRTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					if (ThePinDesc(i)(7 downto 0)) = URDataPin then
-						URData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+						URData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 					end if;
 				end if;
 			end loop;
@@ -1706,8 +1547,8 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port map (
 				clk => clklow,
 				ibus => ibus,
-				obus => obus,
-				addr => A(3 downto 2),
+				obus => obusint,
+				addr => Aint(3 downto 2),
 				pushfifo => LoadUARTTData(i),
 				loadbitrate => LoadUARTTBitRate(i),
 				readbitrate => ReadUARTTBitrate(i),
@@ -1722,35 +1563,35 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		UARTTDecodeProcess : process (A,Readstb,writestb,UARTTDataSel,UARTTBitRateSel,UARTTModeRegSel,UARTTFIFOCountSel)
+		UARTTDecodeProcess : process (Aint,Readstb,writestb,UARTTDataSel,UARTTBitRateSel,UARTTModeRegSel,UARTTFIFOCountSel)
 		begin
-			if A(15 downto 8) = UARTTDataAddr then	 --  UART TX data register select
+			if Aint(15 downto 8) = UARTTDataAddr then	 --  UART TX data register select
 				UARTTDataSel <= '1';
 			else
 				UARTTDataSel <= '0';
 			end if;
-			if A(15 downto 8) = UARTTFIFOCountAddr then	 --  UART TX FIFO count register select
+			if Aint(15 downto 8) = UARTTFIFOCountAddr then	 --  UART TX FIFO count register select
 				UARTTFIFOCountSel <= '1';
 			else
 				UARTTFIFOCountSel <= '0';
 			end if;
-			if A(15 downto 8) = UARTTBitrateAddr then	 --  UART TX bit rate register select
+			if Aint(15 downto 8) = UARTTBitrateAddr then	 --  UART TX bit rate register select
 				UARTTBitrateSel <= '1';
 			else
 				UARTTBitrateSel <= '0';
 			end if;
-			if A(15 downto 8) = UARTTModeRegAddr then	 --  UART TX bit mode register select
+			if Aint(15 downto 8) = UARTTModeRegAddr then	 --  UART TX bit mode register select
 				UARTTModeRegSel <= '1';
 			else
 				UARTTModeRegSel <= '0';
 			end if;
-			LoadUARTTData <= OneOfNDecode(UARTs,UARTTDataSel,writestb,A(7 downto 4));
-			LoadUARTTBitRate <= OneOfNDecode(UARTs,UARTTBitRateSel,writestb,A(7 downto 4));
-			ReadUARTTBitrate <= OneOfNDecode(UARTs,UARTTBitRateSel,Readstb,A(7 downto 4));
-			LoadUARTTModeReg <= OneOfNDecode(UARTs,UARTTModeRegSel,writestb,A(7 downto 4));
-				ReadUARTTModeReg <= OneOfNDecode(UARTs,UARTTModeRegSel,Readstb,A(7 downto 4));
-			ClearUARTTFIFO <= OneOfNDecode(UARTs,UARTTFIFOCountSel,writestb,A(7 downto 4));
-			ReadUARTTFIFOCount <= OneOfNDecode(UARTs,UARTTFIFOCountSel,Readstb,A(7 downto 4));
+			LoadUARTTData <= OneOfNDecode(UARTs,UARTTDataSel,writestb,Aint(7 downto 4));
+			LoadUARTTBitRate <= OneOfNDecode(UARTs,UARTTBitRateSel,writestb,Aint(7 downto 4));
+			ReadUARTTBitrate <= OneOfNDecode(UARTs,UARTTBitRateSel,Readstb,Aint(7 downto 4));
+			LoadUARTTModeReg <= OneOfNDecode(UARTs,UARTTModeRegSel,writestb,Aint(7 downto 4));
+				ReadUARTTModeReg <= OneOfNDecode(UARTs,UARTTModeRegSel,Readstb,Aint(7 downto 4));
+			ClearUARTTFIFO <= OneOfNDecode(UARTs,UARTTFIFOCountSel,writestb,Aint(7 downto 4));
+			ReadUARTTFIFOCount <= OneOfNDecode(UARTs,UARTTFIFOCountSel,Readstb,Aint(7 downto 4));
 		end process UARTTDecodeProcess;
 
 		DoUARTTPins: process(UTData, UTDrvEn)
@@ -1825,7 +1666,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port map (
 				clk => clklow,
 				ibus => ibus,
-				obus => obus,
+				obus => obusint,
 				popdata => ReadPktUARTRData(i),
 				poprc => ReadPktUARTRFrameCount(i),
 				loadbitrate => LoadPktUARTRBitRate(i),
@@ -1837,51 +1678,51 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		PktUARTRDecodeProcess : process (A,Readstb,writestb,PktUARTRDataSel,PktUARTRBitRateSel,
+		PktUARTRDecodeProcess : process (Aint,Readstb,writestb,PktUARTRDataSel,PktUARTRBitRateSel,
 		                                 PktUARTRFrameCountSel,PktUARTRModeRegSel)
 		begin
-			if A(15 downto 8) = PktUARTRDataAddr then	 --  PktUART RX data register select
+			if Aint(15 downto 8) = PktUARTRDataAddr then	 --  PktUART RX data register select
 				PktUARTRDataSel <= '1';
 			else
 				PktUARTRDataSel <= '0';
 			end if;
-			if A(15 downto 8) = PktUARTRFrameCountAddr then	 --  PktUART RX FIFO count register select
+			if Aint(15 downto 8) = PktUARTRFrameCountAddr then	 --  PktUART RX FIFO count register select
 				PktUARTRFrameCountSel <= '1';
 			else
 				PktUARTRFrameCountSel <= '0';
 			end if;
-			if A(15 downto 8) = PktUARTRBitrateAddr then	 --  PktUART RX bit rate register select
+			if Aint(15 downto 8) = PktUARTRBitrateAddr then	 --  PktUART RX bit rate register select
 				PktUARTRBitrateSel <= '1';
 			else
 				PktUARTRBitrateSel <= '0';
 			end if;
-			if A(15 downto 8) = PktUARTRModeRegAddr then	 --  PktUART RX status register select
+			if Aint(15 downto 8) = PktUARTRModeRegAddr then	 --  PktUART RX status register select
 				PktUARTRModeRegSel <= '1';
 			else
 				PktUARTRModeRegSel <= '0';
 			end if;
 
-			ReadPktUARTRData <= OneOfNDecode(PktUARTs,PktUARTRDataSel,Readstb,A(5 downto 2));
-			LoadPktUARTRBitRate <= OneOfNDecode(PktUARTs,PktUARTRBitRateSel,writestb,A(5 downto 2));
-			ReadPktUARTRBitrate <= OneOfNDecode(PktUARTs,PktUARTRBitRateSel,Readstb,A(5 downto 2));
-			ReadPktUARTRFrameCount <= OneOfNDecode(PktUARTs,PktUARTRFrameCountSel,Readstb,A(5 downto 2));
-			LoadPktUARTRModeReg <= OneOfNDecode(PktUARTs,PktUARTRModeRegSel,writestb,A(5 downto 2));
-			ReadPktUARTRModeReg <= OneOfNDecode(PktUARTs,PktUARTRModeRegSel,Readstb,A(5 downto 2));
+			ReadPktUARTRData <= OneOfNDecode(PktUARTs,PktUARTRDataSel,Readstb,Aint(5 downto 2));
+			LoadPktUARTRBitRate <= OneOfNDecode(PktUARTs,PktUARTRBitRateSel,writestb,Aint(5 downto 2));
+			ReadPktUARTRBitrate <= OneOfNDecode(PktUARTs,PktUARTRBitRateSel,Readstb,Aint(5 downto 2));
+			ReadPktUARTRFrameCount <= OneOfNDecode(PktUARTs,PktUARTRFrameCountSel,Readstb,Aint(5 downto 2));
+			LoadPktUARTRModeReg <= OneOfNDecode(PktUARTs,PktUARTRModeRegSel,writestb,Aint(5 downto 2));
+			ReadPktUARTRModeReg <= OneOfNDecode(PktUARTs,PktUARTRModeRegSel,Readstb,Aint(5 downto 2));
 
 		end process PktUARTRDecodeProcess;
 
-		DoPktUARTRPins: process(IOBits)
+		DoPktUARTRPins: process(IOBitsint)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = PktUARTRTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					if (ThePinDesc(i)(7 downto 0)) = PktURDataPin then
-						PktURData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+						PktURData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 					end if;
 				end if;
 			end loop;
 		end process;
 
-		DoLocalPktUARTRPins: process(LIOBits) -- only for 4I90 LIO currently
+		DoLocalPktUARTRPins: process(IOBitsint) -- only for 4I90 LIO currently
 		begin
 			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
 				report("Doing PktUARTR LIOLoop: "& integer'image(i));
@@ -1901,7 +1742,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port map (
 				clk => clklow,
 				ibus => ibus,
-				obus => obus,
+				obus => obusint,
 				pushdata => LoadPktUARTTData(i),
 				pushsc	=> LoadPktUARTTFrameCount(i),
 				readsc   => ReadPktUARTTFrameCount(i),
@@ -1914,36 +1755,36 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		PktUARTTDecodeProcess : process (A,Readstb,writestb,PktUARTTDataSel,PktUARTTBitRateSel,
+		PktUARTTDecodeProcess : process (Aint,readstb,writestb,PktUARTTDataSel,PktUARTTBitRateSel,
 													PktUARTTModeRegSel,PktUARTTFrameCountSel)
 		begin
-			if A(15 downto 8) = PktUARTTDataAddr then	 --  PktUART TX data register select
+			if Aint(15 downto 8) = PktUARTTDataAddr then	 --  PktUART TX data register select
 				PktUARTTDataSel <= '1';
 			else
 				PktUARTTDataSel <= '0';
 			end if;
-			if A(15 downto 8) = PktUARTTFrameCountAddr then	 --  PktUART TX FIFO count register select
+			if Aint(15 downto 8) = PktUARTTFrameCountAddr then	 --  PktUART TX FIFO count register select
 				PktUARTTFrameCountSel <= '1';
 			else
 				PktUARTTFrameCountSel <= '0';
 			end if;
-			if A(15 downto 8) = PktUARTTBitrateAddr then	 --  PktUART TX bit rate register select
+			if Aint(15 downto 8) = PktUARTTBitrateAddr then	 --  PktUART TX bit rate register select
 				PktUARTTBitrateSel <= '1';
 			else
 				PktUARTTBitrateSel <= '0';
 			end if;
-			if A(15 downto 8) = PktUARTTModeRegAddr then	 --  PktUART TX bit mode register select
+			if Aint(15 downto 8) = PktUARTTModeRegAddr then	 --  PktUART TX bit mode register select
 				PktUARTTModeRegSel <= '1';
 			else
 				PktUARTTModeRegSel <= '0';
 			end if;
-			LoadPktUARTTData <= OneOfNDecode(PktUARTs,PktUARTTDataSel,writestb,A(5 downto 2));
-			LoadPktUARTTFrameCount <= OneOfNDecode(PktUARTs,PktUARTTFrameCountSel,writestb,A(5 downto 2));
-			ReadPktUARTTFrameCount <= OneOfNDecode(PktUARTs,PktUARTTFrameCountSel,readstb,A(5 downto 2));
-			LoadPktUARTTBitRate <= OneOfNDecode(PktUARTs,PktUARTTBitRateSel,writestb,A(5 downto 2));
-			ReadPktUARTTBitrate <= OneOfNDecode(PktUARTs,PktUARTTBitRateSel,Readstb,A(5 downto 2));
-			LoadPktUARTTModeReg <= OneOfNDecode(PktUARTs,PktUARTTModeRegSel,writestb,A(5 downto 2));
-			ReadPktUARTTModeReg <= OneOfNDecode(PktUARTs,PktUARTTModeRegSel,Readstb,A(5 downto 2));
+			LoadPktUARTTData <= OneOfNDecode(PktUARTs,PktUARTTDataSel,writestb,Aint(5 downto 2));
+			LoadPktUARTTFrameCount <= OneOfNDecode(PktUARTs,PktUARTTFrameCountSel,writestb,Aint(5 downto 2));
+			ReadPktUARTTFrameCount <= OneOfNDecode(PktUARTs,PktUARTTFrameCountSel,readstb,Aint(5 downto 2));
+			LoadPktUARTTBitRate <= OneOfNDecode(PktUARTs,PktUARTTBitRateSel,writestb,Aint(5 downto 2));
+			ReadPktUARTTBitrate <= OneOfNDecode(PktUARTs,PktUARTTBitRateSel,Readstb,Aint(5 downto 2));
+			LoadPktUARTTModeReg <= OneOfNDecode(PktUARTs,PktUARTTModeRegSel,writestb,Aint(5 downto 2));
+			ReadPktUARTTModeReg <= OneOfNDecode(PktUARTs,PktUARTTModeRegSel,Readstb,Aint(5 downto 2));
 		end process PktUARTTDecodeProcess;
 
 		DoPktUARTTPins: process(PktUTData, PktUTDrvEn)
@@ -2000,14 +1841,14 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		BinOscDecodeProcess : process (A,writestb,LoadBinOscEnaSel)
+		BinOscDecodeProcess : process (Aint,writestb,LoadBinOscEnaSel)
 		begin
-			if A(15 downto 8) = BinOscEnaAddr then	 	--  Charge Pump Power Supply enable decode
+			if Aint(15 downto 8) = BinOscEnaAddr then	 	--  Charge Pump Power Supply enable decode
 				LoadBinOscEnaSel <= '1';
 			else
 				LoadBinOscEnaSel <= '0';
 			end if;
-			LoadBinOscEna <= OneOfNDecode(BinOscs,LoadBinOscEnaSel,writestb,A(5 downto 2)); -- 16 max
+			LoadBinOscEna <= OneOfNDecode(BinOscs,LoadBinOscEnaSel,writestb,Aint(5 downto 2)); -- 16 max
 		end process BinOscDecodeProcess;
 
 		DoBinOscPins: process(BinOscOut)
@@ -2055,7 +1896,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				clk => clklow,
 				hclk => clkhigh,
 				ibus => ibus,
---				obus => obus,
+--				obus => obusint,
 				loadrate => LoadWaveGenRate(i),
 				loadlength => LoadWaveGenLength(i),
 				loadpdmrate => LoadWaveGenPDMRate(i),
@@ -2070,42 +1911,42 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		WaveGenDecodeProcess : process (A,Readstb,writestb,WaveGenRateSel,WaveGenLengthSel,
+		WaveGenDecodeProcess : process (Aint,Readstb,writestb,WaveGenRateSel,WaveGenLengthSel,
 			                             WaveGenPDMRateSel,WaveGenTablePtrSel,WaveGenTableDataSel)
 		begin
-			if A(15 downto 8) = WaveGenRateAddr then	 --  WaveGen table index rate
+			if Aint(15 downto 8) = WaveGenRateAddr then	 --  WaveGen table index rate
 				WaveGenRateSel <= '1';
 			else
 				WaveGenRateSel <= '0';
 			end if;
-			if A(15 downto 8) = WaveGenLengthAddr then	 --  WaveGen table length
+			if Aint(15 downto 8) = WaveGenLengthAddr then	 --  WaveGen table length
 				WaveGenlengthSel <= '1';
 			else
 				WaveGenlengthSel <= '0';
 			end if;
-			if A(15 downto 8) = WaveGenPDMRateAddr then	 --  WaveGen PDMRate
+			if Aint(15 downto 8) = WaveGenPDMRateAddr then	 --  WaveGen PDMRate
 				WaveGenPDMRateSel <= '1';
 			else
 				WaveGenPDMRateSel <= '0';
 			end if;
-			if A(15 downto 8) = WaveGenTablePtrAddr then	 --  WaveGen TablePtr
+			if Aint(15 downto 8) = WaveGenTablePtrAddr then	 --  WaveGen TablePtr
 				WaveGenTablePtrSel <= '1';
 			else
 				WaveGenTablePtrSel <= '0';
 			end if;
-			if A(15 downto 8) = WaveGenTableDataAddr then	 --  WaveGen TableData
+			if Aint(15 downto 8) = WaveGenTableDataAddr then	 --  WaveGen TableData
 				WaveGenTableDataSel <= '1';
 			else
 				WaveGenTableDataSel <= '0';
 			end if;
-			LoadWaveGenRate <= OneOfNDecode(WaveGens,WaveGenRateSel,writestb,A(5 downto 2));
-			LoadWaveGenLength <= OneOfNDecode(WaveGens,WaveGenLengthSel,writestb,A(5 downto 2));
-			LoadWaveGenPDMRate <= OneOfNDecode(WaveGens,WaveGenPDMRateSel,writestb,A(5 downto 2));
-			LoadWaveGenTablePtr <= OneOfNDecode(WaveGens,WaveGenTablePtrSel,writestb,A(5 downto 2));
-			LoadWaveGenTableData <= OneOfNDecode(WaveGens,WaveGenTableDataSel,writestb,A(5 downto 2));
+			LoadWaveGenRate <= OneOfNDecode(WaveGens,WaveGenRateSel,writestb,Aint(5 downto 2));
+			LoadWaveGenLength <= OneOfNDecode(WaveGens,WaveGenLengthSel,writestb,Aint(5 downto 2));
+			LoadWaveGenPDMRate <= OneOfNDecode(WaveGens,WaveGenPDMRateSel,writestb,Aint(5 downto 2));
+			LoadWaveGenTablePtr <= OneOfNDecode(WaveGens,WaveGenTablePtrSel,writestb,Aint(5 downto 2));
+			LoadWaveGenTableData <= OneOfNDecode(WaveGens,WaveGenTableDataSel,writestb,Aint(5 downto 2));
 		end process WaveGenDecodeProcess;
 
-		DoWaveGenPins: process(WaveGenPDMA, WaveGenPDMB, WaveGenTrigger0,
+		DoWaveGenPins: process(WaveGenPDMA,WaveGenPDMB, WaveGenTrigger0,
 										WaveGenTrigger1, WaveGenTrigger2, WaveGenTrigger3)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
@@ -2159,7 +2000,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port map(
 				clk => clklow,
 				ibus => ibus,
-				obus => obus,
+				obus => obusint,
 				hloadcommand => LoadResModCommand(i),
 				hreadcommand => ReadResModCommand(i),
 				hloaddata => LoadResModData(i),
@@ -2182,40 +2023,40 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		ResolverModDecodeProcess : process (A,Readstb,writestb,ResModCommandSel,ResModDataSel,ResModVelRAMSel,ResModPosRAMSel)
+ 		ResolverModDecodeProcess : process (Aint,Readstb,writestb,ResModCommandSel,ResModDataSel,ResModVelRAMSel,ResModPosRAMSel)
 		begin
-			if A(15 downto 8) = ResModCommandAddr then
+			if Aint(15 downto 8) = ResModCommandAddr then
 				ResModCommandSel <= '1';
 			else
 				ResModCommandSel <= '0';
 			end if;
-			if A(15 downto 8) = ResModDataAddr then
+			if Aint(15 downto 8) = ResModDataAddr then
 				ResModDataSel <= '1';
 			else
 				ResModDataSel <= '0';
 			end if;
-			if A(15 downto 8) = ResModStatusAddr then
+			if Aint(15 downto 8) = ResModStatusAddr then
 				ResModStatusSel <= '1';
 			else
 				ResModStatusSel <= '0';
 			end if;
-			if A(15 downto 8) = ResModVelRAMAddr then
+			if Aint(15 downto 8) = ResModVelRAMAddr then
 				ResModVelRAMSel <= '1';
 			else
 				ResModVelRAMSel <= '0';
 			end if;
-			if A(15 downto 8) = ResModPosRAMAddr then
+			if Aint(15 downto 8) = ResModPosRAMAddr then
 				ResModPosRAMSel <= '1';
 			else
 				ResModPosRAMSel <= '0';
 			end if;
-			LoadResModCommand <= OneOfNDecode(ResolverMods,ResModCommandSel,writestb,A(7 downto 6));
-			ReadResModCommand <= OneOfNDecode(ResolverMods,ResModCommandSel,Readstb,A(7 downto 6));
-			LoadResModData <= OneOfNDecode(ResolverMods,ResModDataSel,writestb,A(7 downto 6));
-			ReadResModData <= OneOfNDecode(ResolverMods,ResModDataSel,Readstb,A(7 downto 6));
-			ReadResModStatus <= OneOfNDecode(ResolverMods,ResModStatusSel,Readstb,A(7 downto 6));
-			ReadResModVelRam <= OneOfNDecode(ResolverMods,ResModVelRAMSel,Readstb,A(7 downto 6)); -- 16 addresses per resmod
-			ReadResModPosRam <= OneOfNDecode(ResolverMods,ResModPosRAMSel,Readstb,A(7 downto 6)); -- 16 addresses per resmod
+			LoadResModCommand <= OneOfNDecode(ResolverMods,ResModCommandSel,writestb,Aint(7 downto 6));
+			ReadResModCommand <= OneOfNDecode(ResolverMods,ResModCommandSel,Readstb,Aint(7 downto 6));
+			LoadResModData <= OneOfNDecode(ResolverMods,ResModDataSel,writestb,Aint(7 downto 6));
+			ReadResModData <= OneOfNDecode(ResolverMods,ResModDataSel,Readstb,Aint(7 downto 6));
+			ReadResModStatus <= OneOfNDecode(ResolverMods,ResModStatusSel,Readstb,Aint(7 downto 6));
+			ReadResModVelRam <= OneOfNDecode(ResolverMods,ResModVelRAMSel,Readstb,Aint(7 downto 6)); -- 16 addresses per resmod
+			ReadResModPosRam <= OneOfNDecode(ResolverMods,ResModPosRAMSel,Readstb,Aint(7 downto 6)); -- 16 addresses per resmod
 		end process ResolverModDecodeProcess;
 
 		DoResModPins: process(ResModPwrEn,ResModChan2,ResModChan1,ResModChan0,
@@ -2243,9 +2084,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 						when ResModTestBitPin =>
 							AltData(i) <= ResModTestBit(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when ResModSPIDI0Pin =>
-							ResModSPIDI0(conv_integer(ThePinDesc(i)(23 downto 16))) <= iobits(i);
+							ResModSPIDI0(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when ResModSPIDI1Pin =>
-							ResModSPIDI1(conv_integer(ThePinDesc(i)(23 downto 16))) <= iobits(i);
+							ResModSPIDI1(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 						when others => null;
 					end case;
 				end if;
@@ -2292,12 +2133,12 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				clk  => clklow,
 				clkmed => clkmed,
 				ibus  => ibus,
-				obus  => obus,
+				obus  => obusint,
 				hloadcommand  => LoadSSerialCommand(i),
 				hreadcommand  => ReadSSerialCommand(i),
 				hloaddata  => LoadSSerialData(i),
 				hreaddata  => ReadSSerialData(i),
-				regaddr  =>  A(log2(UARTSPerSSerial(i))+1 downto 2),
+				regaddr  =>  Aint(log2(UARTSPerSSerial(i))+1 downto 2),
 				hloadregs0  => LoadSSerialRAM0(i),
 				hreadregs0  => ReadSSerialRAM0(i),
 				hloadregs1  => LoadSSerialRAM1(i),
@@ -2313,51 +2154,51 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		SSerialDecodeProcess : process (A,Readstb,writestb,SSerialCommandSel,SSerialDataSel,
+		SSerialDecodeProcess : process (Aint,Readstb,writestb,SSerialCommandSel,SSerialDataSel,
 		                                SSerialRAMSel0,SSerialRAMSel1,SSerialRAMSel2,SSerialRAMSel3)
 		begin
-			if A(15 downto 8) = SSerialCommandAddr then
+			if Aint(15 downto 8) = SSerialCommandAddr then
 				SSerialCommandSel <= '1';
 			else
 				SSerialCommandSel <= '0';
 			end if;
-			if A(15 downto 8) = SSerialDataAddr then
+			if Aint(15 downto 8) = SSerialDataAddr then
 				SSerialDataSel <= '1';
 			else
 				SSerialDataSel <= '0';
 			end if;
-			if A(15 downto 8) = SSerialRAMAddr0 then
+			if Aint(15 downto 8) = SSerialRAMAddr0 then
 				SSerialRAMSel0 <= '1';
 			else
 				SSerialRAMSel0 <= '0';
 			end if;
-			if A(15 downto 8) = SSerialRAMAddr1 then
+			if Aint(15 downto 8) = SSerialRAMAddr1 then
 				SSerialRAMSel1 <= '1';
 			else
 				SSerialRAMSel1 <= '0';
 			end if;
-			if A(15 downto 8) = SSerialRAMAddr2 then
+			if Aint(15 downto 8) = SSerialRAMAddr2 then
 				SSerialRAMSel2 <= '1';
 			else
 				SSerialRAMSel2 <= '0';
 			end if;
-			if A(15 downto 8) = SSerialRAMAddr3 then
+			if Aint(15 downto 8) = SSerialRAMAddr3 then
 				SSerialRAMSel3 <= '1';
 			else
 				SSerialRAMSel3 <= '0';
 			end if;
-			LoadSSerialCommand <= OneOfNDecode(SSerials,SSerialCommandSel,writestb,A(7 downto 6));
-			ReadSSerialCommand <= OneOfNDecode(SSerials,SSerialCommandSel,Readstb,A(7 downto 6));
-			LoadSSerialData <= OneOfNDecode(SSerials,SSerialDataSel,writestb,A(7 downto 6));
-			ReadSSerialData <= OneOfNDecode(SSerials,SSerialDataSel,Readstb,A(7 downto 6));
-			LoadSSerialRam0 <= OneOfNDecode(SSerials,SSerialRAMSel0,writestb,A(7 downto 6)); 	-- 16 addresses per SSerial RAM max, this implies 4 max sserials
-			ReadSSerialRam0 <= OneOfNDecode(SSerials,SSerialRAMSel0,Readstb,A(7 downto 6)); 	-- 16 addresses per SSerial RAM max, this implies 4 max sserials
-			LoadSSerialRam1 <= OneOfNDecode(SSerials,SSerialRAMSel1,writestb,A(7 downto 6)); 	-- 16 addresses per SSerial RAM max, this implies 4 max sserials
-			ReadSSerialRam1 <= OneOfNDecode(SSerials,SSerialRAMSel1,Readstb,A(7 downto 6)); 	-- 16 addresses per SSerial RAM max
-			LoadSSerialRam2 <= OneOfNDecode(SSerials,SSerialRAMSel2,writestb,A(7 downto 6)); 	-- 16 addresses per SSerial RAM max
-			ReadSSerialRam2 <= OneOfNDecode(SSerials,SSerialRAMSel2,Readstb,A(7 downto 6)); 	-- 16 addresses per SSerial RAM max
-			LoadSSerialRam3 <= OneOfNDecode(SSerials,SSerialRAMSel3,writestb,A(7 downto 6)); 	-- 16 addresses per SSerial RAM max
-			ReadSSerialRam3 <= OneOfNDecode(SSerials,SSerialRAMSel3,Readstb,A(7 downto 6)); 	-- 16 addresses per SSerial RAM max
+			LoadSSerialCommand <= OneOfNDecode(SSerials,SSerialCommandSel,writestb,Aint(7 downto 6));
+			ReadSSerialCommand <= OneOfNDecode(SSerials,SSerialCommandSel,Readstb,Aint(7 downto 6));
+			LoadSSerialData <= OneOfNDecode(SSerials,SSerialDataSel,writestb,Aint(7 downto 6));
+			ReadSSerialData <= OneOfNDecode(SSerials,SSerialDataSel,Readstb,Aint(7 downto 6));
+			LoadSSerialRam0 <= OneOfNDecode(SSerials,SSerialRAMSel0,writestb,Aint(7 downto 6)); 	-- 16 addresses per SSerial RAM max, this implies 4 max sserials
+			ReadSSerialRam0 <= OneOfNDecode(SSerials,SSerialRAMSel0,Readstb,Aint(7 downto 6)); 	-- 16 addresses per SSerial RAM max, this implies 4 max sserials
+			LoadSSerialRam1 <= OneOfNDecode(SSerials,SSerialRAMSel1,writestb,Aint(7 downto 6)); 	-- 16 addresses per SSerial RAM max, this implies 4 max sserials
+			ReadSSerialRam1 <= OneOfNDecode(SSerials,SSerialRAMSel1,Readstb,Aint(7 downto 6)); 	-- 16 addresses per SSerial RAM max
+			LoadSSerialRam2 <= OneOfNDecode(SSerials,SSerialRAMSel2,writestb,Aint(7 downto 6)); 	-- 16 addresses per SSerial RAM max
+			ReadSSerialRam2 <= OneOfNDecode(SSerials,SSerialRAMSel2,Readstb,Aint(7 downto 6)); 	-- 16 addresses per SSerial RAM max
+			LoadSSerialRam3 <= OneOfNDecode(SSerials,SSerialRAMSel3,writestb,Aint(7 downto 6)); 	-- 16 addresses per SSerial RAM max
+			ReadSSerialRam3 <= OneOfNDecode(SSerials,SSerialRAMSel3,Readstb,Aint(7 downto 6)); 	-- 16 addresses per SSerial RAM max
         report "Max UARTS per sserial " & integer'image(MaxUARTSPerSSerial);
         report "UARTS per sserial 0 " &  integer 'image(UARTSPerSSerial(0));
         report "UARTS per sserial 1 " &  integer 'image(UARTSPerSSerial(1));
@@ -2367,7 +2208,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 
 		end process SSerialDecodeProcess;
 
-		DoSSerialPins: process(SSerialTX, SSerialTXEn, SSerialTestBits, IOBits)
+		DoSSerialPins: process(SSerialTX, SSerialTXEn, SSerialTestBits, IOBitsint)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = SSerialTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
@@ -2378,7 +2219,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 						AltData(i) <= not SSerialTXEn(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(3 downto 0))-1); 	-- 16 max ports
 					end if;
 					if (ThePinDesc(i)(7 downto 0) and x"F0") = x"00" then 	-- rxins match 0X
-						SSerialRX(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(3 downto 0))-1) <= IOBits(i);		-- 16 max ports
+						SSerialRX(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(3 downto 0))-1) <= IOBitsint(i);		-- 16 max ports
 					end if;
 					if ThePinDesc(i)(7 downto 0) = SSerialTestPin then
 						AltData(i) <= SSerialTestBits(i);
@@ -2414,13 +2255,13 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port map(
 				clk  => clklow,
 				ibus  => ibus,
-				obus  => obus,
+				obus  => obusint,
 				hloadcommand  => LoadTwiddlerCommand(i),
 				hreadcommand  => ReadTwiddlerCommand(i),
 				hloaddata  => LoadTwiddlerData(i),
 				hreaddata  => ReadTwiddlerData(i),
 				regraddr  =>  addr(log2(RegsPerTwiddler)+1 downto 2),	-- early address for DPRAM access
-				regwaddr  =>  A(log2(RegsPerTwiddler)+1 downto 2),
+				regwaddr  =>  Aint(log2(RegsPerTwiddler)+1 downto 2),
 				hloadregs  => LoadTwiddlerRAM(i),
 				hreadregs  => ReadTwiddlerRAM(i),
 				ibits  =>  TwiddlerInput(i),
@@ -2429,29 +2270,29 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		TwiddleDecodeProcess : process (A,Readstb,writestb,TwiddlerCommandSel,TwiddlerDataSel,TwiddlerRAMSel)
+		TwiddleDecodeProcess : process (Aint,Readstb,writestb,TwiddlerCommandSel,TwiddlerDataSel,TwiddlerRAMSel)
 		begin
-			if A(15 downto 8) = TwiddlerCommandAddr then
+			if Aint(15 downto 8) = TwiddlerCommandAddr then
 				TwiddlerCommandSel <= '1';
 			else
 				TwiddlerCommandSel <= '0';
 			end if;
-			if A(15 downto 8) = TwiddlerDataAddr then
+			if Aint(15 downto 8) = TwiddlerDataAddr then
 				TwiddlerDataSel <= '1';
 			else
 				TwiddlerDataSel <= '0';
 			end if;
-			if A(15 downto 8) = TwiddlerRAMAddr then
+			if Aint(15 downto 8) = TwiddlerRAMAddr then
 				TwiddlerRAMSel <= '1';
 			else
 				TwiddlerRAMSel <= '0';
 			end if;
-			LoadTwiddlerCommand <= OneOfNDecode(Twiddlers,TwiddlerCommandSel,writestb,A(5 downto 2));
-			ReadTwiddlerCommand <= OneOfNDecode(Twiddlers,TwiddlerCommandSel,Readstb,A(5 downto 2));
-			LoadTwiddlerData <= OneOfNDecode(Twiddlers,TwiddlerDataSel,writestb,A(5 downto 2));
-			ReadTwiddlerData <= OneOfNDecode(Twiddlers,TwiddlerDataSel,Readstb,A(5 downto 2));
-			LoadTwiddlerRam <= OneOfNDecode(Twiddlers,TwiddlerRAMSel,writestb,A(7 downto 6)); 	-- 16 addresses per Twiddle RAM max, this implies 4 max Twiddlers
-			ReadTwiddlerRam <= OneOfNDecode(Twiddlers,TwiddlerRAMSel,Readstb,A(7 downto 6)); 	-- 16 addresses per Twiddle RAM max
+			LoadTwiddlerCommand <= OneOfNDecode(Twiddlers,TwiddlerCommandSel,writestb,Aint(5 downto 2));
+			ReadTwiddlerCommand <= OneOfNDecode(Twiddlers,TwiddlerCommandSel,Readstb,Aint(5 downto 2));
+			LoadTwiddlerData <= OneOfNDecode(Twiddlers,TwiddlerDataSel,writestb,Aint(5 downto 2));
+			ReadTwiddlerData <= OneOfNDecode(Twiddlers,TwiddlerDataSel,Readstb,Aint(5 downto 2));
+			LoadTwiddlerRam <= OneOfNDecode(Twiddlers,TwiddlerRAMSel,writestb,Aint(7 downto 6)); 	-- 16 addresses per Twiddle RAM max, this implies 4 max Twiddlers
+			ReadTwiddlerRam <= OneOfNDecode(Twiddlers,TwiddlerRAMSel,Readstb,Aint(7 downto 6)); 	-- 16 addresses per Twiddle RAM max
 		end process TwiddleDecodeProcess;
 
 		DoTwiddlerPins: process(TwiddlerOutput)
@@ -2462,10 +2303,10 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 						AltData(i) <=   TwiddlerOutput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1);	--  max ports, more than 8 requires adding to IDROM pins
 					end if;
 					if (ThePinDesc(i)(7 downto 0) and x"C0") = x"00" then 	-- ins match 0X .. 3X
-						TwiddlerInput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBits(i);		-- 16 max ports
+						TwiddlerInput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBitsint(i);		-- 16 max ports
 					end if;
 					if (ThePinDesc(i)(7 downto 0) and x"C0") = x"C0" then 	-- I/Os match CX .. FX
-						TwiddlerInput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBits(i);		-- 16 max ports
+						TwiddlerInput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBitsint(i);		-- 16 max ports
 						AltData(i) <= TwiddlerOutput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(4 downto 0))-1); 	-- 16 max ports
 					end if;
 				end if;
@@ -2486,7 +2327,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 	begin
 		scalertimerx : entity work.scalertimer
 				port map (
-					obus => obus,
+					obus => obusint,
 					readtimer => ReadScalerTimer,
 					clk => clklow
 					);
@@ -2494,7 +2335,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		makescalercounters: for i in 0 to ScalerCounters-1 generate
 			scalercounterx: entity work.scalercounter
 				port map (
-					obus => obus,
+					obus => obusint,
 					countina => SCCountInA(i),
 					countinb => SCCountInB(i),
 					readcount => ReadScalerCount(i),
@@ -2504,42 +2345,42 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		DoScalerCounterPins: process(IOBits)
+		DoScalerCounterPins: process(IOBitsint)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = ScalerCounterTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					if (ThePinDesc(i)(7 downto 0)) = ScalerCounterInA then
-						SCCountInA(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+						SCCountInA(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 					end if;
 					if (ThePinDesc(i)(7 downto 0)) = ScalerCounterInB then
-						SCCountInB(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBits(i);
+						SCCountInB(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
 					end if;
 				end if;
 			end loop;
 		end process;
 
-		ScalerDecodeProcess : process (A,Readstb,ScalerCountSel,ScalerLatchSel)
+		ScalerDecodeProcess : process (Aint,Readstb,ScalerCountSel,ScalerLatchSel)
 		begin
-			if A(15 downto 8) = ScalerCountAddr then	 --
+			if Aint(15 downto 8) = ScalerCountAddr then	 --
 				ScalerCountSel <= '1';
 			else
 				ScalerCountSel <= '0';
 			end if;
 
-			if A(15 downto 8) = ScalerLatchAddr then	 --
+			if Aint(15 downto 8) = ScalerLatchAddr then	 --
 				ScalerLatchSel <= '1';
 			else
 				ScalerLatchSel <= '0';
 			end if;
 
-			if A(15 downto 8) = ScalerTimerAddr and readstb = '1' then	 --
+			if Aint(15 downto 8) = ScalerTimerAddr and readstb = '1' then	 --
 				ReadScalerTimer <= '1';
 			else
 				ReadScalerTimer <= '0';
 			end if;
 
-			ReadScalerCount <= OneOfNDecode(ScalerCounters,ScalerCountSel,readstb,A(7 downto 2));
-			ReadScalerLatch <= OneOfNDecode(ScalerCounters,ScalerLatchSel,readstb,A(7 downto 2));
+			ReadScalerCount <= OneOfNDecode(ScalerCounters,ScalerCountSel,readstb,Aint(7 downto 2));
+			ReadScalerLatch <= OneOfNDecode(ScalerCounters,ScalerLatchSel,readstb,Aint(7 downto 2));
 		end process ScalerDecodeProcess;
 
 	end generate;

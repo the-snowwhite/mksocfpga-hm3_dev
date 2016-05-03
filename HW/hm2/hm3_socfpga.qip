@@ -1,4 +1,4 @@
-#-------------------- Common HM2 MESA Hostmot 2 Sources --------------------------#
+#-------------------- Common HM2 MESAintHostmot 2 Sources --------------------------#
 set_global_assignment -name SEARCH_PATH "../../cv-megawizard/lpm-ip"
 set_global_assignment -name SEARCH_PATH ../../cv-megawizard
 set_global_assignment -name SEARCH_PATH ../../hm2
@@ -18,12 +18,11 @@ set_global_assignment -name QIP_FILE ../../hm2/functions/hm2_functions.qip
 set_global_assignment -name VHDL_FILE ../../hm2/hostmot3.vhd
 
 # Wrappers:
-
 set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeStepgens.vhd
 set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakePwmgens.vhd
 set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeQCounters.vhd
 set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeIOPorts.vhd
-
+set_global_assignment -name VHDL_FILE ../../hm2/wrappers/MakeHm2Dpllmods.vhd
 
 # HM2 cores:
 set_global_assignment -name VHDL_FILE ../../hm2/kubstepgenzi.vhd

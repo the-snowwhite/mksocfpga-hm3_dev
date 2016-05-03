@@ -37,16 +37,17 @@ entity MakePWMgens is
 		UseProbe: boolean);
 	Port (
 		ibus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
-		obus : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
-		A : in std_logic_vector(AddrWidth -1 downto 2);
+		obusint : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
+		Aint: in std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		AltData :  inout std_logic_vector(iowidth-1 downto 0) := (others => '0');
-		IOBits :  inout std_logic_vector(iowidth-1 downto 0) := (others => '0');
+		AltData :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		IOBitsint :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 		clklow : in std_logic;
 		clkmed : in std_logic;
 		clkhigh : in std_logic;
-		Probe : inout std_logic);
+		Probe : inout std_logic
+	);
 
 end MakePWMgens;
 
@@ -98,7 +99,7 @@ architecture dataflow of MakePWMgens is
 			port map (
 				clk  => clklow,
 				ibus => ibus,
-				obus => obus,
+				obus => obusint,
 				load => LoadPWMEnas,
 				read => ReadPWMEnas,
 				clear => '0',
@@ -125,40 +126,40 @@ architecture dataflow of MakePWMgens is
 			);
 		end generate;
 
-		PWMDecodeProcess : process (A,Readstb,writestb,PWMValSel, PWMCRSel)
+		PWMDecodeProcess : process (Aint,Readstb,writestb,PWMValSel, PWMCRSel)
 		begin
-			if A(15 downto 8) = PWMRateAddr and writestb = '1' then	 --
+			if Aint(15 downto 8) = PWMRateAddr and writestb = '1' then	 --
 				LoadPWMRate <= '1';
 			else
 				LoadPWMRate <= '0';
 			end if;
-			if A(15 downto 8) = PDMRateAddr and writestb = '1' then	 --
+			if Aint(15 downto 8) = PDMRateAddr and writestb = '1' then	 --
 				LoadPDMRate <= '1';
 			else
 				LoadPDMRate <= '0';
 			end if;
-			if A(15 downto 8) = PWMEnasAddr and writestb = '1' then	 --
+			if Aint(15 downto 8) = PWMEnasAddr and writestb = '1' then	 --
 				LoadPWMEnas <= '1';
 			else
 				LoadPWMEnas <= '0';
 			end if;
-			if A(15 downto 8) = PWMEnasAddr and readstb = '1' then	 --
+			if Aint(15 downto 8) = PWMEnasAddr and readstb = '1' then	 --
 				ReadPWMEnas <= '1';
 			else
 				ReadPWMEnas <= '0';
 			end if;
-			if A(15 downto 8) = PWMValAddr then	 --  PWMVal select
+			if Aint(15 downto 8) = PWMValAddr then	 --  PWMVal select
 				PWMValSel <= '1';
 			else
 				PWMValSel <= '0';
 			end if;
-			if A(15 downto 8) = PWMCRAddr then	 --  PWM mode register select
+			if Aint(15 downto 8) = PWMCRAddr then	 --  PWM mode register select
 				PWMCRSel <= '1';
 			else
 				PWMCRSel <= '0';
 			end if;
-			LoadPWMVal <= OneOfNDecode(PWMGENs,PWMValSel,writestb,A(7 downto 2)); -- 64 max
-			LoadPWMCR <= OneOfNDecode(PWMGENs,PWMCRSel,writestb,A(7 downto 2));
+			LoadPWMVal <= OneOfNDecode(PWMGENs,PWMValSel,writestb,Aint(7 downto 2)); -- 64 max
+			LoadPWMCR <= OneOfNDecode(PWMGENs,PWMCRSel,writestb,Aint(7 downto 2));
 		end process PWMDecodeProcess;
 
 		DoPWMPins: process(PWMGenOutA,PWMGenOutB,PWMGenOutC)

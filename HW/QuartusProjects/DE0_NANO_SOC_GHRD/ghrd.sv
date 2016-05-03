@@ -372,7 +372,7 @@ assign ARDUINO_IO[LIOWidth-1:0] = liobits_sig;
 HostMot3 HostMot3_inst
 (
 	.ibus(hm_datai) ,	// input [buswidth-1:0] ibus_sig
-	.obus(hm_datao) ,	// output [buswidth-1:0] obus_sig
+	.obustop(hm_datao) ,	// output [buswidth-1:0] obus_sig
 //	.addr(hm_address) ,	// input [addrwidth-1:2] addr_sig	-- addr => A(AddrWidth-1 downto 2),
 	.addr(hm_address) ,	// input [addrwidth-1:2] addr_sig	-- addr => A(AddrWidth-1 downto 2),
 	.readstb(hm_read ) ,	// input  readstb_sig
@@ -384,7 +384,7 @@ HostMot3 HostMot3_inst
 //	.int(int_sig) ,	// output  int_sig							--int => LINT, ---> PCI ?
 //	.dreq(dreq_sig) ,	// output  dreq_sig
 //	.demandmode(demandmode_sig) ,	// output  demandmode_sig
-	.iobits(iobits_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
+	.iobitstop(iobits_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
 	.liobits(liobits_sig) ,	// inout [lIOWidth-1:0] 			--liobits_sig
 //	.rates(rates_sig) ,	// output [4:0] rates_sig
 //	.leds(leds_sig) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
