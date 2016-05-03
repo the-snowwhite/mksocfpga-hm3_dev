@@ -31,11 +31,12 @@ put a line like this in /etc/fstab:
 
 cat hm2reg_uio.dts
 
-/dts-v1/ /plugin/;
 
-/ {
-   fragment@0 {
-      target-path = "/soc/base_fpga_region";
+    /dts-v1/ /plugin/;
+
+    / {
+       fragment@0 {
+          target-path = "/soc/base_fpga_region";
 		#address-cells = <1>;
 		#size-cells = <1>;
       __overlay__ {
