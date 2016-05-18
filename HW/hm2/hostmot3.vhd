@@ -67,7 +67,7 @@ use IEEE.std_logic_UNSIGNED.ALL;
 --     POSSIBILITY OF SUCH DAMAGE.
 --
 library pins;
-use pins.PIN_G540x2_34.all;
+use pins.PIN_G540x2_34_irq.all;
 use work.IDROMConst.all;
 --library UNISIM;
 --use UNISIM.VComponents.all;
@@ -130,7 +130,7 @@ entity HostMot3 is
 	clklow: in std_logic;
 	clkmed: in std_logic;
 	clkhigh: in std_logic;
-	int: out std_logic;
+	intirq: out std_logic;
 	dreq: out std_logic;
 	demandmode: out std_logic;
 	iobitstop: inout std_logic_vector (IOWidth -1 downto 0);
@@ -294,6 +294,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			clkhigh	=>	 clkhigh,
 			PRobe 	=>	 PRobe,
 			demandmode => demandmode,		-- passed directly to top
+			intirq =>	intirq,
 			dreq =>	dreq,
 			RateSources =>	RateSources,
 			LEDS =>	leds
@@ -401,12 +402,12 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		)
 		port map (
 			ibus => ibus,
-			obusint => obustop,
+			obusint => obusint,
 			Aint  => Aint,
 			readstb =>	 readstb,
 			writestb =>	 writestb,
 			AltData =>	 AltData,
-			IOBitsint => iobitstop,
+			IOBitsint => IOBitsint,
 			clklow 	=>	 clklow,
 			clkmed 	=>	 clkmed,
 			clkhigh	=>	 clkhigh,

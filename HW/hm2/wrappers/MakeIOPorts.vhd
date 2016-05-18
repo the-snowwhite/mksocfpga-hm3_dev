@@ -76,6 +76,7 @@ entity MakeIOPorts is
 		clkhigh : in std_logic;
 		Probe : inout std_logic;
 		demandmode: out std_logic;
+		intirq: out std_logic;
 		dreq: out std_logic;
 		RateSources: std_logic_vector(4 downto 0);
 		LEDS: out std_logic_vector(ledcount-1 downto 0)
@@ -140,8 +141,6 @@ architecture dataflow of MakeIOPorts is
 	signal LoadDMDMAMode: std_logic;
 	signal ReadDMDMAMode: std_logic;
 	signal DRQSources: std_logic_vector(NDRQs -1 downto 0);
-
-	signal INT:	std_logic;
 
 	begin
 
@@ -250,7 +249,7 @@ architecture dataflow of MakeIOPorts is
          readstatus => ReadIRqStatus,
          clear =>  ClearIRQ,
          ratesource => RateSources, -- DPLL timer channels, channel 4 is refout
-         int => INT);
+         int => INTIRQ);
 
 		IRQDecodePRocess: process(Adr,readstb,writestb)
 		begin
@@ -457,7 +456,7 @@ architecture dataflow of MakeIOPorts is
 	dotieupint: if not UseIRQLogic generate
 		tieupint : process(clklow)
 		begin
-			INT <= '1';
+			INTIRQ <= '1';
 		end process;
 	end generate;
 
