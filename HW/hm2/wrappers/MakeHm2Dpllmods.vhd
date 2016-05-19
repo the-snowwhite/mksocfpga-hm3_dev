@@ -8,7 +8,7 @@ use IEEE.std_logic_UNSIGNED.ALL;
 
 -- This file is created for Machinekit intended use
 library pins;
-use work.PIN_G540x2_34.all;
+use work.PIN_G540x2_34_irq.all;
 use work.IDROMConst.all;
 
 use work.oneofndecode.all;
@@ -30,12 +30,16 @@ entity MakeHm2Dpllmods is
 		timersize: integer;			-- = ~480 usec at 33 MHz, ~320 at 50 Mhz
 		asize: integer;
 		rsize: integer;
+		HM2DPLLs: integer;
+		MuxedQCounters: integer;
+		MuxedQCountersMIM: integer;
 		PWMGens: integer;
 		PWMRefWidth  : integer;
   		UsePWMEnas : boolean;
+  		TPPWMGens : integer;
 		QCounters: integer;
-		UseProbe: boolean;
-		HM2DPLLs: integer
+		UseMuxedProbe: boolean;
+		UseProbe: boolean
 	);
 	Port (
 		ibus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
@@ -108,8 +112,7 @@ architecture dataflow of MakeHm2Dpllmods is
 			syncin => DPLLSyncIn,
 			timerout => DPLLTimers,
 			refout	=> DPLLRefOut
-			);
-
+		);
 		HM2DPLLDecodeProcess : process (Aint,Readstb,writestb,DPLLTimers,RateSources,DPLLRefOut)
 		begin
 			if Aint(15 downto 8) = HM2DPLLBaseRateAddr and writestb = '1' then	 --

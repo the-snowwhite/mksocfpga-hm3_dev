@@ -9,7 +9,7 @@ use IEEE.std_logic_UNSIGNED.ALL;
 
 -- This file is created for Machinekit intended use
 library pins;
-use work.PIN_G540x2_34.all;
+use work.PIN_G540x2_34_irq.all;
 use work.IDROMConst.all;
 
 use work.oneofndecode.all;
@@ -54,6 +54,7 @@ entity MakeIOPorts is
 		PWMRefWidth  : integer;
   		UsePWMEnas : boolean;
 		QCounters: integer;
+		UseMuxedProbe: boolean;
 		UseProbe: boolean;
 		UseWatchDog: boolean;
 		UseDemandModeDMA: boolean;
@@ -63,7 +64,8 @@ entity MakeIOPorts is
 -- 		inbus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
 		ibus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
 		obustop : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
- 		obusint : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
+-- 		obusint : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
+ 		obusint : in std_logic_vector(BusWidth -1 downto 0);
 		addr : in std_logic_vector(AddrWidth -1 downto 2);
  		Aint : out std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
@@ -143,6 +145,8 @@ architecture dataflow of MakeIOPorts is
 	signal DRQSources: std_logic_vector(NDRQs -1 downto 0);
 
 	begin
+
+	obustop <= obusint;
 
 	ahosmotid : entity work.hostmotid
 	generic map (
@@ -528,15 +532,15 @@ architecture dataflow of MakeIOPorts is
 			LoadDAQFIFOMode <= OneOfNDecode(DAQFIFOs,DAQFIFOModeSel,writestb,Adr(5 downto 2));
 		end process DAQFIFODecodeProcess;
 
-		DoDAQFIFOPins: process(DAQFIFOFull, IOBitsint)
+		DoDAQFIFOPins: process(DAQFIFOFull, iobitstop)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = DAQFIFOTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					if (ThePinDesc(i)(7 downto 0) and x"C0") = x"00" then 	-- DAQ data matches 0X .. 3X
-						DAQFIFOData(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBitsint(i);		-- 16 max ports
+						DAQFIFOData(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= iobitstop(i);		-- 16 max ports
 					end if;
 					if ThePinDesc(i)(7 downto 0) = DAQFIFOStrobePin then
-						 DAQFIFOStrobe(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+						 DAQFIFOStrobe(conv_integer(ThePinDesc(i)(23 downto 16))) <= iobitstop(i);
 					end if;
 					if ThePinDesc(i)(7 downto 0) = DAQFIFOFullPin then
 						AltData(i) <= DAQFIFOFull(conv_integer(ThePinDesc(i)(23 downto 16)));

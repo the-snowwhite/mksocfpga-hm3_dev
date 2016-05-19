@@ -269,6 +269,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		PWMRefWidth  => PWMRefWidth,
 		UsePWMEnas  => UsePWMEnas,
 		QCounters  => QCounters,
+		UseMuxedProbe  => UseMuxedProbe,
 		UseProbe  => UseProbe,
 		UseWatchDog  => UseWatchDog,
 		UseDemandModeDMA  => UseDemandModeDMA,
@@ -314,12 +315,16 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
  		timersize  => 14,
  		asize  => 48,
  		rsize  => 32,
+		HM2DPLLs => HM2DPLLs,
+		MuxedQCounters  => MuxedQCounters,
+		MuxedQCountersMIM  => MuxedQCountersMIM,
 		PWMGens  => PWMGens,
 		PWMRefWidth  => PWMRefWidth,
 		UsePWMEnas  => UsePWMEnas,
+		TPPWMGens  => TPPWMGens,
 		QCounters  => QCounters,
-		UseProbe  => UseProbe,
-		HM2DPLLs => HM2DPLLs
+		UseMuxedProbe  => UseMuxedProbe,
+		UseProbe  => UseProbe
 		)
 		port map (
 			ibus  =>  ibus,
@@ -354,10 +359,15 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
  		timersize  => 14,
  		asize  => 48,
  		rsize  => 32,
+		HM2DPLLs => HM2DPLLs,
+		MuxedQCounters  => MuxedQCounters,
+		MuxedQCountersMIM  => MuxedQCountersMIM,
 		PWMGens  => PWMGens,
 		PWMRefWidth  => PWMRefWidth,
 		UsePWMEnas  => UsePWMEnas,
+		TPPWMGens  => TPPWMGens,
 		QCounters  => QCounters,
+		UseMuxedProbe  => UseMuxedProbe,
 		UseProbe  => UseProbe
 		)
 		port map (
@@ -391,10 +401,15 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
  		timersize  => 14,
  		asize  => 48,
  		rsize  => 32,
+		HM2DPLLs => HM2DPLLs,
+		MuxedQCounters  => MuxedQCounters,
+		MuxedQCountersMIM  => MuxedQCountersMIM,
 		PWMGens  => PWMGens,
 		PWMRefWidth  => PWMRefWidth,
 		UsePWMEnas  => UsePWMEnas,
+		TPPWMGens  => TPPWMGens,
 		QCounters  => QCounters,
+		UseMuxedProbe  => UseMuxedProbe,
 		UseProbe  => UseProbe
 		)
 		port map (
@@ -411,255 +426,47 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			PRobe 	=>	 PRobe
 		);
 
-	makemuxedqcounters: if MuxedQCounters >0 generate
-	signal LoadMuxedQCounter: std_logic_vector(MuxedQCounters-1 downto 0);
-	signal ReadMuxedQCounter: std_logic_vector(MuxedQCounters-1 downto 0);
-	signal LoadMuxedQCounterCCR: std_logic_vector(MuxedQCounters-1 downto 0);
-	signal ReadMuxedQCounterCCR: std_logic_vector(MuxedQCounters-1 downto 0);
-	signal MuxedQuadA: std_logic_vector(MuxedQCounters/2 -1 downto 0); -- 2 should be muxdepth constant?
-	signal MuxedQuadB: std_logic_vector(MuxedQCounters/2 -1 downto 0);
-	signal MuxedIndex: std_logic_vector(MuxedQCounters/2 -1 downto 0);
-	signal MuxedIndexMask: std_logic_vector(MuxedQCounters -1 downto 0);
-	signal MuxedIndexMaskMIM: std_logic_vector(MuxedQCountersMIM/2 -1 downto 0);
-	signal DemuxedIndexMask: std_logic_vector(MuxedQCountersMIM -1 downto 0);
-	signal DeMuxedQuadA: std_logic_vector(MuxedQCounters -1 downto 0);
-	signal DeMuxedQuadB: std_logic_vector(MuxedQCounters -1 downto 0);
-	signal DeMuxedIndex: std_logic_vector(MuxedQCounters -1 downto 0);
-	signal MuxedQCounterSel : std_logic;
-	signal MuxedQCounterCCRSel : std_logic;
-	signal MuxedProbe : std_logic; -- only 1!
-	signal LoadMuxedTSDiv : std_logic;
-	signal ReadMuxedTSDiv : std_logic;
-	signal ReadMuxedTS : std_logic;
-	signal MuxedTimeStampBus: std_logic_vector(15 downto 0);
-	signal LoadMuxedQCountRate : std_logic;
-	signal MuxedQCountFilterRate : std_logic;
-	signal PrePreMuxedQctrSel : std_logic_vector(1 downto 0);
-	signal PreMuxedQctrSel : std_logic_vector(1 downto 0);
-	signal MuxedQCtrSel : std_logic_vector(1 downto 0);
-	signal PreMuxedQCtrSampleTime : std_logic_vector(1 downto 0);
-	signal MuxedQCtrSampleTime : std_logic_vector(1 downto 0);
-	signal MuxedQCountDeskew : std_logic_vector(3 downto 0);
-	begin
-		timestampx: entity work.timestamp
-			port map(
-				ibus => ibus(15 downto 0),
-				obus => obusint(15 downto 0),
-				loadtsdiv => LoadMuxedTSDiv,
-				readts => ReadMuxedTS,
-				readtsdiv => ReadMuxedTSDiv,
-				tscount => MuxedTimeStampBus,
-				clk => clklow
-			);
-		qcountratemx: entity work.qcounteratesk
-			generic map (clock => ClockLow) -- default is ~8MHz
-			port map(
-				ibus => ibus(31 downto 0),
-				loadRate => LoadMuxedQCountRate,
-				rateout => MuxedQcountFilterRate,
-				deskewout => MuxedQCountDeskew,
-				clk => clklow
-			);
-		qcountermuxdeskew: entity work.srl16delay
-			generic map ( width => 2)
-			port map (
-			   clk => clklow,
-				dlyin => PrePreMuxedQCtrSel,
-				dlyout => PreMuxedQCtrSampleTime,
-				delay => MuxedQCountDeskew
-			);
-
-		nuseprobe2: if not UseMuxedProbe generate
-			makemuxedquadcounters: for i in 0 to MuxedQCounters-1 generate
-				qcounterx: entity work.qcounter
-				generic map (
-					BusWidth => BusWidth
-				)
-				port map (
-					obus => obusint,
-					ibus => ibus,
-					quada => DemuxedQuadA(i),
-					quadb => DemuxedQuadB(i),
-					index => DemuxedIndex(i),
-					loadccr => LoadMuxedQcounterCCR(i),
-					readccr => ReadMuxedQcounterCCR(i),
-					readcount => ReadMuxedQcounter(i),
-					countclear => LoadMuxedQcounter(i),
-					timestamp => MuxedTimeStampBus,
-					indexmask => MuxedIndexMask(i),
-					filterrate => MuxedQCountFilterRate,
-					clk =>	clklow
-				);
-			end generate makemuxedquadcounters;
-		end generate nuseprobe2;
-
-		useprobe2: if UseMuxedProbe generate
-			makemuxedquadcountersp: for i in 0 to MuxedQCounters-1 generate
-				qcounterx: entity work.qcounterp
-				generic map (
-					BusWidth => BusWidth
-				)
-				port map (
-					obus => obusint,
-					ibus => ibus,
-					quada => DemuxedQuadA(i),
-					quadb => DemuxedQuadB(i),
-					index => DemuxedIndex(i),
-					loadccr => LoadMuxedQcounterCCR(i),
-					readccr => ReadMuxedQcounterCCR(i),
-					readcount => ReadMuxedQcounter(i),
-					countclear => LoadMuxedQcounter(i),
-					timestamp => MuxedTimeStampBus,
-					indexmask => MuxedIndexMask(i),
-					probe => Probe,
-					filterrate => MuxedQCountFilterRate,
-					clk =>	clklow
-				);
-			end generate makemuxedquadcountersp;
-		end generate useprobe2;
-
-		nuseprobe3: if not UseMuxedProbe generate
-			makemuxedquadcountersmim: for i in 0 to MuxedQCountersMIM-1 generate
-				qcounterx: entity work.qcounter
-				generic map (
-					BusWidth => BusWidth
-				)
-				port map (
-					obus => obusint,
-					ibus => ibus,
-					quada => DemuxedQuadA(i),
-					quadb => DemuxedQuadB(i),
-					index => DemuxedIndex(i),
-					loadccr => LoadMuxedQcounterCCR(i),
-					readccr => ReadMuxedQcounterCCR(i),
-					readcount => ReadMuxedQcounter(i),
-					countclear => LoadMuxedQcounter(i),
-					timestamp => MuxedTimeStampBus,
-					indexmask => DeMuxedIndexMask(i),
-					filterrate => MuxedQCountFilterRate,
-					clk =>	clklow
-				);
-			end generate makemuxedquadcountersmim;
-		end generate nuseprobe3;
-
-		useprobe3: if UseMuxedProbe generate
-			makemuxedquadcountersmimp: for i in 0 to MuxedQCountersMIM-1 generate
-				qcounterx: entity work.qcounterp
-				generic map (
-					BusWidth => BusWidth
-				)
-				port map (
-					obus => obusint,
-					ibus => ibus,
-					quada => DemuxedQuadA(i),
-					quadb => DemuxedQuadB(i),
-					index => DemuxedIndex(i),
-					loadccr => LoadMuxedQcounterCCR(i),
-					readccr => ReadMuxedQcounterCCR(i),
-					readcount => ReadMuxedQcounter(i),
-					countclear => LoadMuxedQcounter(i),
-					timestamp => MuxedTimeStampBus,
-					indexmask => DeMuxedIndexMask(i),
-					probe => Probe,
-					filterrate => MuxedQCountFilterRate,
-					clk =>	clklow
-				);
-			end generate makemuxedquadcountersmimp;
-		end generate useprobe3;
-
-		MuxedQCounterDecodeProcess : process (Aint,Readstb,writestb,MuxedQCounterSel, MuxedQCounterCCRSel)
-		begin
-			if Aint(15 downto 8) = MuxedQCounterAddr then	 --  QCounter select
-				MuxedQCounterSel <= '1';
-			else
-				MuxedQCounterSel <= '0';
-			end if;
-			if Aint(15 downto 8) = MuxedQCounterCCRAddr then	 --  QCounter CCR register select
-				MuxedQCounterCCRSel <= '1';
-			else
-				MuxedQCounterCCRSel <= '0';
-			end if;
-			if Aint(15 downto 8) = MuxedTSDivAddr and writestb = '1' then	 --
-				LoadMuxedTSDiv <= '1';
-			else
-				LoadMuxedTSDiv <= '0';
-			end if;
-			if Aint(15 downto 8) = MuxedTSDivAddr and readstb = '1' then	 --
-				ReadMuxedTSDiv <= '1';
-			else
-				ReadMuxedTSDiv <= '0';
-			end if;
-			if Aint(15 downto 8) = MuxedTSAddr and readstb = '1' then	 --
-				ReadMuxedTS <= '1';
-			else
-				ReadMuxedTS <= '0';
-			end if;
-			if Aint(15 downto 8) = MuxedQCRateAddr and writestb = '1' then	 --
-				LoadMuxedQCountRate <= '1';
-			else
-				LoadMuxedQCountRate <= '0';
-			end if;
-			LoadMuxedQCounter <= OneOfNDecode(MuxedQCounters,MuxedQCounterSel,writestb,Aint(7 downto 2));  -- 64 max
-			ReadMuxedQCounter <= OneOfNDecode(MuxedQCounters,MuxedQCounterSel,Readstb,Aint(7 downto 2));
-			LoadMuxedQCounterCCR <= OneOfNDecode(MuxedQCounters,MuxedQCounterCCRSel,writestb,Aint(7 downto 2));
-			ReadMuxedQCounterCCR <= OneOfNDecode(MuxedQCounters,MuxedQCounterCCRSel,Readstb,Aint(7 downto 2));
-		end process MuxedQCounterDecodeProcess;
-
-		DoMuxedQCounterPins: process(IOBitsint,MuxedQCtrSel)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = MuxedQCountTag then
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
-						when MuxedQCountQAPin =>
-							MuxedQuadA(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
-						when MuxedQCountQBPin =>
-							MuxedQuadB(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
-						when MuxedQCountIdxPin =>
-							MuxedIndex(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
-						when MuxedQCountIdxMaskPin =>
-							MuxedIndexMask(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
-						when MuxedQCountProbePin =>
-							MuxedProbe <= IOBitsint(i); -- only 1 please!
-						when others => null;
-					end case;
-				end if;
-				if ThePinDesc(i)(15 downto 8) = MuxedQCountSelTag then
-					case(ThePinDesc(i)(7 downto 0)) is	--secondary pin function
-						when MuxedQCountSel0Pin =>
-							AltData(i) <= MuxedQCtrSel(0);
-						when MuxedQCountSel1Pin =>
-							AltData(i) <= MuxedQCtrSel(1);
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-
-		EncoderDeMux: process(clklow)
-		begin
-			if rising_edge(clklow) then
-				if MuxedQCountFilterRate = '1' then
-					PrePreMuxedQCtrSel <= PrePreMuxedQCtrSel + 1;
-				end if;
-				PreMuxedQCtrSel <= PrePreMuxedQCtrSel;
-				MuxedQCtrSel <= PreMuxedQCtrSel;		-- the external mux pin
-				MuxedQCtrSampleTime <= PreMuxedQCtrSampleTime;
-				for i in 0 to ((MuxedQCounters/2) -1) loop -- just 2 deep for now
-					if PreMuxedQCtrSampleTime(0) = '1' and MuxedQCtrSampleTime(0) = '0' then	-- latch the even inputs
-						DeMuxedQuadA(2*i) <= MuxedQuadA(i);
-						DeMuxedQuadB(2*i) <= MuxedQuadB(i);
-						DeMuxedIndex(2*i) <= MuxedIndex(i);
-					end if;
-					if PreMuxedQCtrSampleTime(0) = '0' and MuxedQCtrSampleTime(0) = '1' then	-- latch the odd inputs
-						DeMuxedQuadA(2*i+1) <= MuxedQuadA(i);
-						DeMuxedQuadB(2*i+1) <= MuxedQuadB(i);
-						DeMuxedIndex(2*i+1) <= MuxedIndex(i);
-					end if;
-				end loop;
-			end if; -- clk
-		end process;
-
-	end generate makemuxedqcounters;
+	MakeMuxedQCounters : entity work.MakeMuxedQCounters
+	generic map (
+		ThePinDesc => ThePinDesc,
+		ClockHigh => ClockHigh,
+		ClockMed => ClockMed,
+		ClockLow  => ClockLow,
+		BusWidth  => BusWidth,
+		AddrWidth  => AddrWidth,
+		IOWidth  => IOWidth,
+		STEPGENs  => STEPGENs,
+ 		StepGenTableWidth => StepGenTableWidth,
+ 		UseStepGenPreScaler => UseStepGenPreScaler,
+ 		UseStepgenIndex => UseStepgenIndex,
+ 		UseStepgenProbe => UseStepgenProbe,
+ 		timersize  => 14,
+ 		asize  => 48,
+ 		rsize  => 32,
+		HM2DPLLs => HM2DPLLs,
+		MuxedQCounters  => MuxedQCounters,
+		MuxedQCountersMIM  => MuxedQCountersMIM,
+		PWMGens  => PWMGens,
+		PWMRefWidth  => PWMRefWidth,
+		UsePWMEnas  => UsePWMEnas,
+		TPPWMGens  => TPPWMGens,
+		QCounters  => QCounters,
+		UseMuxedProbe  => UseMuxedProbe,
+		UseProbe  => UseProbe
+		)
+		port map (
+			ibus => ibus,
+			obusint => obusint,
+			Aint  => Aint,
+			readstb =>	 readstb,
+			writestb =>	 writestb,
+			AltData =>	 AltData,
+			IOBitsint => IOBitsint,
+			clklow 	=>	 clklow,
+			clkmed 	=>	 clkmed,
+			clkhigh	=>	 clkhigh,
+			PRobe 	=>	 PRobe
+		);
 
 	MakePWMgens : entity work.MakePWMgens
 	generic map (
@@ -678,10 +485,15 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
  		timersize  => 14,
  		asize  => 48,
  		rsize  => 32,
+		HM2DPLLs => HM2DPLLs,
+		MuxedQCounters  => MuxedQCounters,
+		MuxedQCountersMIM  => MuxedQCountersMIM,
 		PWMGens  => PWMGens,
 		PWMRefWidth  => PWMRefWidth,
 		UsePWMEnas  => UsePWMEnas,
+		TPPWMGens  => TPPWMGens,
 		QCounters  => QCounters,
+		UseMuxedProbe  => UseMuxedProbe,
 		UseProbe  => UseProbe
 		)
 		port map (
@@ -698,121 +510,47 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			PRobe 	=>	 PRobe
 		);
 
-	maketppwmref:  if (TPPWMGens > 0) generate
-	signal LoadTPPWMVal: std_logic_vector(TPPWMGens -1 downto 0);
-	signal LoadTPPWMENA: std_logic_vector(TPPWMGens -1 downto 0);
-	signal ReadTPPWMENA: std_logic_vector(TPPWMGens -1 downto 0);
-	signal LoadTPPWMDZ: std_logic_vector(TPPWMGens -1 downto 0);
-	signal TPPWMGenOutA: std_logic_vector(TPPWMGens -1 downto 0);
-	signal TPPWMGenOutB: std_logic_vector(TPPWMGens -1 downto 0);
-	signal TPPWMGenOutC: std_logic_vector(TPPWMGens -1 downto 0);
-	signal NTPPWMGenOutA: std_logic_vector(TPPWMGens -1 downto 0);
-	signal NTPPWMGenOutB: std_logic_vector(TPPWMGens -1 downto 0);
-	signal NTPPWMGenOutC: std_logic_vector(TPPWMGens -1 downto 0);
-	signal TPPWMEna: std_logic_vector(TPPWMGens -1 downto 0);
-	signal TPPWMFault: std_logic_vector(TPPWMGens -1 downto 0);
-	signal TPPWMSample: std_logic_vector(TPPWMGens -1 downto 0);
-	signal LoadTPPWMRate : std_logic;
-	signal TPRefCountBus : std_logic_vector(10 downto 0);
-	signal TPPWMValSel : std_logic;
-	signal TPPWMEnaSel : std_logic;
-	signal TPPWMDZSel : std_logic;
-	begin
-		tppwmref : entity work.pwmrefh
-		generic map (
-			BusWidth => 16,
-			refwidth => 11			-- always 11 for TPPWM
-			)
+	MakeTPPWMGens : entity work.MakeTPPWMGens
+	generic map (
+		ThePinDesc => ThePinDesc,
+		ClockHigh => ClockHigh,
+		ClockMed => ClockMed,
+		ClockLow  => ClockLow,
+		BusWidth  => BusWidth,
+		AddrWidth  => AddrWidth,
+		IOWidth  => IOWidth,
+		STEPGENs  => STEPGENs,
+ 		StepGenTableWidth => StepGenTableWidth,
+ 		UseStepGenPreScaler => UseStepGenPreScaler,
+ 		UseStepgenIndex => UseStepgenIndex,
+ 		UseStepgenProbe => UseStepgenProbe,
+ 		timersize  => 14,
+ 		asize  => 48,
+ 		rsize  => 32,
+		HM2DPLLs => HM2DPLLs,
+		MuxedQCounters  => MuxedQCounters,
+		MuxedQCountersMIM  => MuxedQCountersMIM,
+		PWMGens  => PWMGens,
+		PWMRefWidth  => PWMRefWidth,
+		UsePWMEnas  => UsePWMEnas,
+		TPPWMGens  => TPPWMGens,
+		QCounters  => QCounters,
+		UseMuxedProbe  => UseMuxedProbe,
+		UseProbe  => UseProbe
+		)
 		port map (
-			clk => clklow,
-			hclk => clkhigh,
-			refcount	=> TPRefCountBus,
-			ibus => ibus(15 downto 0),
-			pwmrateload => LoadTPPWMRate,
-			pdmrateload => '0'
-			);
-
-		maketppwmgens : for i in 0 to TPPWMGens-1 generate
-			tppwmgenx: entity work.threephasepwm
-			port map (
-				clk => clklow,
-				hclk => clkhigh,
-				refcount => TPRefCountBus,
-				ibus => ibus,
-				obus => obusint,
-				loadpwmreg => LoadTPPWMVal(i),
-				loadenareg => LoadTPPWMENA(i),
-				readenareg => ReadTPPWMENA(i),
-				loaddzreg => LoadTPPWMDZ(i),
-				pwmouta => TPPWMGenOutA(i),
-				pwmoutb => TPPWMGenOutB(i),
-				pwmoutc => TPPWMGenOutC(i),
-				npwmouta => NTPPWMGenOutA(i),
-				npwmoutb => NTPPWMGenOutB(i),
-				npwmoutc => NTPPWMGenOutC(i),
-				pwmenaout => TPPWMEna(i),
-				pwmfault => TPPWMFault(i),
-				pwmsample => TPPWMSample(i)
-
-				);
-		end generate;
-
-		TPPWMDecodeProcess : process (Aint,Readstb,writestb,TPPWMValSel, TPPWMEnaSel,TPPWMDZSel)
-		begin
-			if Aint(15 downto 8) = TPPWMValAddr then	 --  TPPWMVal select
-				TPPWMValSel <= '1';
-			else
-				TPPWMValSel <= '0';
-			end if;
-			if Aint(15 downto 8) = TPPWMEnaAddr then	 --  TPPWM mode register select
-				TPPWMEnaSel <= '1';
-			else
-				TPPWMEnaSel <= '0';
-			end if;
-			if Aint(15 downto 8) = TPPWMDZAddr then	 --  TPPWMDZ mode register select
-				TPPWMDZSel <= '1';
-			else
-				TPPWMDZSel <= '0';
-			end if;
-			if Aint(15 downto 8) = TPPWMRateAddr and writestb = '1' then	 --
-				LoadTPPWMRate <= '1';
-			else
-				LoadTPPWMRate <= '0';
-			end if;
-			LoadTPPWMVal <= OneOfNDecode(TPPWMGENs,TPPWMValSel,writestb,Aint(7 downto 2)); -- 64 max
-			LoadTPPWMEna <= OneOfNDecode(TPPWMGENs,TPPWMEnaSel,writestb,Aint(7 downto 2));
-			ReadTPPWMEna <= OneOfNDecode(TPPWMGENs,TPPWMEnaSel,Readstb,Aint(7 downto 2));
-			LoadTPPWMDZ <= OneOfNDecode(TPPWMGENs,TPPWMDZSel,writestb,Aint(7 downto 2));
-		end process TPPWMDecodeProcess;
-
-		DoTPPWMPins: process(TPPWMGenOutA,TPPWMGenOutB,TPPWMGenOutC,
-									NTPPWMGenOutA,NTPPWMGenOutB,NTPPWMGenOutC,TPPWMEna)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = TPPWMTag then
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
-						when TPPWMAOutPin =>
-							AltData(i) <= TPPWMGENOutA(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when TPPWMBOutPin =>
-							AltData(i) <= TPPWMGENOutB(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when TPPWMCOutPin =>
-							AltData(i) <= TPPWMGENOutC(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when NTPPWMAOutPin =>
-							AltData(i) <= NTPPWMGENOutA(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when NTPPWMBOutPin =>
-							AltData(i) <= NTPPWMGENOutB(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when NTPPWMCOutPin =>
-							AltData(i) <= NTPPWMGENOutC(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when TPPWMEnaPin =>
-							AltData(i) <= TPPWMEna(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when TPPWMFaultPin =>
-							TPPWMFault(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-	end generate;
+			ibus => ibus,
+			obusint => obusint,
+			Aint=> Aint,
+			readstb =>	 readstb,
+			writestb =>	 writestb,
+			AltData =>	 AltData,
+			IOBitsint =>	 IOBitsint,
+			clklow 	=>	 clklow,
+			clkmed 	=>	 clkmed,
+			clkhigh	=>	 clkhigh,
+			PRobe 	=>	 PRobe
+		);
 
 	makespimod:  if SPIs >0  generate
 	signal LoadSPIBitCount: std_logic_vector(SPIs -1 downto 0);
