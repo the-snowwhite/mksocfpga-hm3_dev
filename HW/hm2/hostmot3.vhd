@@ -66,7 +66,7 @@ use IEEE.std_logic_UNSIGNED.ALL;
 --     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --     POSSIBILITY OF SUCH DAMAGE.
 --
-use work.PIN_G540x2_34_irq.all;
+use work.Pintypes.all;
 use work.IDROMConst.all;
 use work.log2.all;
 use work.decodedstrobe.all;
@@ -119,7 +119,7 @@ entity HostMot3 is
    (
      -- Generic 32  bit bus interface signals --
 
-	ibus: in std_logic_vector(BusWidth -1 downto 0);
+	ibustop: in std_logic_vector(BusWidth -1 downto 0);
 	obustop: out std_logic_vector(BusWidth -1 downto 0);
 	addr: in std_logic_vector(AddrWidth -1 downto 2);
 	readstb: in std_logic;
@@ -130,7 +130,8 @@ entity HostMot3 is
 	intirq: out std_logic;
 	dreq: out std_logic;
 	demandmode: out std_logic;
-	iobitstop: inout std_logic_vector (IOWidth -1 downto 0);
+	iobitsouttop: out std_logic_vector (IOWidth -1 downto 0);
+	iobitsintop: in std_logic_vector (IOWidth -1 downto 0);
 	liobits: inout std_logic_vector (lIOWidth -1 downto 0);
 	rates: out std_logic_vector (4 downto 0);
 	leds: out std_logic_vector(ledcount-1 downto 0)
@@ -146,8 +147,10 @@ architecture dataflow of HostMot3 is
 --	IDROM related signals
 signal Aint: std_logic_vector(AddrWidth -1 downto 2);
 
+signal ibusint: std_logic_vector(BusWidth -1 downto 0);
 signal obusint: std_logic_vector(BusWidth -1 downto 0);
-signal IOBitsint: std_logic_vector(IOWidth-1 downto 0);
+signal IOBitsin: std_logic_vector(IOWidth-1 downto 0);
+signal CoreDataOut: std_logic_vector(IOWidth-1 downto 0);
 
 	-- Extract the number of modules of each type from the ModuleID
 constant StepGens: integer := NumberOfModules(TheModuleID,StepGenTag);
@@ -206,7 +209,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 
 -- I/O port related signals
 
-	signal AltData :  std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+	signal IOBitsCorein :  std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 
 -- qcounter related signals
 	signal Probe : std_logic; -- hs probe input for counters,stepgens etc
@@ -277,25 +280,28 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		LEDCount  => LEDCount
 		)
 		port map (
-			ibus => ibus,
-			obustop => obustop,
-			obusint => obusint,
-			addr => addr,
-			Aint => Aint,
-			readstb =>	 readstb,
-			writestb =>	 writestb,
-			AltData =>	 AltData,
-			iobitstop =>	 iobitstop,
-			IOBitsint =>	 IOBitsint,
-			clklow 	=>	 clklow,
-			clkmed 	=>	 clkmed,
-			clkhigh	=>	 clkhigh,
-			PRobe 	=>	 PRobe,
-			demandmode => demandmode,		-- passed directly to top
-			intirq =>	intirq,
-			dreq =>	dreq,
-			RateSources =>	RateSources,
-			LEDS =>	leds
+			ibustop			=>	ibustop,
+			ibusint			=>	ibusint,
+			obustop			=>	obustop,
+			obusint			=>	obusint,
+			addr				=>	addr,
+			Aint				=>	Aint,
+			readstb			=>	readstb,
+			writestb			=>	writestb,
+			iobitsouttop	=>	iobitsouttop,
+			iobitsintop		=>	iobitsintop,
+			IOBitsCorein	=>	IOBitsCorein,
+			CoreDataOut		=>	CoreDataOut,
+--			portdata			=>	portdata,
+			clklow 			=>	clklow,
+			clkmed 			=>	clkmed,
+			clkhigh			=>	clkhigh,
+			PRobe 			=>	PRobe,
+			demandmode		=>	demandmode,		-- passed directly to top
+			intirq			=>	intirq,
+			dreq				=>	dreq,
+			RateSources		=>	RateSources,
+			LEDS				=>	leds
 		);
 
 	MakeHm2Dpllmods : entity work.MakeHm2Dpllmods
@@ -327,19 +333,19 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		UseProbe  => UseProbe
 		)
 		port map (
-			ibus  =>  ibus,
-			obusint  =>  obusint,
-			Aint  =>  Aint,
-			readstb  =>  readstb,
-			writestb  =>  writestb,
-			AltData  =>  AltData,
-			IOBitsint  =>  IOBitsint,
-			clklow  =>  clklow,
-			clkmed  =>  clkmed,
-			clkhigh  =>  clkhigh,
-			PRobe  =>  PRobe,
-			RateSources  =>  RateSources,
-			rates  =>  rates
+			ibus				=>  ibusint,
+			obusint			=>  obusint,
+			Aint				=>  Aint,
+			readstb			=>  readstb,
+			writestb			=>  writestb,
+			CoreDataOut		=>  CoreDataOut,
+			IOBitsCorein	=>  IOBitsCorein,
+			clklow			=>  clklow,
+			clkmed			=>  clkmed,
+			clkhigh			=>  clkhigh,
+			PRobe				=>  PRobe,
+			RateSources		=>  RateSources,
+			rates				=>  rates
 		);
 
 	MakeStepgens : entity work.MakeStepgens
@@ -371,17 +377,19 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		UseProbe  => UseProbe
 		)
 		port map (
-			ibus => ibus,
-			obusint => obusint,
-			Aint  => Aint,
-			readstb =>	 readstb,
-			writestb =>	 writestb,
-			AltData =>	 AltData,
-			IOBitsint => IOBitsint,
-			clklow 	=>	 clklow,
-			clkmed 	=>	 clkmed,
-			clkhigh	=>	 clkhigh,
-			PRobe 	=>	 PRobe
+			ibus				=>	ibusint,
+			obusint			=>	obusint,
+			Aint				=>	Aint,
+			readstb			=>	readstb,
+			writestb			=>	writestb,
+			CoreDataOut		=>	CoreDataOut,
+			IOBitsCorein	=>	IOBitsCorein,
+			clklow			=>	clklow,
+			clkmed			=>	clkmed,
+			clkhigh			=>	clkhigh,
+			PRobe				=>  PRobe,
+			RateSources		=>  RateSources,
+			rates				=>  rates
 		);
 
 	MakeQCounters : entity work.MakeQCounters
@@ -413,17 +421,19 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		UseProbe  => UseProbe
 		)
 		port map (
-			ibus => ibus,
-			obusint => obusint,
-			Aint  => Aint,
-			readstb =>	 readstb,
-			writestb =>	 writestb,
-			AltData =>	 AltData,
-			IOBitsint => IOBitsint,
-			clklow 	=>	 clklow,
-			clkmed 	=>	 clkmed,
-			clkhigh	=>	 clkhigh,
-			PRobe 	=>	 PRobe
+			ibus				=>	ibusint,
+			obusint			=>	obusint,
+			Aint				=>	Aint,
+			readstb			=>	readstb,
+			writestb			=>	writestb,
+			CoreDataOut		=>	CoreDataOut,
+			IOBitsCorein	=>	IOBitsCorein,
+			clklow			=>	clklow,
+			clkmed			=>	clkmed,
+			clkhigh			=>	clkhigh,
+			PRobe				=>  PRobe,
+			RateSources		=>  RateSources,
+			rates				=>  rates
 		);
 
 	MakeMuxedQCounters : entity work.MakeMuxedQCounters
@@ -455,17 +465,19 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		UseProbe  => UseProbe
 		)
 		port map (
-			ibus => ibus,
-			obusint => obusint,
-			Aint  => Aint,
-			readstb =>	 readstb,
-			writestb =>	 writestb,
-			AltData =>	 AltData,
-			IOBitsint => IOBitsint,
-			clklow 	=>	 clklow,
-			clkmed 	=>	 clkmed,
-			clkhigh	=>	 clkhigh,
-			PRobe 	=>	 PRobe
+			ibus				=>	ibusint,
+			obusint			=>	obusint,
+			Aint				=>	Aint,
+			readstb			=>	readstb,
+			writestb			=>	writestb,
+			CoreDataOut		=>	CoreDataOut,
+			IOBitsCorein	=>	IOBitsCorein,
+			clklow			=>	clklow,
+			clkmed			=>	clkmed,
+			clkhigh			=>	clkhigh,
+			PRobe				=>  PRobe,
+			RateSources		=>  RateSources,
+			rates				=>  rates
 		);
 
 	MakePWMgens : entity work.MakePWMgens
@@ -497,17 +509,19 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		UseProbe  => UseProbe
 		)
 		port map (
-			ibus => ibus,
-			obusint => obusint,
-			Aint=> Aint,
-			readstb =>	 readstb,
-			writestb =>	 writestb,
-			AltData =>	 AltData,
-			IOBitsint =>	 IOBitsint,
-			clklow 	=>	 clklow,
-			clkmed 	=>	 clkmed,
-			clkhigh	=>	 clkhigh,
-			PRobe 	=>	 PRobe
+			ibus				=>	ibusint,
+			obusint			=>	obusint,
+			Aint				=>	Aint,
+			readstb			=>	readstb,
+			writestb			=>	writestb,
+			CoreDataOut		=>	CoreDataOut,
+			IOBitsCorein	=>	IOBitsCorein,
+			clklow			=>	clklow,
+			clkmed			=>	clkmed,
+			clkhigh			=>	clkhigh,
+			PRobe				=>  PRobe,
+			RateSources		=>  RateSources,
+			rates				=>  rates
 		);
 
 	MakeTPPWMGens : entity work.MakeTPPWMGens
@@ -539,637 +553,639 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		UseProbe  => UseProbe
 		)
 		port map (
-			ibus => ibus,
-			obusint => obusint,
-			Aint=> Aint,
-			readstb =>	 readstb,
-			writestb =>	 writestb,
-			AltData =>	 AltData,
-			IOBitsint =>	 IOBitsint,
-			clklow 	=>	 clklow,
-			clkmed 	=>	 clkmed,
-			clkhigh	=>	 clkhigh,
-			PRobe 	=>	 PRobe
+			ibus				=>	ibusint,
+			obusint			=>	obusint,
+			Aint				=>	Aint,
+			readstb			=>	readstb,
+			writestb			=>	writestb,
+			CoreDataOut		=>	CoreDataOut,
+			IOBitsCorein	=>	IOBitsCorein,
+			clklow			=>	clklow,
+			clkmed			=>	clkmed,
+			clkhigh			=>	clkhigh,
+			PRobe				=>  PRobe,
+			RateSources		=>  RateSources,
+			rates				=>  rates
 		);
-
-	makespimod:  if SPIs >0  generate
-	signal LoadSPIBitCount: std_logic_vector(SPIs -1 downto 0);
-	signal LoadSPIBitRate: std_logic_vector(SPIs -1 downto 0);
-	signal LoadSPIData: std_logic_vector(SPIs -1 downto 0);
-	signal ReadSPIData: std_logic_vector(SPIs -1 downto 0);
-	signal ReadSPIBitCOunt: std_logic_vector(SPIs -1 downto 0);
-	signal ReadSPIBitRate: std_logic_vector(SPIs -1 downto 0);
-	signal SPIClk: std_logic_vector(SPIs -1 downto 0);
-	signal SPIIn: std_logic_vector(SPIs -1 downto 0);
-	signal SPIOut: std_logic_vector(SPIs -1 downto 0);
-	signal SPIFrame: std_logic_vector(SPIs -1 downto 0);
-	signal SPIDAV: std_logic_vector(SPIs -1 downto 0);
-	signal SPIBitCountSel : std_logic;
-	signal SPIBitrateSel : std_logic;
-	signal SPIDataSel : std_logic;
-
-	begin
-		makespis: for i in 0 to SPIs -1 generate
-			aspi: entity work.SimpleSPI
-			generic map (
-				BusWidth => BusWidth)
-			port map (
-				clk  => clklow,
-				ibus => ibus,
-				obus => obusint,
-				loadbitcount => LoadSPIBitCount(i),
-				loadbitrate => LoadSPIBitRate(i),
-				loaddata => LoadSPIData(i),
-				readdata => ReadSPIData(i),
-				readbitcount => ReadSPIBitCOunt(i),
-				readbitrate => ReadSPIBitRate(i),
-				spiclk => SPIClk(i),
-				spiin => SPIIn(i),
-				spiout => SPIOut(i),
-				spiframe => SPIFrame(i),
-				davout => SPIDAV(i)
-				);
-		end generate;
-
-		SPIDecodeProcess : process (Aint,Readstb,writestb,SPIDataSel,SPIBitCountSel,SPIBitRateSel)
-		begin
-			if Aint(15 downto 8) = SPIDataAddr then	 --  SPI data register select
-				SPIDataSel <= '1';
-			else
-				SPIDataSel <= '0';
-			end if;
-			if Aint(15 downto 8) = SPIBitCountAddr then	 --  SPI bit count register select
-				SPIBitCountSel <= '1';
-			else
-				SPIBitCountSel <= '0';
-			end if;
-			if Aint(15 downto 8) = SPIBitrateAddr then	 --  SPI bit rate register select
-				SPIBitrateSel <= '1';
-			else
-				SPIBitrateSel <= '0';
-			end if;
-			LoadSPIData <= OneOfNDecode(SPIs,SPIDataSel,writestb,Aint(5 downto 2)); -- 16 max
-			ReadSPIData <= OneOfNDecode(SPIs,SPIDataSel,Readstb,Aint(5 downto 2));
-			LoadSPIBitCount <= OneOfNDecode(SPIs,SPIBitCountSel,writestb,Aint(5 downto 2));
-			ReadSPIBitCount <= OneOfNDecode(SPIs,SPIBitCountSel,Readstb,Aint(5 downto 2));
-			LoadSPIBitRate <= OneOfNDecode(SPIs,SPIBitRateSel,writestb,Aint(5 downto 2));
-			ReadSPIBitRate <= OneOfNDecode(SPIs,SPIBitRateSel,Readstb,Aint(5 downto 2));
-		end process SPIDecodeProcess;
-
-		DoSPIPins: process(SPIFrame,SPIOut,SPIClk)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = SPITag then
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
-						when SPIFramePin =>
-							AltData(i) <= SPIFrame(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when SPIOutPin =>
-							AltData(i) <= SPIOut(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when SPIClkPin =>
-							AltData(i) <= SPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when SPIInPin =>
-							SPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-	end generate;
-
-	makebspimod:  if BSPIs >0  generate
-	signal LoadBSPIData: std_logic_vector(BSPIs -1 downto 0);
-	signal ReadBSPIData: std_logic_vector(BSPIs -1 downto 0);
-	signal LoadBSPIDescriptor: std_logic_vector(BSPIs -1 downto 0);
-	signal ReadBSPIFIFOCOunt: std_logic_vector(BSPIs -1 downto 0);
-	signal ClearBSPIFIFO: std_logic_vector(BSPIs -1 downto 0);
-	signal BSPIClk: std_logic_vector(BSPIs -1 downto 0);
-	signal BSPIIn: std_logic_vector(BSPIs -1 downto 0);
-	signal BSPIOut: std_logic_vector(BSPIs -1 downto 0);
-	signal BSPIFrame: std_logic_vector(BSPIs -1 downto 0);
-	signal BSPIDataSel : std_logic;
-	signal BSPIFIFOCountSel : std_logic;
-	signal BSPIDescriptorSel : std_logic;
-	type BSPICSType is array(BSPIs-1 downto 0) of std_logic_vector(BSPICSWidth-1 downto 0);
-	signal BSPICS : BSPICSType;
-	begin
-		makebspis: for i in 0 to BSPIs -1 generate
-			bspi: entity work.BufferedSPI
-			generic map (
-				cswidth => BSPICSWidth,
-				gatedcs => false)
-			port map (
-				clk  => clklow,
-				ibus => ibus,
-				obus => obusint,
-				addr => Aint(5 downto 2),
-				hostpush => LoadBSPIData(i),
-				hostpop => ReadBSPIData(i),
-				loaddesc => LoadBSPIDescriptor(i),
-				loadasend => '0',
-				clear => ClearBSPIFIFO(i),
-				readcount => ReadBSPIFIFOCount(i),
-				spiclk => BSPIClk(i),
-				spiin => BSPIIn(i),
-				spiout => BSPIOut(i),
-				spiframe => BSPIFrame(i),
-				spicsout => BSPICS(i)
-				);
-		end generate;
-
-		BSPIDecodeProcess : process (Aint,Readstb,writestb,BSPIDataSel,BSPIFIFOCountSel,BSPIDescriptorSel)
-		begin
-			if Aint(15 downto 8) = BSPIDataAddr then	 --  BSPI data register select
-				BSPIDataSel <= '1';
-			else
-				BSPIDataSel <= '0';
-			end if;
-			if Aint(15 downto 8) = BSPIFIFOCountAddr then	 --  BSPI FIFO count register select
-				BSPIFIFOCountSel <= '1';
-			else
-				BSPIFIFOCountSel <= '0';
-			end if;
-			if Aint(15 downto 8) = BSPIDescriptorAddr then	 --  BSPI channel descriptor register select
-				BSPIDescriptorSel <= '1';
-			else
-				BSPIDescriptorSel <= '0';
-			end if;
-			LoadBSPIData <= OneOfNDecode(BSPIs,BSPIDataSel,writestb,Aint(7 downto 6)); -- 4 max
-			ReadBSPIData <= OneOfNDecode(BSPIs,BSPIDataSel,Readstb,Aint(7 downto 6));
-			LoadBSPIDescriptor<= OneOfNDecode(BSPIs,BSPIDescriptorSel,writestb,Aint(5 downto 2));
-			ReadBSPIFIFOCOunt <= OneOfNDecode(BSPIs,BSPIFIFOCountSel,Readstb,Aint(5 downto 2));
-			ClearBSPIFIFO <= OneOfNDecode(BSPIs,BSPIFIFOCountSel,writestb,Aint(5 downto 2));
-		end process BSPIDecodeProcess;
-
-		DoBSPIPins: process(BSPIFrame, BSPIOut, BSPIClk, BSPICS, IOBitsint)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = BSPITag then
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
-						when BSPIFramePin =>
-							AltData(i) <= BSPIFrame(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when BSPIOutPin =>
-							AltData(i) <= BSPIOut(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when BSPIClkPin =>
-							AltData(i) <= BSPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when BSPIInPin =>
-							BSPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
-						when others =>
-						   AltData(i) <= BSPICS(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(6 downto 0))-5);
-						   -- magic foo, magic foo, what on earth does it do?
-						   -- (this needs to written more clearly!)
-					end case;
-				end if;
-			end loop;
-		end process;
-	end generate;
-
-	makedbspimod:  if DBSPIs >0  generate
-	signal LoadDBSPIData: std_logic_vector(DBSPIs -1 downto 0);
-	signal ReadDBSPIData: std_logic_vector(DBSPIs -1 downto 0);
-	signal LoadDBSPIDescriptor: std_logic_vector(DBSPIs -1 downto 0);
-	signal ReadDBSPIFIFOCOunt: std_logic_vector(DBSPIs -1 downto 0);
-	signal ClearDBSPIFIFO: std_logic_vector(DBSPIs -1 downto 0);
-	signal DBSPIClk: std_logic_vector(DBSPIs -1 downto 0);
-	signal DBSPIIn: std_logic_vector(DBSPIs -1 downto 0);
-	signal DBSPIOut: std_logic_vector(DBSPIs -1 downto 0);
-	type DBSPICSType is array(DBSPIs-1 downto 0) of std_logic_vector(DBSPICSWidth-1 downto 0);
-	signal DBSPICS : DBSPICSType;
-	signal DBSPIDataSel : std_logic;
-	signal DBSPIFIFOCountSel : std_logic;
-	signal DBSPIDescriptorSel : std_logic;
-	begin
-		makedbspis: for i in 0 to DBSPIs -1 generate
-			bspi: entity work.BufferedSPI
-			generic map (
-				cswidth => DBSPICSWidth,
-				gatedcs => true
-				)
-			port map (
-				clk  => clklow,
-				ibus => ibus,
-				obus => obusint,
-				addr => Aint(5 downto 2),
-				hostpush => LoadDBSPIData(i),
-				hostpop => ReadDBSPIData(i),
-				loaddesc => LoadDBSPIDescriptor(i),
-				loadasend => '0',
-				clear => ClearDBSPIFIFO(i),
-				readcount => ReadDBSPIFIFOCount(i),
-				spiclk => DBSPIClk(i),
-				spiin => DBSPIIn(i),
-				spiout => DBSPIOut(i),
-				spicsout => DBSPICS(i)
-				);
-		end generate;
-
-		DBSPIDecodeProcess : process (Aint,Readstb,writestb,DBSPIDataSel,DBSPIFIFOCountSel,DBSPIDescriptorSel)
-		begin
-			if Aint(15 downto 8) = DBSPIDataAddr then	 --  DBSPI data register select
-				DBSPIDataSel <= '1';
-			else
-				DBSPIDataSel <= '0';
-			end if;
-			if Aint(15 downto 8) = DBSPIFIFOCountAddr then	 --  DBSPI FIFO count register select
-				DBSPIFIFOCountSel <= '1';
-			else
-				DBSPIFIFOCountSel <= '0';
-			end if;
-			if Aint(15 downto 8) = DBSPIDescriptorAddr then	 --  DBSPI channel descriptor register select
-				DBSPIDescriptorSel <= '1';
-			else
-				DBSPIDescriptorSel <= '0';
-			end if;
-			LoadDBSPIData <= OneOfNDecode(DBSPIs,DBSPIDataSel,writestb,Aint(7 downto 6)); -- 4 max
-			ReadDBSPIData <= OneOfNDecode(DBSPIs,DBSPIDataSel,Readstb,Aint(7 downto 6));
-			LoadDBSPIDescriptor<= OneOfNDecode(DBSPIs,DBSPIDescriptorSel,writestb,Aint(5 downto 2));
-			ReadDBSPIFIFOCOunt <= OneOfNDecode(DBSPIs,DBSPIFIFOCountSel,Readstb,Aint(5 downto 2));
-			ClearDBSPIFIFO <= OneOfNDecode(DBSPIs,DBSPIFIFOCountSel,writestb,Aint(5 downto 2));
-		end process DBSPIDecodeProcess;
-
-		DoDBSPIPins: process(DBSPIOut, DBSPIClk, DBSPICS, IOBitsint)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = DBSPITag then
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
-						when DBSPIOutPin =>
-							AltData(i) <= DBSPIOut(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when DBSPIClkPin =>
-							AltData(i) <= DBSPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));											when DBSPIInPin =>
-							DBSPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
-						when others =>
-							AltData(i) <= DBSPICS(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(6 downto 0))-5);
-				   		-- magic foo, magic foo, what on earth does it do?
-							-- (this needs to written more clearly!)
-					end case;
-				end if;
-			end loop;
-		end process;
-
-		DoLocalDDBSPIPins: process(LIOBits,DBSPICS,DBSPIClk,DBSPIOut) -- only for 4I69 LIO currently
-		begin
-			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
-				report("Doing DBSPI LIOLoop: "& integer'image(i));
-				if ThePinDesc(i+IOWidth)(15 downto 8) = DBSPITag then 	-- GTag (Local I/O starts at end of external I/O)
-					case (ThePinDesc(i+IOWidth)(7 downto 0)) is	--secondary pin function, drop MSB
-						when DBSPIOutPin =>
-							LIOBits(i) <= DBSPIOut(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16)));
-							report("Local DBSPIOutPin found at LIOBit " & integer'image(i));
-						when DBSPIClkPin =>
-							LIOBits(i) <= DBSPIClk(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16)));
-							report("Local DBSPClkPin found at LIOBit " & integer'image(i));
-						when DBSPIInPin =>
-							DBSPIIn(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16))) <= LIOBits(i);
-							report("Local DBSPIInPin found at LIOBit " & integer'image(i));
-						when others =>
-							LIOBits(i) <= DBSPICS(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16)))(conv_integer(ThePinDesc(i+IOWidth)(6 downto 0))-5);
-							report("Local DBSPICSPin found at LIOBit " & integer'image(i));
-						-- magic foo, magic foo, what on earth does it do?
-						-- (this needs to written more clearly!)
-					end case;
-				end if;
-			end loop;
-		end process;
-	end generate;
-
-	makesssimod:  if SSSIs >0  generate
-	signal LoadSSSIData0: std_logic_vector(SSSIs -1 downto 0);
-	signal ReadSSSIData0: std_logic_vector(SSSIs -1 downto 0);
-	signal ReadSSSIData1: std_logic_vector(SSSIs -1 downto 0);
-	signal LoadSSSIControl: std_logic_vector(SSSIs -1 downto 0);
-	signal ReadSSSIControl: std_logic_vector(SSSIs -1 downto 0);
-	signal SSSIClk: std_logic_vector(SSSIs -1 downto 0);
-	signal SSSIData: std_logic_vector(SSSIs -1 downto 0);
-	signal SSSIBusyBits: std_logic_vector(SSSIs -1 downto 0);
-	signal SSSIDAVBits: std_logic_vector(SSSIs -1 downto 0);
-	signal SSSIDataSel0 : std_logic;
-	signal SSSIDataSel1 : std_logic;
-	signal SSSIControlSel : std_logic;
-	signal GlobalPStartSSSI : std_logic;
-	signal GlobalSSSIBusySel : std_logic;
-	signal GlobalTStartSSSI : std_logic;
-		begin
-		makesssis: for i in 0 to SSSIs -1 generate
-			sssi: entity work.SimpleSSI
-			port  map (
-				clk => clklow,
-				ibus => ibus,
-				obus => obusint,
-				loadcontrol => LoadSSSIControl(i),
-				lstart => LoadSSSIData0(i),
-				pstart => GlobalPstartSSSI,
-				timers => RateSources,
-				readdata0 => ReadSSSIData0(i),
-				readdata1 => ReadSSSIData1(i),
-				readcontrol => ReadSSSIControl(i),
-				busyout => SSSIBusyBits(i),
-				davout => SSSIDAVBits(i),
-				ssiclk => SSSIClk(i),
-				ssidata => SSSIData(i)
-				);
-		end generate;
-
-		SSSIDecodeProcess : process (Aint,Readstb,writestb,SSSIDataSel0,GlobalSSSIBusySel,
-		                             SSSIBusyBits,SSSIDAvBits,SSSIDataSel1,SSSIControlSel)
-		begin
-			if Aint(15 downto 8) = SSSIDataAddr0 then	 --  SSSI data register select 0
-				SSSIDataSel0 <= '1';
-			else
-				SSSIDataSel0 <= '0';
-			end if;
-			if Aint(15 downto 8) = SSSIDataAddr1 then	 --  SSSI data register select 1
-				SSSIDataSel1 <= '1';
-			else
-				SSSIDataSel1 <= '0';
-			end if;
-
-			if Aint(15 downto 8) = SSSIControlAddr then	 --  SSSI control register select
-				SSSIControlSel <= '1';
-			else
-				SSSIControlSel <= '0';
-			end if;
-			if Aint(15 downto 8) = SSSIGlobalPStartAddr and writestb = '1' then	 --
-				GlobalPStartSSSI <= '1';
-			else
-				GlobalPStartSSSI <= '0';
-			end if;
-			if Aint(15 downto 8) = SSSIGlobalPStartAddr and readstb = '1' then	 --
-				GlobalSSSIBusySel <= '1';
-			else
-				GlobalSSSIBusySel <= '0';
-			end if;
-			LoadSSSIData0 <= OneOfNDecode(SSSIs,SSSIDataSel0,writestb,Aint(7 downto 2)); -- 64 max
-			ReadSSSIData0 <= OneOfNDecode(SSSIs,SSSIDataSel0,Readstb,Aint(7 downto 2));
-			ReadSSSIData1 <= OneOfNDecode(SSSIs,SSSIDataSel1,Readstb,Aint(7 downto 2));
-			LoadSSSIControl <= OneOfNDecode(SSSIs,SSSIControlSel,writestb,Aint(7 downto 2));
-			ReadSSSIControl <= OneOfNDecode(SSSIs,SSSIControlSel,Readstb,Aint(7 downto 2));
-			obusint <= (others => 'Z');
-			if GlobalSSSIBusySel = '1' then
-				obusint(SSSIs -1 downto 0) <= SSSIBusyBits;
-				obusint(31 downto SSSIs) <= (others => '0');
-			end if;
-		end process SSSIDecodeProcess;
-
-		DoSSIPins: process(SSSIClk, IOBitsint,SSSIDavBits)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = SSSITag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
-						when SSSIClkPin =>
-							AltData(i) <= SSSIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when SSSIClkEnPin =>
-							AltData(i) <= '0';		-- for RS-422 daughtercards that have drive enables
-						when SSSIDAVPin =>
-							AltData(i) <= SSSIDAVBits(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when SSSIDataPin =>
-							SSSIData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-	end generate;
-
-	makeFAbsmod:  if FAbss >0  generate
-	signal LoadFAbsData0: std_logic_vector(FAbss -1 downto 0);
-	signal ReadFAbsData0: std_logic_vector(FAbss -1 downto 0);
-	signal ReadFAbsData1: std_logic_vector(FAbss -1 downto 0);
-	signal ReadFAbsData2: std_logic_vector(FAbss -1 downto 0);
-	signal LoadFAbsControl0: std_logic_vector(FAbss -1 downto 0);
-	signal LoadFAbsControl1: std_logic_vector(FAbss -1 downto 0);
-	signal ReadFAbsControl0: std_logic_vector(FAbss -1 downto 0);
-	signal ReadFAbsControl1: std_logic_vector(FAbss -1 downto 0);
-	signal LoadFAbsControl2: std_logic_vector(FAbss -1 downto 0);
-	signal FAbsBusyBits: std_logic_vector(FAbss -1 downto 0);
-	signal FAbsDAVBits: std_logic_vector(FAbss -1 downto 0);
-	signal FAbsRequest: std_logic_vector(FAbss -1 downto 0);
-	signal FAbsData: std_logic_vector(FAbss -1 downto 0);
-	signal FAbsTestClk: std_logic_vector(FAbss -1 downto 0);
---- FanucAbs interface related signals
-	signal FAbsDataSel0 : std_logic;
-	signal FAbsDataSel1 : std_logic;
-	signal FAbsDataSel2 : std_logic;
-	signal FAbsControlSel0 : std_logic;
-	signal FAbsControlSel1 : std_logic;
-	signal FAbsControlSel2 : std_logic;
-	signal GlobalPStartFAbs : std_logic;
-	signal GlobalFAbsBusySel : std_logic;
-
-	begin
-		makeFAbss: for i in 0 to FAbss -1 generate
-			FAbs: entity work.FanucAbs
-			generic map (
-				Clock => ClockLow
-				)
-			port  map (
-				clk => clklow,
-				ibus => ibus,
-				obus => obusint,
-				loadcontrol0 => LoadFAbsControl0(i),
-				loadcontrol1 => LoadFAbsControl1(i),
-				loadcontrol2 => LoadFAbsControl2(i),
-				lstart => LoadFabsData0(i),
-				pstart => GlobalPstartFAbs,
-				timers => RateSources,
-				readdata0 => ReadFAbsData0(i),
-				readdata1 => ReadFAbsData1(i),
-				readdata2 => ReadFAbsData2(i),
-				readcontrol0 => ReadFAbsControl0(i),
-				readcontrol1 => ReadFAbsControl1(i),
-				busyout => FabsBusyBits(i),
-				davout => FabsDAVBits(i),
-				requestout => FAbsRequest(i),
-				rxdata => FAbsData(i),
-				testclk => FAbsTestClk(i)
-				);
-		end generate;
-
-		FAbsDecodeProcess : process (Aint,Readstb,writestb,FAbsDataSel0,FAbsDataSel1,FAbsDataSel2,
-												FAbsControlSel0,FAbsControlSel1,FAbsControlSel2,
-												GlobalFabsBusySel,FAbsBusyBits)
-		begin
-			if Aint(15 downto 8) = FAbsDataAddr0 then	 --  FAbs data register select
-				FAbsDataSel0 <= '1';
-			else
-				FAbsDataSel0 <= '0';
-			end if;
-			if Aint(15 downto 8) = FAbsDataAddr1 then	 --  FAbs data register select
-				FAbsDataSel1 <= '1';
-			else
-				FAbsDataSel1 <= '0';
-			end if;
-			if Aint(15 downto 8) = FAbsDataAddr2 then	 --  FAbs data register select
-				FAbsDataSel2 <= '1';
-			else
-				FAbsDataSel2 <= '0';
-			end if;
-			if Aint(15 downto 8) = FAbsControlAddr0 then	 --  FAbs control register 0 select
-				FAbsControlSel0 <= '1';
-			else
-				FAbsControlSel0 <= '0';
-			end if;
-			if Aint(15 downto 8) = FAbsControlAddr1 then	 --  FAbs control register 1 select
-				FAbsControlSel1 <= '1';
-			else
-				FAbsControlSel1 <= '0';
-			end if;
-			if Aint(15 downto 8) = FAbsDataAddr2 then	 	--  FAbs control register 2 select
-				FAbsControlSel2 <= '1';
-			else
-				FAbsControlSel2 <= '0';
-			end if;
-			if Aint(15 downto 8) = FAbsGlobalPStartAddr and writestb = '1' then	 --
-				GlobalPStartFAbs <= '1';
-			else
-				GlobalPStartFAbs <= '0';
-			end if;
-			if Aint(15 downto 8) = FAbsGlobalPStartAddr and readstb = '1' then	 --
-				GlobalFAbsBusySel <= '1';
-			else
-				GlobalFAbsBusySel <= '0';
-			end if;
-			LoadFAbsData0 <= OneOfNDecode(FAbss,FAbsDataSel0,writestb,Aint(7 downto 2)); -- 64 max
-			ReadFAbsData0 <= OneOfNDecode(FAbss,FAbsDataSel0,Readstb,Aint(7 downto 2));
-			ReadFAbsData1 <= OneOfNDecode(FAbss,FAbsDataSel1,Readstb,Aint(7 downto 2));
-			ReadFAbsData2 <= OneOfNDecode(FAbss,FAbsDataSel2,Readstb,Aint(7 downto 2));
-			LoadFAbsControl0 <= OneOfNDecode(FAbss,FAbsControlSel0,writestb,Aint(7 downto 2));
-			LoadFAbsControl1 <= OneOfNDecode(FAbss,FAbsControlSel1,writestb,Aint(7 downto 2));
-			LoadFAbsControl2 <= OneOfNDecode(FAbss,FAbsControlSel2,writestb,Aint(7 downto 2));
-			ReadFAbsControl0 <= OneOfNDecode(FAbss,FAbsControlSel0,Readstb,Aint(7 downto 2));
-			ReadFAbsControl1 <= OneOfNDecode(FAbss,FAbsControlSel1,Readstb,Aint(7 downto 2));
-			obusint <= (others => 'Z');
-			if GlobalFabsBusySel = '1' then
-				obusint(FAbss -1 downto 0) <= FAbsBusyBits;
-				obusint(31 downto FAbss) <= (others => '0');
-			end if;
-		end process FAbsDecodeProcess;
-
-		DoFAbsPins: process(FAbsRequest,FAbsTestClk,IOBitsint)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = FAbsTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
-						when FAbsRQPin =>
-							AltData(i) <= FAbsRequest(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when FAbsRQEnPin =>
-							AltData(i) <= '0';		-- for RS-422 daughtercards that have drive enables
-						when FAbsTestClkPin =>
-							AltData(i) <= FAbsTestClk(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when FAbsDAVPin =>
-							AltData(i) <= FAbsDAVBits(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when FAbsDataPin =>
-							FAbsData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-	end generate;
-
-	makebissmod:  if BISSs >0  generate
-	signal LoadBISSData: std_logic_vector(BISSs -1 downto 0);
-	signal ReadBISSData: std_logic_vector(BISSs -1 downto 0);
-	signal LoadBISSControl0: std_logic_vector(BISSs -1 downto 0);
-	signal LoadBISSControl1: std_logic_vector(BISSs -1 downto 0);
-	signal ReadBISSControl0: std_logic_vector(BISSs -1 downto 0);
-	signal ReadBISSControl1: std_logic_vector(BISSs -1 downto 0);
-	signal BISSClk: std_logic_vector(BISSs -1 downto 0);
-	signal BISSData: std_logic_vector(BISSs -1 downto 0);
---- BISS interface related signals
-	signal BISSDataSel : std_logic;
-	signal BISSControlSel0 : std_logic;
-	signal BISSControlSel1 : std_logic;
-	signal GlobalPStartBISS : std_logic;
-	signal BISSBusyBits: std_logic_vector(BISSs -1 downto 0);
-	signal BISSDAVBits: std_logic_vector(BISSs -1 downto 0);
-	signal GlobalBISSBusySel : std_logic;
-
-
-
-	begin
-		makebisss: for i in 0 to BISSs -1 generate
-			BISS: entity work.biss
-			port  map (
-				clk => clklow,
-				hclk => clkhigh,
-				ibus => ibus,
-				obus => obusint,
-				poplifo => ReadBISSData(i),
-				lstart => LoadBISSData(i),
-				pstart => GlobalPstartBISS,
-				timers => RateSources,
-				loadcontrol0 => LoadBISSControl0(i),
-				loadcontrol1 => LoadBISSControl1(i),
-				readcontrol0 => ReadBISSControl0(i),
-				readcontrol1 => ReadBISSControl1(i),
-				busyout => BISSBusyBits(i),
-				davout => BISSDAVBits(i),
-				bissclk => BISSClk(i),
-				bissdata => BISSData(i)
-				);
-		end generate;
-
-		BISSDecodeProcess : process (Aint,Readstb,writestb,BISSControlSel0,BISSControlSel1,
-											  BISSDataSel,GlobalBISSBusySel,BISSBusyBits)
-		begin
-			if Aint(15 downto 8) = BISSDataAddr then	 --  BISS data register select
-				BISSDataSel <= '1';
-			else
-				BISSDataSel <= '0';
-			end if;
-			if Aint(15 downto 8) = BISSControlAddr0 then	 --  BISS control register select
-				BISSControlSel0 <= '1';
-			else
-				BISSControlSel0 <= '0';
-			end if;
-			if Aint(15 downto 8) = BISSControlAddr1 then	 --  BISS control register select
-				BISSControlSel1 <= '1';
-			else
-				BISSControlSel1 <= '0';
-			end if;
-			if Aint(15 downto 8) = BISSGlobalPStartAddr and writestb = '1' then	 --
-				GlobalPStartBISS <= '1';
-			else
-				GlobalPStartBISS <= '0';
-			end if;
-			if Aint(15 downto 8) = BISSGlobalPStartAddr and readstb = '1' then	 --
-				GlobalBISSBusySel <= '1';
-			else
-				GlobalBISSBusySel <= '0';
-			end if;
-
-			obusint <= (others => 'Z');
-			if GlobalBISSBusySel = '1' then
-				obusint(BISSs -1 downto 0) <= BISSBusyBits;
-				obusint(31 downto BISSs) <= (others => '0');
-			end if;
-
-			LoadBISSData <= OneOfNDecode(BISSs,BISSDataSel,writestb,Aint(5 downto 2));
-			ReadBISSData <= OneOfNDecode(BISSs,BISSDataSel,Readstb,Aint(5 downto 2));
-			LoadBISSControl0 <= OneOfNDecode(BISSs,BISSControlSel0,writestb,Aint(5 downto 2));
-			LoadBISSControl1 <= OneOfNDecode(BISSs,BISSControlSel1,writestb,Aint(5 downto 2));
-			ReadBISSControl0 <= OneOfNDecode(BISSs,BISSControlSel0,Readstb,Aint(5 downto 2));
-			ReadBISSControl1 <= OneOfNDecode(BISSs,BISSControlSel1,Readstb,Aint(5 downto 2));
-		end process BISSDecodeProcess;
-
-		DoBISSPins: process(BISSClk, IOBitsint)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = BISSTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
-						when BISSClkPin =>
-							AltData(i) <= BISSClk(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when BISSClkEnPin =>
-							AltData(i) <= '0';			-- for RS-422 daughtercards that have drive enables
-						when BISSDAVPin =>
-							AltData(i) <= BISSDAVBits(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when BISSDataPin =>
-							BISSData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-	end generate;
+--
+-- 	makespimod:  if SPIs >0  generate
+-- 	signal LoadSPIBitCount: std_logic_vector(SPIs -1 downto 0);
+-- 	signal LoadSPIBitRate: std_logic_vector(SPIs -1 downto 0);
+-- 	signal LoadSPIData: std_logic_vector(SPIs -1 downto 0);
+-- 	signal ReadSPIData: std_logic_vector(SPIs -1 downto 0);
+-- 	signal ReadSPIBitCOunt: std_logic_vector(SPIs -1 downto 0);
+-- 	signal ReadSPIBitRate: std_logic_vector(SPIs -1 downto 0);
+-- 	signal SPIClk: std_logic_vector(SPIs -1 downto 0);
+-- 	signal SPIIn: std_logic_vector(SPIs -1 downto 0);
+-- 	signal SPIOut: std_logic_vector(SPIs -1 downto 0);
+-- 	signal SPIFrame: std_logic_vector(SPIs -1 downto 0);
+-- 	signal SPIDAV: std_logic_vector(SPIs -1 downto 0);
+-- 	signal SPIBitCountSel : std_logic;
+-- 	signal SPIBitrateSel : std_logic;
+-- 	signal SPIDataSel : std_logic;
+--
+-- 	begin
+-- 		makespis: for i in 0 to SPIs -1 generate
+-- 			aspi: entity work.SimpleSPI
+-- 			generic map (
+-- 				BusWidth => BusWidth)
+-- 			port map (
+-- 				clk  => clklow,
+-- 				ibus => ibusint,
+-- 				obus => obusint,
+-- 				loadbitcount => LoadSPIBitCount(i),
+-- 				loadbitrate => LoadSPIBitRate(i),
+-- 				loaddata => LoadSPIData(i),
+-- 				readdata => ReadSPIData(i),
+-- 				readbitcount => ReadSPIBitCOunt(i),
+-- 				readbitrate => ReadSPIBitRate(i),
+-- 				spiclk => SPIClk(i),
+-- 				spiin => SPIIn(i),
+-- 				spiout => SPIOut(i),
+-- 				spiframe => SPIFrame(i),
+-- 				davout => SPIDAV(i)
+-- 				);
+-- 		end generate;
+--
+-- 		SPIDecodeProcess : process (Aint,Readstb,writestb,SPIDataSel,SPIBitCountSel,SPIBitRateSel)
+-- 		begin
+-- 			if Aint(15 downto 8) = SPIDataAddr then	 --  SPI data register select
+-- 				SPIDataSel <= '1';
+-- 			else
+-- 				SPIDataSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = SPIBitCountAddr then	 --  SPI bit count register select
+-- 				SPIBitCountSel <= '1';
+-- 			else
+-- 				SPIBitCountSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = SPIBitrateAddr then	 --  SPI bit rate register select
+-- 				SPIBitrateSel <= '1';
+-- 			else
+-- 				SPIBitrateSel <= '0';
+-- 			end if;
+-- 			LoadSPIData <= OneOfNDecode(SPIs,SPIDataSel,writestb,Aint(5 downto 2)); -- 16 max
+-- 			ReadSPIData <= OneOfNDecode(SPIs,SPIDataSel,Readstb,Aint(5 downto 2));
+-- 			LoadSPIBitCount <= OneOfNDecode(SPIs,SPIBitCountSel,writestb,Aint(5 downto 2));
+-- 			ReadSPIBitCount <= OneOfNDecode(SPIs,SPIBitCountSel,Readstb,Aint(5 downto 2));
+-- 			LoadSPIBitRate <= OneOfNDecode(SPIs,SPIBitRateSel,writestb,Aint(5 downto 2));
+-- 			ReadSPIBitRate <= OneOfNDecode(SPIs,SPIBitRateSel,Readstb,Aint(5 downto 2));
+-- 		end process SPIDecodeProcess;
+--
+-- 		DoSPIPins: process(SPIFrame,SPIOut,SPIClk)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = SPITag then
+-- 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
+-- 						when SPIFramePin =>
+-- 							IOBitsCorein(i) <= SPIFrame(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when SPIOutPin =>
+-- 							IOBitsCorein(i) <= SPIOut(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when SPIClkPin =>
+-- 							IOBitsCorein(i) <= SPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when SPIInPin =>
+-- 							SPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
+-- 						when others => null;
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+-- 	end generate;
+--
+-- 	makebspimod:  if BSPIs >0  generate
+-- 	signal LoadBSPIData: std_logic_vector(BSPIs -1 downto 0);
+-- 	signal ReadBSPIData: std_logic_vector(BSPIs -1 downto 0);
+-- 	signal LoadBSPIDescriptor: std_logic_vector(BSPIs -1 downto 0);
+-- 	signal ReadBSPIFIFOCOunt: std_logic_vector(BSPIs -1 downto 0);
+-- 	signal ClearBSPIFIFO: std_logic_vector(BSPIs -1 downto 0);
+-- 	signal BSPIClk: std_logic_vector(BSPIs -1 downto 0);
+-- 	signal BSPIIn: std_logic_vector(BSPIs -1 downto 0);
+-- 	signal BSPIOut: std_logic_vector(BSPIs -1 downto 0);
+-- 	signal BSPIFrame: std_logic_vector(BSPIs -1 downto 0);
+-- 	signal BSPIDataSel : std_logic;
+-- 	signal BSPIFIFOCountSel : std_logic;
+-- 	signal BSPIDescriptorSel : std_logic;
+-- 	type BSPICSType is array(BSPIs-1 downto 0) of std_logic_vector(BSPICSWidth-1 downto 0);
+-- 	signal BSPICS : BSPICSType;
+-- 	begin
+-- 		makebspis: for i in 0 to BSPIs -1 generate
+-- 			bspi: entity work.BufferedSPI
+-- 			generic map (
+-- 				cswidth => BSPICSWidth,
+-- 				gatedcs => false)
+-- 			port map (
+-- 				clk  => clklow,
+-- 				ibus => ibusint,
+-- 				obus => obusint,
+-- 				addr => Aint(5 downto 2),
+-- 				hostpush => LoadBSPIData(i),
+-- 				hostpop => ReadBSPIData(i),
+-- 				loaddesc => LoadBSPIDescriptor(i),
+-- 				loadasend => '0',
+-- 				clear => ClearBSPIFIFO(i),
+-- 				readcount => ReadBSPIFIFOCount(i),
+-- 				spiclk => BSPIClk(i),
+-- 				spiin => BSPIIn(i),
+-- 				spiout => BSPIOut(i),
+-- 				spiframe => BSPIFrame(i),
+-- 				spicsout => BSPICS(i)
+-- 				);
+-- 		end generate;
+--
+-- 		BSPIDecodeProcess : process (Aint,Readstb,writestb,BSPIDataSel,BSPIFIFOCountSel,BSPIDescriptorSel)
+-- 		begin
+-- 			if Aint(15 downto 8) = BSPIDataAddr then	 --  BSPI data register select
+-- 				BSPIDataSel <= '1';
+-- 			else
+-- 				BSPIDataSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = BSPIFIFOCountAddr then	 --  BSPI FIFO count register select
+-- 				BSPIFIFOCountSel <= '1';
+-- 			else
+-- 				BSPIFIFOCountSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = BSPIDescriptorAddr then	 --  BSPI channel descriptor register select
+-- 				BSPIDescriptorSel <= '1';
+-- 			else
+-- 				BSPIDescriptorSel <= '0';
+-- 			end if;
+-- 			LoadBSPIData <= OneOfNDecode(BSPIs,BSPIDataSel,writestb,Aint(7 downto 6)); -- 4 max
+-- 			ReadBSPIData <= OneOfNDecode(BSPIs,BSPIDataSel,Readstb,Aint(7 downto 6));
+-- 			LoadBSPIDescriptor<= OneOfNDecode(BSPIs,BSPIDescriptorSel,writestb,Aint(5 downto 2));
+-- 			ReadBSPIFIFOCOunt <= OneOfNDecode(BSPIs,BSPIFIFOCountSel,Readstb,Aint(5 downto 2));
+-- 			ClearBSPIFIFO <= OneOfNDecode(BSPIs,BSPIFIFOCountSel,writestb,Aint(5 downto 2));
+-- 		end process BSPIDecodeProcess;
+--
+-- 		DoBSPIPins: process(BSPIFrame, BSPIOut, BSPIClk, BSPICS, IOBitsCorein)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = BSPITag then
+-- 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
+-- 						when BSPIFramePin =>
+-- 							IOBitsCorein(i) <= BSPIFrame(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when BSPIOutPin =>
+-- 							IOBitsCorein(i) <= BSPIOut(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when BSPIClkPin =>
+-- 							IOBitsCorein(i) <= BSPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when BSPIInPin =>
+-- 							BSPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
+-- 						when others =>
+-- 						   IOBitsCorein(i) <= BSPICS(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(6 downto 0))-5);
+-- 						   -- magic foo, magic foo, what on earth does it do?
+-- 						   -- (this needs to written more clearly!)
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+-- 	end generate;
+--
+-- 	makedbspimod:  if DBSPIs >0  generate
+-- 	signal LoadDBSPIData: std_logic_vector(DBSPIs -1 downto 0);
+-- 	signal ReadDBSPIData: std_logic_vector(DBSPIs -1 downto 0);
+-- 	signal LoadDBSPIDescriptor: std_logic_vector(DBSPIs -1 downto 0);
+-- 	signal ReadDBSPIFIFOCOunt: std_logic_vector(DBSPIs -1 downto 0);
+-- 	signal ClearDBSPIFIFO: std_logic_vector(DBSPIs -1 downto 0);
+-- 	signal DBSPIClk: std_logic_vector(DBSPIs -1 downto 0);
+-- 	signal DBSPIIn: std_logic_vector(DBSPIs -1 downto 0);
+-- 	signal DBSPIOut: std_logic_vector(DBSPIs -1 downto 0);
+-- 	type DBSPICSType is array(DBSPIs-1 downto 0) of std_logic_vector(DBSPICSWidth-1 downto 0);
+-- 	signal DBSPICS : DBSPICSType;
+-- 	signal DBSPIDataSel : std_logic;
+-- 	signal DBSPIFIFOCountSel : std_logic;
+-- 	signal DBSPIDescriptorSel : std_logic;
+-- 	begin
+-- 		makedbspis: for i in 0 to DBSPIs -1 generate
+-- 			bspi: entity work.BufferedSPI
+-- 			generic map (
+-- 				cswidth => DBSPICSWidth,
+-- 				gatedcs => true
+-- 				)
+-- 			port map (
+-- 				clk  => clklow,
+-- 				ibus => ibusint,
+-- 				obus => obusint,
+-- 				addr => Aint(5 downto 2),
+-- 				hostpush => LoadDBSPIData(i),
+-- 				hostpop => ReadDBSPIData(i),
+-- 				loaddesc => LoadDBSPIDescriptor(i),
+-- 				loadasend => '0',
+-- 				clear => ClearDBSPIFIFO(i),
+-- 				readcount => ReadDBSPIFIFOCount(i),
+-- 				spiclk => DBSPIClk(i),
+-- 				spiin => DBSPIIn(i),
+-- 				spiout => DBSPIOut(i),
+-- 				spicsout => DBSPICS(i)
+-- 				);
+-- 		end generate;
+--
+-- 		DBSPIDecodeProcess : process (Aint,Readstb,writestb,DBSPIDataSel,DBSPIFIFOCountSel,DBSPIDescriptorSel)
+-- 		begin
+-- 			if Aint(15 downto 8) = DBSPIDataAddr then	 --  DBSPI data register select
+-- 				DBSPIDataSel <= '1';
+-- 			else
+-- 				DBSPIDataSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = DBSPIFIFOCountAddr then	 --  DBSPI FIFO count register select
+-- 				DBSPIFIFOCountSel <= '1';
+-- 			else
+-- 				DBSPIFIFOCountSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = DBSPIDescriptorAddr then	 --  DBSPI channel descriptor register select
+-- 				DBSPIDescriptorSel <= '1';
+-- 			else
+-- 				DBSPIDescriptorSel <= '0';
+-- 			end if;
+-- 			LoadDBSPIData <= OneOfNDecode(DBSPIs,DBSPIDataSel,writestb,Aint(7 downto 6)); -- 4 max
+-- 			ReadDBSPIData <= OneOfNDecode(DBSPIs,DBSPIDataSel,Readstb,Aint(7 downto 6));
+-- 			LoadDBSPIDescriptor<= OneOfNDecode(DBSPIs,DBSPIDescriptorSel,writestb,Aint(5 downto 2));
+-- 			ReadDBSPIFIFOCOunt <= OneOfNDecode(DBSPIs,DBSPIFIFOCountSel,Readstb,Aint(5 downto 2));
+-- 			ClearDBSPIFIFO <= OneOfNDecode(DBSPIs,DBSPIFIFOCountSel,writestb,Aint(5 downto 2));
+-- 		end process DBSPIDecodeProcess;
+--
+-- 		DoDBSPIPins: process(DBSPIOut, DBSPIClk, DBSPICS, IOBitsCorein)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = DBSPITag then
+-- 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
+-- 						when DBSPIOutPin =>
+-- 							IOBitsCorein(i) <= DBSPIOut(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when DBSPIClkPin =>
+-- 							IOBitsCorein(i) <= DBSPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));											when DBSPIInPin =>
+-- 							DBSPIIn(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
+-- 						when others =>
+-- 							IOBitsCorein(i) <= DBSPICS(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(6 downto 0))-5);
+-- 				   		-- magic foo, magic foo, what on earth does it do?
+-- 							-- (this needs to written more clearly!)
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+--
+-- 		DoLocalDDBSPIPins: process(LIOBits,DBSPICS,DBSPIClk,DBSPIOut) -- only for 4I69 LIO currently
+-- 		begin
+-- 			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
+-- 				report("Doing DBSPI LIOLoop: "& integer'image(i));
+-- 				if ThePinDesc(i+IOWidth)(15 downto 8) = DBSPITag then 	-- GTag (Local I/O starts at end of external I/O)
+-- 					case (ThePinDesc(i+IOWidth)(7 downto 0)) is	--secondary pin function, drop MSB
+-- 						when DBSPIOutPin =>
+-- 							LIOBits(i) <= DBSPIOut(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16)));
+-- 							report("Local DBSPIOutPin found at LIOBit " & integer'image(i));
+-- 						when DBSPIClkPin =>
+-- 							LIOBits(i) <= DBSPIClk(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16)));
+-- 							report("Local DBSPClkPin found at LIOBit " & integer'image(i));
+-- 						when DBSPIInPin =>
+-- 							DBSPIIn(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16))) <= LIOBits(i);
+-- 							report("Local DBSPIInPin found at LIOBit " & integer'image(i));
+-- 						when others =>
+-- 							LIOBits(i) <= DBSPICS(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16)))(conv_integer(ThePinDesc(i+IOWidth)(6 downto 0))-5);
+-- 							report("Local DBSPICSPin found at LIOBit " & integer'image(i));
+-- 						-- magic foo, magic foo, what on earth does it do?
+-- 						-- (this needs to written more clearly!)
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+-- 	end generate;
+--
+-- 	makesssimod:  if SSSIs >0  generate
+-- 	signal LoadSSSIData0: std_logic_vector(SSSIs -1 downto 0);
+-- 	signal ReadSSSIData0: std_logic_vector(SSSIs -1 downto 0);
+-- 	signal ReadSSSIData1: std_logic_vector(SSSIs -1 downto 0);
+-- 	signal LoadSSSIControl: std_logic_vector(SSSIs -1 downto 0);
+-- 	signal ReadSSSIControl: std_logic_vector(SSSIs -1 downto 0);
+-- 	signal SSSIClk: std_logic_vector(SSSIs -1 downto 0);
+-- 	signal SSSIData: std_logic_vector(SSSIs -1 downto 0);
+-- 	signal SSSIBusyBits: std_logic_vector(SSSIs -1 downto 0);
+-- 	signal SSSIDAVBits: std_logic_vector(SSSIs -1 downto 0);
+-- 	signal SSSIDataSel0 : std_logic;
+-- 	signal SSSIDataSel1 : std_logic;
+-- 	signal SSSIControlSel : std_logic;
+-- 	signal GlobalPStartSSSI : std_logic;
+-- 	signal GlobalSSSIBusySel : std_logic;
+-- 	signal GlobalTStartSSSI : std_logic;
+-- 		begin
+-- 		makesssis: for i in 0 to SSSIs -1 generate
+-- 			sssi: entity work.SimpleSSI
+-- 			port  map (
+-- 				clk => clklow,
+-- 				ibus => ibusint,
+-- 				obus => obusint,
+-- 				loadcontrol => LoadSSSIControl(i),
+-- 				lstart => LoadSSSIData0(i),
+-- 				pstart => GlobalPstartSSSI,
+-- 				timers => RateSources,
+-- 				readdata0 => ReadSSSIData0(i),
+-- 				readdata1 => ReadSSSIData1(i),
+-- 				readcontrol => ReadSSSIControl(i),
+-- 				busyout => SSSIBusyBits(i),
+-- 				davout => SSSIDAVBits(i),
+-- 				ssiclk => SSSIClk(i),
+-- 				ssidata => SSSIData(i)
+-- 				);
+-- 		end generate;
+--
+-- 		SSSIDecodeProcess : process (Aint,Readstb,writestb,SSSIDataSel0,GlobalSSSIBusySel,
+-- 		                             SSSIBusyBits,SSSIDAvBits,SSSIDataSel1,SSSIControlSel)
+-- 		begin
+-- 			if Aint(15 downto 8) = SSSIDataAddr0 then	 --  SSSI data register select 0
+-- 				SSSIDataSel0 <= '1';
+-- 			else
+-- 				SSSIDataSel0 <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = SSSIDataAddr1 then	 --  SSSI data register select 1
+-- 				SSSIDataSel1 <= '1';
+-- 			else
+-- 				SSSIDataSel1 <= '0';
+-- 			end if;
+--
+-- 			if Aint(15 downto 8) = SSSIControlAddr then	 --  SSSI control register select
+-- 				SSSIControlSel <= '1';
+-- 			else
+-- 				SSSIControlSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = SSSIGlobalPStartAddr and writestb = '1' then	 --
+-- 				GlobalPStartSSSI <= '1';
+-- 			else
+-- 				GlobalPStartSSSI <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = SSSIGlobalPStartAddr and readstb = '1' then	 --
+-- 				GlobalSSSIBusySel <= '1';
+-- 			else
+-- 				GlobalSSSIBusySel <= '0';
+-- 			end if;
+-- 			LoadSSSIData0 <= OneOfNDecode(SSSIs,SSSIDataSel0,writestb,Aint(7 downto 2)); -- 64 max
+-- 			ReadSSSIData0 <= OneOfNDecode(SSSIs,SSSIDataSel0,Readstb,Aint(7 downto 2));
+-- 			ReadSSSIData1 <= OneOfNDecode(SSSIs,SSSIDataSel1,Readstb,Aint(7 downto 2));
+-- 			LoadSSSIControl <= OneOfNDecode(SSSIs,SSSIControlSel,writestb,Aint(7 downto 2));
+-- 			ReadSSSIControl <= OneOfNDecode(SSSIs,SSSIControlSel,Readstb,Aint(7 downto 2));
+-- 			obusint <= (others => 'Z');
+-- 			if GlobalSSSIBusySel = '1' then
+-- 				obusint(SSSIs -1 downto 0) <= SSSIBusyBits;
+-- 				obusint(31 downto SSSIs) <= (others => '0');
+-- 			end if;
+-- 		end process SSSIDecodeProcess;
+--
+-- 		DoSSIPins: process(SSSIClk, IOBitsCorein,SSSIDavBits)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = SSSITag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
+-- 						when SSSIClkPin =>
+-- 							IOBitsCorein(i) <= SSSIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when SSSIClkEnPin =>
+-- 							IOBitsCorein(i) <= '0';		-- for RS-422 daughtercards that have drive enables
+-- 						when SSSIDAVPin =>
+-- 							IOBitsCorein(i) <= SSSIDAVBits(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when SSSIDataPin =>
+-- 							SSSIData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
+-- 						when others => null;
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+-- 	end generate;
+--
+-- 	makeFAbsmod:  if FAbss >0  generate
+-- 	signal LoadFAbsData0: std_logic_vector(FAbss -1 downto 0);
+-- 	signal ReadFAbsData0: std_logic_vector(FAbss -1 downto 0);
+-- 	signal ReadFAbsData1: std_logic_vector(FAbss -1 downto 0);
+-- 	signal ReadFAbsData2: std_logic_vector(FAbss -1 downto 0);
+-- 	signal LoadFAbsControl0: std_logic_vector(FAbss -1 downto 0);
+-- 	signal LoadFAbsControl1: std_logic_vector(FAbss -1 downto 0);
+-- 	signal ReadFAbsControl0: std_logic_vector(FAbss -1 downto 0);
+-- 	signal ReadFAbsControl1: std_logic_vector(FAbss -1 downto 0);
+-- 	signal LoadFAbsControl2: std_logic_vector(FAbss -1 downto 0);
+-- 	signal FAbsBusyBits: std_logic_vector(FAbss -1 downto 0);
+-- 	signal FAbsDAVBits: std_logic_vector(FAbss -1 downto 0);
+-- 	signal FAbsRequest: std_logic_vector(FAbss -1 downto 0);
+-- 	signal FAbsData: std_logic_vector(FAbss -1 downto 0);
+-- 	signal FAbsTestClk: std_logic_vector(FAbss -1 downto 0);
+-- --- FanucAbs interface related signals
+-- 	signal FAbsDataSel0 : std_logic;
+-- 	signal FAbsDataSel1 : std_logic;
+-- 	signal FAbsDataSel2 : std_logic;
+-- 	signal FAbsControlSel0 : std_logic;
+-- 	signal FAbsControlSel1 : std_logic;
+-- 	signal FAbsControlSel2 : std_logic;
+-- 	signal GlobalPStartFAbs : std_logic;
+-- 	signal GlobalFAbsBusySel : std_logic;
+--
+-- 	begin
+-- 		makeFAbss: for i in 0 to FAbss -1 generate
+-- 			FAbs: entity work.FanucAbs
+-- 			generic map (
+-- 				Clock => ClockLow
+-- 				)
+-- 			port  map (
+-- 				clk => clklow,
+-- 				ibus => ibusint,
+-- 				obus => obusint,
+-- 				loadcontrol0 => LoadFAbsControl0(i),
+-- 				loadcontrol1 => LoadFAbsControl1(i),
+-- 				loadcontrol2 => LoadFAbsControl2(i),
+-- 				lstart => LoadFabsData0(i),
+-- 				pstart => GlobalPstartFAbs,
+-- 				timers => RateSources,
+-- 				readdata0 => ReadFAbsData0(i),
+-- 				readdata1 => ReadFAbsData1(i),
+-- 				readdata2 => ReadFAbsData2(i),
+-- 				readcontrol0 => ReadFAbsControl0(i),
+-- 				readcontrol1 => ReadFAbsControl1(i),
+-- 				busyout => FabsBusyBits(i),
+-- 				davout => FabsDAVBits(i),
+-- 				requestout => FAbsRequest(i),
+-- 				rxdata => FAbsData(i),
+-- 				testclk => FAbsTestClk(i)
+-- 				);
+-- 		end generate;
+--
+-- 		FAbsDecodeProcess : process (Aint,Readstb,writestb,FAbsDataSel0,FAbsDataSel1,FAbsDataSel2,
+-- 												FAbsControlSel0,FAbsControlSel1,FAbsControlSel2,
+-- 												GlobalFabsBusySel,FAbsBusyBits)
+-- 		begin
+-- 			if Aint(15 downto 8) = FAbsDataAddr0 then	 --  FAbs data register select
+-- 				FAbsDataSel0 <= '1';
+-- 			else
+-- 				FAbsDataSel0 <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = FAbsDataAddr1 then	 --  FAbs data register select
+-- 				FAbsDataSel1 <= '1';
+-- 			else
+-- 				FAbsDataSel1 <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = FAbsDataAddr2 then	 --  FAbs data register select
+-- 				FAbsDataSel2 <= '1';
+-- 			else
+-- 				FAbsDataSel2 <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = FAbsControlAddr0 then	 --  FAbs control register 0 select
+-- 				FAbsControlSel0 <= '1';
+-- 			else
+-- 				FAbsControlSel0 <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = FAbsControlAddr1 then	 --  FAbs control register 1 select
+-- 				FAbsControlSel1 <= '1';
+-- 			else
+-- 				FAbsControlSel1 <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = FAbsDataAddr2 then	 	--  FAbs control register 2 select
+-- 				FAbsControlSel2 <= '1';
+-- 			else
+-- 				FAbsControlSel2 <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = FAbsGlobalPStartAddr and writestb = '1' then	 --
+-- 				GlobalPStartFAbs <= '1';
+-- 			else
+-- 				GlobalPStartFAbs <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = FAbsGlobalPStartAddr and readstb = '1' then	 --
+-- 				GlobalFAbsBusySel <= '1';
+-- 			else
+-- 				GlobalFAbsBusySel <= '0';
+-- 			end if;
+-- 			LoadFAbsData0 <= OneOfNDecode(FAbss,FAbsDataSel0,writestb,Aint(7 downto 2)); -- 64 max
+-- 			ReadFAbsData0 <= OneOfNDecode(FAbss,FAbsDataSel0,Readstb,Aint(7 downto 2));
+-- 			ReadFAbsData1 <= OneOfNDecode(FAbss,FAbsDataSel1,Readstb,Aint(7 downto 2));
+-- 			ReadFAbsData2 <= OneOfNDecode(FAbss,FAbsDataSel2,Readstb,Aint(7 downto 2));
+-- 			LoadFAbsControl0 <= OneOfNDecode(FAbss,FAbsControlSel0,writestb,Aint(7 downto 2));
+-- 			LoadFAbsControl1 <= OneOfNDecode(FAbss,FAbsControlSel1,writestb,Aint(7 downto 2));
+-- 			LoadFAbsControl2 <= OneOfNDecode(FAbss,FAbsControlSel2,writestb,Aint(7 downto 2));
+-- 			ReadFAbsControl0 <= OneOfNDecode(FAbss,FAbsControlSel0,Readstb,Aint(7 downto 2));
+-- 			ReadFAbsControl1 <= OneOfNDecode(FAbss,FAbsControlSel1,Readstb,Aint(7 downto 2));
+-- 			obusint <= (others => 'Z');
+-- 			if GlobalFabsBusySel = '1' then
+-- 				obusint(FAbss -1 downto 0) <= FAbsBusyBits;
+-- 				obusint(31 downto FAbss) <= (others => '0');
+-- 			end if;
+-- 		end process FAbsDecodeProcess;
+--
+-- 		DoFAbsPins: process(FAbsRequest,FAbsTestClk,IOBitsCorein)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = FAbsTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
+-- 						when FAbsRQPin =>
+-- 							IOBitsCorein(i) <= FAbsRequest(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when FAbsRQEnPin =>
+-- 							IOBitsCorein(i) <= '0';		-- for RS-422 daughtercards that have drive enables
+-- 						when FAbsTestClkPin =>
+-- 							IOBitsCorein(i) <= FAbsTestClk(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when FAbsDAVPin =>
+-- 							IOBitsCorein(i) <= FAbsDAVBits(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when FAbsDataPin =>
+-- 							FAbsData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
+-- 						when others => null;
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+-- 	end generate;
+--
+-- 	makebissmod:  if BISSs >0  generate
+-- 	signal LoadBISSData: std_logic_vector(BISSs -1 downto 0);
+-- 	signal ReadBISSData: std_logic_vector(BISSs -1 downto 0);
+-- 	signal LoadBISSControl0: std_logic_vector(BISSs -1 downto 0);
+-- 	signal LoadBISSControl1: std_logic_vector(BISSs -1 downto 0);
+-- 	signal ReadBISSControl0: std_logic_vector(BISSs -1 downto 0);
+-- 	signal ReadBISSControl1: std_logic_vector(BISSs -1 downto 0);
+-- 	signal BISSClk: std_logic_vector(BISSs -1 downto 0);
+-- 	signal BISSData: std_logic_vector(BISSs -1 downto 0);
+-- --- BISS interface related signals
+-- 	signal BISSDataSel : std_logic;
+-- 	signal BISSControlSel0 : std_logic;
+-- 	signal BISSControlSel1 : std_logic;
+-- 	signal GlobalPStartBISS : std_logic;
+-- 	signal BISSBusyBits: std_logic_vector(BISSs -1 downto 0);
+-- 	signal BISSDAVBits: std_logic_vector(BISSs -1 downto 0);
+-- 	signal GlobalBISSBusySel : std_logic;
+--
+--
+--
+-- 	begin
+-- 		makebisss: for i in 0 to BISSs -1 generate
+-- 			BISS: entity work.biss
+-- 			port  map (
+-- 				clk => clklow,
+-- 				hclk => clkhigh,
+-- 				ibus => ibusint,
+-- 				obus => obusint,
+-- 				poplifo => ReadBISSData(i),
+-- 				lstart => LoadBISSData(i),
+-- 				pstart => GlobalPstartBISS,
+-- 				timers => RateSources,
+-- 				loadcontrol0 => LoadBISSControl0(i),
+-- 				loadcontrol1 => LoadBISSControl1(i),
+-- 				readcontrol0 => ReadBISSControl0(i),
+-- 				readcontrol1 => ReadBISSControl1(i),
+-- 				busyout => BISSBusyBits(i),
+-- 				davout => BISSDAVBits(i),
+-- 				bissclk => BISSClk(i),
+-- 				bissdata => BISSData(i)
+-- 				);
+-- 		end generate;
+--
+-- 		BISSDecodeProcess : process (Aint,Readstb,writestb,BISSControlSel0,BISSControlSel1,
+-- 											  BISSDataSel,GlobalBISSBusySel,BISSBusyBits)
+-- 		begin
+-- 			if Aint(15 downto 8) = BISSDataAddr then	 --  BISS data register select
+-- 				BISSDataSel <= '1';
+-- 			else
+-- 				BISSDataSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = BISSControlAddr0 then	 --  BISS control register select
+-- 				BISSControlSel0 <= '1';
+-- 			else
+-- 				BISSControlSel0 <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = BISSControlAddr1 then	 --  BISS control register select
+-- 				BISSControlSel1 <= '1';
+-- 			else
+-- 				BISSControlSel1 <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = BISSGlobalPStartAddr and writestb = '1' then	 --
+-- 				GlobalPStartBISS <= '1';
+-- 			else
+-- 				GlobalPStartBISS <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = BISSGlobalPStartAddr and readstb = '1' then	 --
+-- 				GlobalBISSBusySel <= '1';
+-- 			else
+-- 				GlobalBISSBusySel <= '0';
+-- 			end if;
+--
+-- 			obusint <= (others => 'Z');
+-- 			if GlobalBISSBusySel = '1' then
+-- 				obusint(BISSs -1 downto 0) <= BISSBusyBits;
+-- 				obusint(31 downto BISSs) <= (others => '0');
+-- 			end if;
+--
+-- 			LoadBISSData <= OneOfNDecode(BISSs,BISSDataSel,writestb,Aint(5 downto 2));
+-- 			ReadBISSData <= OneOfNDecode(BISSs,BISSDataSel,Readstb,Aint(5 downto 2));
+-- 			LoadBISSControl0 <= OneOfNDecode(BISSs,BISSControlSel0,writestb,Aint(5 downto 2));
+-- 			LoadBISSControl1 <= OneOfNDecode(BISSs,BISSControlSel1,writestb,Aint(5 downto 2));
+-- 			ReadBISSControl0 <= OneOfNDecode(BISSs,BISSControlSel0,Readstb,Aint(5 downto 2));
+-- 			ReadBISSControl1 <= OneOfNDecode(BISSs,BISSControlSel1,Readstb,Aint(5 downto 2));
+-- 		end process BISSDecodeProcess;
+--
+-- 		DoBISSPins: process(BISSClk, IOBitsCorein)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = BISSTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
+-- 						when BISSClkPin =>
+-- 							IOBitsCorein(i) <= BISSClk(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when BISSClkEnPin =>
+-- 							IOBitsCorein(i) <= '0';			-- for RS-422 daughtercards that have drive enables
+-- 						when BISSDAVPin =>
+-- 							IOBitsCorein(i) <= BISSDAVBits(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when BISSDataPin =>
+-- 							BISSData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
+-- 						when others => null;
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+-- 	end generate;
 
 -------------------------------------Standard UART---------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------
@@ -1208,7 +1224,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			auarrx: entity work.uartr
 			port map (
 				clk => clklow,
-				ibus => ibus,
+				ibus => ibusint,
 				obus => obusint,
 				addr => Aint(3 downto 2),
 				popfifo => LoadUARTRData(i),
@@ -1254,12 +1270,12 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			ReadUARTRModeReg <= OneOfNDecode(UARTs,UARTRModeRegSel,Readstb,Aint(7 downto 4));
 		end process UARTRDecodeProcess;
 
-		DoUARTRPins: process(IOBitsint)
+		DoUARTRPins: process(IOBitsCorein)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = UARTRTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					if (ThePinDesc(i)(7 downto 0)) = URDataPin then
-						URData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+						URData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 					end if;
 				end if;
 			end loop;
@@ -1282,7 +1298,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			auartx:  entity work.uartx
 			port map (
 				clk => clklow,
-				ibus => ibus,
+				ibus => ibusint,
 				obus => obusint,
 				addr => Aint(3 downto 2),
 				pushfifo => LoadUARTTData(i),
@@ -1336,9 +1352,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				if ThePinDesc(i)(15 downto 8) = UARTTTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
 						when UTDataPin =>
-							AltData(i) <= UTData(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= UTData(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when UTDrvEnPin =>
-							AltData(i) <=  not UTDrvEn(conv_integer(ThePinDesc(i)(23 downto 16))); -- ExtIO is active low enable
+							IOBitsCorein(i) <=  not UTDrvEn(conv_integer(ThePinDesc(i)(23 downto 16))); -- ExtIO is active low enable
 						when others => null;
 					end case;
 				end if;
@@ -1401,7 +1417,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				MaxFrameSize => 1024 )
 			port map (
 				clk => clklow,
-				ibus => ibus,
+				ibus => ibusint,
 				obus => obusint,
 				popdata => ReadPktUARTRData(i),
 				poprc => ReadPktUARTRFrameCount(i),
@@ -1447,18 +1463,18 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 
 		end process PktUARTRDecodeProcess;
 
-		DoPktUARTRPins: process(IOBitsint)
+		DoPktUARTRPins: process(IOBitsCorein)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = PktUARTRTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					if (ThePinDesc(i)(7 downto 0)) = PktURDataPin then
-						PktURData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+						PktURData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 					end if;
 				end if;
 			end loop;
 		end process;
 
-		DoLocalPktUARTRPins: process(IOBitsint) -- only for 4I90 LIO currently
+		DoLocalPktUARTRPins: process(IOBitsCorein) -- only for 4I90 LIO currently
 		begin
 			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
 				report("Doing PktUARTR LIOLoop: "& integer'image(i));
@@ -1477,7 +1493,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				MaxFrameSize => 1024 )
 			port map (
 				clk => clklow,
-				ibus => ibus,
+				ibus => ibusint,
 				obus => obusint,
 				pushdata => LoadPktUARTTData(i),
 				pushsc	=> LoadPktUARTTFrameCount(i),
@@ -1529,9 +1545,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				if ThePinDesc(i)(15 downto 8) = PktUARTTTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
 						when PktUTDataPin =>
-							AltData(i) <= PktUTData(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= PktUTData(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when UTDrvEnPin =>
-							AltData(i) <=  not PktUTDrvEn(conv_integer(ThePinDesc(i)(23 downto 16))); -- ExtIO is active low enable
+							IOBitsCorein(i) <=  not PktUTDrvEn(conv_integer(ThePinDesc(i)(23 downto 16))); -- ExtIO is active low enable
 						when others => null;
 					end case;
 				end if;
@@ -1571,7 +1587,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				)
 			port map (
 				clk => clklow,
-				ibus0 => ibus(0),
+				ibus0 => ibusint(0),
 				loadena => LoadBinOscEna(i),
 				oscout => BinOscOut(i)
 				);
@@ -1591,7 +1607,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = BinOscTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					AltData(i) <= BinOscOut(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(6 downto 0))-1);
+					IOBitsCorein(i) <= BinOscOut(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(6 downto 0))-1);
 					report("External BinOscOutPin found");
 				end if;
 			end loop;
@@ -1631,7 +1647,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port map (
 				clk => clklow,
 				hclk => clkhigh,
-				ibus => ibus,
+				ibus => ibusint,
 --				obus => obusint,
 				loadrate => LoadWaveGenRate(i),
 				loadlength => LoadWaveGenLength(i),
@@ -1689,17 +1705,17 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				if ThePinDesc(i)(15 downto 8) = WaveGenTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
 						when PDMAOutPin =>
-							AltData(i) <= WaveGenPDMA(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= WaveGenPDMA(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when PDMBOutPin =>
-							AltData(i) <= WaveGenPDMB(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= WaveGenPDMB(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when Trigger0OutPin =>
-							AltData(i) <= WaveGenTrigger0(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= WaveGenTrigger0(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when Trigger1OutPin =>
-							AltData(i) <= WaveGenTrigger1(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= WaveGenTrigger1(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when Trigger2OutPin =>
-							AltData(i) <= WaveGenTrigger2(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= WaveGenTrigger2(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when Trigger3OutPin =>
-							AltData(i) <= WaveGenTrigger3(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= WaveGenTrigger3(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when others => null;
 					end case;
 				end if;
@@ -1735,7 +1751,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			aresolver: entity work.resolver
 			port map(
 				clk => clklow,
-				ibus => ibus,
+				ibus => ibusint,
 				obus => obusint,
 				hloadcommand => LoadResModCommand(i),
 				hreadcommand => ReadResModCommand(i),
@@ -1802,27 +1818,27 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				if ThePinDesc(i)(15 downto 8) = ResModTag then
 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
 						when ResModPwrEnPin =>
-							AltData(i) <= ResModPwrEn(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= ResModPwrEn(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when ResModPDMPPin =>
-							AltData(i) <= ResModPDMP(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= ResModPDMP(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when ResModPDMMPin =>
-							AltData(i) <= ResModPDMM(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= ResModPDMM(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when ResModChan0Pin =>
-							AltData(i) <= ResModChan0(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= ResModChan0(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when ResModChan1Pin =>
-							AltData(i) <= ResModChan1(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= ResModChan1(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when ResModChan2Pin =>
-							AltData(i) <= ResModChan2(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= ResModChan2(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when ResModSPICSPin =>
-							AltData(i) <= ResModSPICS(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= ResModSPICS(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when ResModSPIClkPin =>
-							AltData(i) <= ResModSPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= ResModSPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when ResModTestBitPin =>
-							AltData(i) <= ResModTestBit(conv_integer(ThePinDesc(i)(23 downto 16)));
+							IOBitsCorein(i) <= ResModTestBit(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when ResModSPIDI0Pin =>
-							ResModSPIDI0(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+							ResModSPIDI0(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 						when ResModSPIDI1Pin =>
-							ResModSPIDI1(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+							ResModSPIDI1(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 						when others => null;
 					end case;
 				end if;
@@ -1868,7 +1884,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			port map(
 				clk  => clklow,
 				clkmed => clkmed,
-				ibus  => ibus,
+				ibus  => ibusint,
 				obus  => obusint,
 				hloadcommand  => LoadSSerialCommand(i),
 				hreadcommand  => ReadSSerialCommand(i),
@@ -1944,21 +1960,21 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 
 		end process SSerialDecodeProcess;
 
-		DoSSerialPins: process(SSerialTX, SSerialTXEn, SSerialTestBits, IOBitsint)
+		DoSSerialPins: process(SSerialTX, SSerialTXEn, SSerialTestBits, IOBitsCorein)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = SSerialTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					if (ThePinDesc(i)(7 downto 0) and x"F0") = x"80" then 	-- txouts match 8X
-						AltData(i) <=   SSerialTX(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(3 downto 0))-1);	-- 16 max ports
+						IOBitsCorein(i) <=   SSerialTX(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(3 downto 0))-1);	-- 16 max ports
 					end if;
 					if (ThePinDesc(i)(7 downto 0) and x"F0") = x"90" then 	-- txens match 9X
-						AltData(i) <= not SSerialTXEn(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(3 downto 0))-1); 	-- 16 max ports
+						IOBitsCorein(i) <= not SSerialTXEn(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(3 downto 0))-1); 	-- 16 max ports
 					end if;
 					if (ThePinDesc(i)(7 downto 0) and x"F0") = x"00" then 	-- rxins match 0X
-						SSerialRX(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(3 downto 0))-1) <= IOBitsint(i);		-- 16 max ports
+						SSerialRX(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(3 downto 0))-1) <= IOBitsCorein(i);		-- 16 max ports
 					end if;
 					if ThePinDesc(i)(7 downto 0) = SSerialTestPin then
-						AltData(i) <= SSerialTestBits(i);
+						IOBitsCorein(i) <= SSerialTestBits(i);
 					end if;
 				end if;
 			end loop;
@@ -1990,7 +2006,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			)
 			port map(
 				clk  => clklow,
-				ibus  => ibus,
+				ibus  => ibusint,
 				obus  => obusint,
 				hloadcommand  => LoadTwiddlerCommand(i),
 				hreadcommand  => ReadTwiddlerCommand(i),
@@ -2036,14 +2052,14 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = TwiddlerTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					if (ThePinDesc(i)(7 downto 0) and x"C0") = x"80" then 	-- outs match 8X .. BX
-						AltData(i) <=   TwiddlerOutput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1);	--  max ports, more than 8 requires adding to IDROM pins
+						IOBitsCorein(i) <=   TwiddlerOutput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1);	--  max ports, more than 8 requires adding to IDROM pins
 					end if;
 					if (ThePinDesc(i)(7 downto 0) and x"C0") = x"00" then 	-- ins match 0X .. 3X
-						TwiddlerInput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBitsint(i);		-- 16 max ports
+						TwiddlerInput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBitsCorein(i);		-- 16 max ports
 					end if;
 					if (ThePinDesc(i)(7 downto 0) and x"C0") = x"C0" then 	-- I/Os match CX .. FX
-						TwiddlerInput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBitsint(i);		-- 16 max ports
-						AltData(i) <= TwiddlerOutput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(4 downto 0))-1); 	-- 16 max ports
+						TwiddlerInput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= IOBitsCorein(i);		-- 16 max ports
+						IOBitsCorein(i) <= TwiddlerOutput(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(4 downto 0))-1); 	-- 16 max ports
 					end if;
 				end if;
 			end loop;
@@ -2081,15 +2097,15 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 				);
 		end generate;
 
-		DoScalerCounterPins: process(IOBitsint)
+		DoScalerCounterPins: process(IOBitsCorein)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = ScalerCounterTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					if (ThePinDesc(i)(7 downto 0)) = ScalerCounterInA then
-						SCCountInA(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+						SCCountInA(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 					end if;
 					if (ThePinDesc(i)(7 downto 0)) = ScalerCounterInB then
-						SCCountInB(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+						SCCountInB(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 					end if;
 				end if;
 			end loop;

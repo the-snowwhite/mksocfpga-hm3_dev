@@ -8,7 +8,7 @@ use IEEE.std_logic_UNSIGNED.ALL;
 
 -- This file is created for Machinekit intended use
 library pins;
-use work.PIN_G540x2_34_irq.all;
+use work.Pintypes.all;
 use work.IDROMConst.all;
 
 use work.oneofndecode.all;
@@ -46,12 +46,14 @@ entity MakePWMgens is
 		Aint: in std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		AltData :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
-		IOBitsint :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		CoreDataOut :  out std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		IOBitsCorein :  in std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 		clklow : in std_logic;
 		clkmed : in std_logic;
 		clkhigh : in std_logic;
-		Probe : inout std_logic
+		Probe : inout std_logic;
+		RateSources: out std_logic_vector(4 downto 0) := (others => 'Z');
+		rates: out std_logic_vector (4 downto 0)
 	);
 
 end MakePWMgens;
@@ -173,11 +175,11 @@ architecture dataflow of MakePWMgens is
 				if ThePinDesc(i)(15 downto 8) = PWMTag then
 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
 						when PWMAOutPin =>
-							AltData(i) <= PWMGENOutA(conv_integer(ThePinDesc(i)(23 downto 16)));
+							CoreDataOut(i) <= PWMGENOutA(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when PWMBDirPin =>
-							AltData(i) <= PWMGENOutB(conv_integer(ThePinDesc(i)(23 downto 16)));
+							CoreDataOut(i) <= PWMGENOutB(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when PWMCEnaPin =>
-							AltData(i) <= PWMGENOutC(conv_integer(ThePinDesc(i)(23 downto 16)));
+							CoreDataOut(i) <= PWMGENOutC(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when others => null;
 					end case;
 				end if;

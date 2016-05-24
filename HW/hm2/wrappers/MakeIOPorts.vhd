@@ -9,7 +9,7 @@ use IEEE.std_logic_UNSIGNED.ALL;
 
 -- This file is created for Machinekit intended use
 library pins;
-use work.PIN_G540x2_34_irq.all;
+use work.Pintypes.all;
 use work.IDROMConst.all;
 
 use work.oneofndecode.all;
@@ -62,17 +62,20 @@ entity MakeIOPorts is
 		LEDCount: integer);
 	Port (
 -- 		inbus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
-		ibus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
+		ibustop : in std_logic_vector(BusWidth -1 downto 0);
+		ibusint : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
 		obustop : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
--- 		obusint : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
  		obusint : in std_logic_vector(BusWidth -1 downto 0);
 		addr : in std_logic_vector(AddrWidth -1 downto 2);
  		Aint : out std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		AltData :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
-		iobitstop :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
-		IOBitsint :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		iobitsouttop :  out std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		iobitsintop :  in std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		IOBitsCorein :  out std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		CoreDataOut :  in std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+--		iobitstop :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+--		AltData :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 		clklow : in std_logic;
 		clkmed : in std_logic;
 		clkhigh : in std_logic;
@@ -80,7 +83,7 @@ entity MakeIOPorts is
 		demandmode: out std_logic;
 		intirq: out std_logic;
 		dreq: out std_logic;
-		RateSources: std_logic_vector(4 downto 0);
+		RateSources: std_logic_vector(4 downto 0) := (others => 'Z');
 		LEDS: out std_logic_vector(ledcount-1 downto 0)
 	);
 
@@ -147,6 +150,7 @@ architecture dataflow of MakeIOPorts is
 	begin
 
 	obustop <= obusint;
+	ibusint <= ibustop;
 
 	ahosmotid : entity work.hostmotid
 	generic map (
@@ -171,7 +175,7 @@ architecture dataflow of MakeIOPorts is
 		port map (
 			clear => WDBite,
 			clk => clklow,
-			ibus => ibus,
+			ibus => ibustop,
 			obus => obustop,
 			loadport => LoadPortCmd(i),
 			loadddr => LoadDDRCmd(i),
@@ -179,8 +183,8 @@ architecture dataflow of MakeIOPorts is
 			loadopendrainmode => LoadOpenDrainModeCmd(i),
 			loadinvert => LoadOutputInvCmd(i),
 			readddr => ReadDDRCmd(i),
-			portdata => iobitstop((((i+1)*PortWidth) -1) downto (i*PortWidth)),
-			altdata => AltData((((i+1)*PortWidth) -1) downto (i*PortWidth))
+			portdata => iobitsouttop((((i+1)*PortWidth) -1) downto (i*PortWidth)),
+			altdata => CoreDataOut((((i+1)*PortWidth) -1) downto (i*PortWidth))
 			);
 	end generate;
 
@@ -193,10 +197,23 @@ architecture dataflow of MakeIOPorts is
 		port map (
 		obus => obustop,
 		readport => ReadPortCmd(i),
-		portdata => iobitstop((((i+1)*PortWidth) -1) downto (i*PortWidth))
+		portdata => iobitsintop((((i+1)*PortWidth) -1) downto (i*PortWidth))
  		);
 	end generate;
 
+	PortDecode: process (Adr,readstb,writestb,PortSel, DDRSel, AltDataSrcSel, OpenDrainModeSel, OutputInvSel)
+	begin
+
+		LoadPortCMD <= OneOfNDecode(IOPorts,PortSel,writestb,Adr(4 downto 2)); -- 8 max
+		ReadPortCMD <= OneOfNDecode(IOPorts,PortSel,readstb,Adr(4 downto 2));
+		LoadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,writestb,Adr(4 downto 2));
+		ReadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,readstb,Adr(4 downto 2));
+
+		LoadAltDataSrcCMD <= OneOfNDecode(IOPorts,AltDataSrcSel,writestb,Adr(4 downto 2));
+		LoadOpenDrainModeCMD <= OneOfNDecode(IOPorts,OpenDrainModeSel,writestb,Adr(4 downto 2));
+		LoadOutputInvCMD <= OneOfNDecode(IOPorts,OutputInvSel,writestb,Adr(4 downto 2));
+
+	end process PortDecode;
 
 	makewatchdog: if UseWatchDog generate
 		wdogabittus: entity work.watchdog
@@ -204,7 +221,7 @@ architecture dataflow of MakeIOPorts is
 
 		port map (
 			clk => clklow,
-			ibus => ibus,
+			ibus => ibustop,
 			obus => obustop,
 			loadtime => LoadWDTime,
 			readtime => ReadWDTime,
@@ -221,7 +238,7 @@ architecture dataflow of MakeIOPorts is
 		generic map( ndrqs => NDRQs )
 		port map(
 			clk => clklow,
-			ibus => ibus,
+			ibus => ibustop,
 			obus => obustop,
 			loadmode => LoadDMDMAMode,
 			readmode => ReadDMDMAMode,
@@ -247,7 +264,7 @@ architecture dataflow of MakeIOPorts is
 				)
 		port map (
 			clk => clklow,
-			ibus => ibus,
+			ibus => ibustop,
          obus =>  obustop,
          loadstatus => LoadIRqStatus,
          readstatus => ReadIRqStatus,
@@ -302,7 +319,7 @@ architecture dataflow of MakeIOPorts is
 			re   => ReadIDROM,
 			radd => addr(9 downto 2),
 			wadd => Adr(9 downto 2),
-			din  => ibus,
+			din  => ibustop,
 			dout => obustop
 		);
 
@@ -314,7 +331,7 @@ architecture dataflow of MakeIOPorts is
 			)
 		port map (
 			clk  => clklow,
-         ibus => ibus,
+         ibus => ibustop,
          obus => obustop,
          load => LoadIDROMWEn,
          read => ReadIDROMWEn,
@@ -443,20 +460,6 @@ architecture dataflow of MakeIOPorts is
 
 	end process;
 
-	PortDecode: process (Adr,readstb,writestb,PortSel, DDRSel, AltDataSrcSel, OpenDrainModeSel, OutputInvSel)
-	begin
-
-		LoadPortCMD <= OneOfNDecode(IOPorts,PortSel,writestb,Adr(4 downto 2)); -- 8 max
-		ReadPortCMD <= OneOfNDecode(IOPorts,PortSel,readstb,Adr(4 downto 2));
-		LoadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,writestb,Adr(4 downto 2));
-		ReadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,readstb,Adr(4 downto 2));
-
-		LoadAltDataSrcCMD <= OneOfNDecode(IOPorts,AltDataSrcSel,writestb,Adr(4 downto 2));
-		LoadOpenDrainModeCMD <= OneOfNDecode(IOPorts,OpenDrainModeSel,writestb,Adr(4 downto 2));
-		LoadOutputInvCMD <= OneOfNDecode(IOPorts,OutputInvSel,writestb,Adr(4 downto 2));
-
-	end process PortDecode;
-
 	dotieupint: if not UseIRQLogic generate
 		tieupint : process(clklow)
 		begin
@@ -468,89 +471,6 @@ architecture dataflow of MakeIOPorts is
 
 	end generate;
 
-	makedaqfifomod:  if DAQFIFOs >0  generate
-	signal ReadDAQFIFO: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal ReadDAQFIFOCount: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal ClearDAQFIFO: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal LoadDAQFIFOMode: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal ReadDAQFIFOMode: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal PushDAQFIFOFrac: std_logic_vector(DAQFIFOs-1 downto 0);
-	type DAQFIFODataType is array(DAQFIFOs-1 downto 0) of std_logic_vector(DAQFIFOWidth-1 downto 0);
-	signal DAQFIFOData: DAQFIFODataType;
-	signal DAQFIFOFull: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal DAQFIFOStrobe: std_logic_vector(DAQFIFOs-1 downto 0);
-	signal DAQFIFODataSel : std_logic;
-	signal DAQFIFOCountSel : std_logic;
-	signal DAQFIFOModeSel : std_logic;
-	signal DAQFIFOReq: std_logic_vector(DAQFIFOs-1 downto 0);
-	begin
-		DRQSources <= DAQFIFOReq;			-- this will grow as other demand mode DMA sources are added
-		makedaqfifos: for i in 0 to DAQFIFOs -1 generate
-			adaqfifo: entity work.DAQFIFO16				-- need to parametize width
-			generic map (
-				depth => 2048									-- this needs to be in module header
-				)
-			port  map (
-				clk => clklow,
-				ibus => ibus,
-				obus => obustop,
-				readfifo => ReadDAQFIFO(i),
-				readfifocount => ReadDAQFIFOCount(i),
-				clearfifo =>  ClearDAQFIFO(i),
-				loadmode =>  LoadDAQFIFOMode(i),
-				readmode =>  ReadDAQFIFOMode(i) ,
-				pushfrac =>  PushDAQFIFOFrac(i),
-				daqdata =>   DAQFIFOData(i),
-				daqfull =>   DAQFIFOFull(i),
-				daqreq => 	 DAQFIFOReq(i),
-				daqstrobe => DAQFIFOStrobe(i)
-				);
-		end generate;
-
-		DAQFIFODecodeProcess : process (Adr,Readstb,writestb,DAQFIFODataSel,DAQFIFOCountSel,DAQFIFOModeSel)
-		begin
-			if Adr(15 downto 8) = DAQFIFODataAddr then
-				DAQFIFODataSel <= '1';
-			else
-				DAQFIFODataSel <= '0';
-			end if;
-			if Adr(15 downto 8) = DAQFIFOCountAddr then
-				DAQFIFOCountSel <= '1';
-			else
-				DAQFIFOCountSel <= '0';
-			end if;
-			if Adr(15 downto 8) = DAQFIFOModeAddr then
-				DAQFIFOModeSel <= '1';
-			else
-				DAQFIFOModeSel <= '0';
-			end if;
-			ReadDAQFIFO <= OneOfNDecode(DAQFIFOs,DAQFIFODataSel,Readstb,Adr(7 downto 6));	-- 16 addresses per fifo to allow burst reads
-			PushDAQFIFOFrac <= OneOfNDecode(DAQFIFOs,DAQFIFODataSel,writestb,Adr(5 downto 2));
-			ReadDAQFIFOCount <= OneOfNDecode(DAQFIFOs,DAQFIFOCountSel,Readstb,Adr(5 downto 2));
-			ClearDAQFIFO <= OneOfNDecode(DAQFIFOs,DAQFIFOCountSel,writestb,Adr(5 downto 2));
-			ReadDAQFIFOMode <= OneOfNDecode(DAQFIFOs,DAQFIFOModeSel,Readstb,Adr(5 downto 2));
-			LoadDAQFIFOMode <= OneOfNDecode(DAQFIFOs,DAQFIFOModeSel,writestb,Adr(5 downto 2));
-		end process DAQFIFODecodeProcess;
-
-		DoDAQFIFOPins: process(DAQFIFOFull, iobitstop)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = DAQFIFOTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					if (ThePinDesc(i)(7 downto 0) and x"C0") = x"00" then 	-- DAQ data matches 0X .. 3X
-						DAQFIFOData(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= iobitstop(i);		-- 16 max ports
-					end if;
-					if ThePinDesc(i)(7 downto 0) = DAQFIFOStrobePin then
-						 DAQFIFOStrobe(conv_integer(ThePinDesc(i)(23 downto 16))) <= iobitstop(i);
-					end if;
-					if ThePinDesc(i)(7 downto 0) = DAQFIFOFullPin then
-						AltData(i) <= DAQFIFOFull(conv_integer(ThePinDesc(i)(23 downto 16)));
-					end if;
-				end if;
-			end loop;
-		end process;
-
-	end generate;
-
 	LEDReg : entity work.boutreg
 	generic map (
 		size => LEDCount,
@@ -558,12 +478,96 @@ architecture dataflow of MakeIOPorts is
 		invert => true)
 	port map (
 		clk  => clklow,
-		ibus => ibus(BusWidth-1 downto BusWidth-LEDCount),
+		ibus => ibustop(BusWidth-1 downto BusWidth-LEDCount),
 		obus => obustop(BusWidth-1 downto BusWidth-LEDCount),
 		load => LoadLEDs,
 		read => '0',
 		clear => '0',
 		dout => LEDS
 		);
+
+--
+-- 	makedaqfifomod:  if DAQFIFOs >0  generate
+-- 	signal ReadDAQFIFO: std_logic_vector(DAQFIFOs-1 downto 0);
+-- 	signal ReadDAQFIFOCount: std_logic_vector(DAQFIFOs-1 downto 0);
+-- 	signal ClearDAQFIFO: std_logic_vector(DAQFIFOs-1 downto 0);
+-- 	signal LoadDAQFIFOMode: std_logic_vector(DAQFIFOs-1 downto 0);
+-- 	signal ReadDAQFIFOMode: std_logic_vector(DAQFIFOs-1 downto 0);
+-- 	signal PushDAQFIFOFrac: std_logic_vector(DAQFIFOs-1 downto 0);
+-- 	type DAQFIFODataType is array(DAQFIFOs-1 downto 0) of std_logic_vector(DAQFIFOWidth-1 downto 0);
+-- 	signal DAQFIFOData: DAQFIFODataType;
+-- 	signal DAQFIFOFull: std_logic_vector(DAQFIFOs-1 downto 0);
+-- 	signal DAQFIFOStrobe: std_logic_vector(DAQFIFOs-1 downto 0);
+-- 	signal DAQFIFODataSel : std_logic;
+-- 	signal DAQFIFOCountSel : std_logic;
+-- 	signal DAQFIFOModeSel : std_logic;
+-- 	signal DAQFIFOReq: std_logic_vector(DAQFIFOs-1 downto 0);
+-- 	begin
+-- 		DRQSources <= DAQFIFOReq;			-- this will grow as other demand mode DMA sources are added
+-- 		makedaqfifos: for i in 0 to DAQFIFOs -1 generate
+-- 			adaqfifo: entity work.DAQFIFO16				-- need to parametize width
+-- 			generic map (
+-- 				depth => 2048									-- this needs to be in module header
+-- 				)
+-- 			port  map (
+-- 				clk => clklow,
+-- 				ibus => ibustop,
+-- 				obus => obustop,
+-- 				readfifo => ReadDAQFIFO(i),
+-- 				readfifocount => ReadDAQFIFOCount(i),
+-- 				clearfifo =>  ClearDAQFIFO(i),
+-- 				loadmode =>  LoadDAQFIFOMode(i),
+-- 				readmode =>  ReadDAQFIFOMode(i) ,
+-- 				pushfrac =>  PushDAQFIFOFrac(i),
+-- 				daqdata =>   DAQFIFOData(i),
+-- 				daqfull =>   DAQFIFOFull(i),
+-- 				daqreq => 	 DAQFIFOReq(i),
+-- 				daqstrobe => DAQFIFOStrobe(i)
+-- 				);
+-- 		end generate;
+--
+-- 		DAQFIFODecodeProcess : process (Adr,Readstb,writestb,DAQFIFODataSel,DAQFIFOCountSel,DAQFIFOModeSel)
+-- 		begin
+-- 			if Adr(15 downto 8) = DAQFIFODataAddr then
+-- 				DAQFIFODataSel <= '1';
+-- 			else
+-- 				DAQFIFODataSel <= '0';
+-- 			end if;
+-- 			if Adr(15 downto 8) = DAQFIFOCountAddr then
+-- 				DAQFIFOCountSel <= '1';
+-- 			else
+-- 				DAQFIFOCountSel <= '0';
+-- 			end if;
+-- 			if Adr(15 downto 8) = DAQFIFOModeAddr then
+-- 				DAQFIFOModeSel <= '1';
+-- 			else
+-- 				DAQFIFOModeSel <= '0';
+-- 			end if;
+-- 			ReadDAQFIFO <= OneOfNDecode(DAQFIFOs,DAQFIFODataSel,Readstb,Adr(7 downto 6));	-- 16 addresses per fifo to allow burst reads
+-- 			PushDAQFIFOFrac <= OneOfNDecode(DAQFIFOs,DAQFIFODataSel,writestb,Adr(5 downto 2));
+-- 			ReadDAQFIFOCount <= OneOfNDecode(DAQFIFOs,DAQFIFOCountSel,Readstb,Adr(5 downto 2));
+-- 			ClearDAQFIFO <= OneOfNDecode(DAQFIFOs,DAQFIFOCountSel,writestb,Adr(5 downto 2));
+-- 			ReadDAQFIFOMode <= OneOfNDecode(DAQFIFOs,DAQFIFOModeSel,Readstb,Adr(5 downto 2));
+-- 			LoadDAQFIFOMode <= OneOfNDecode(DAQFIFOs,DAQFIFOModeSel,writestb,Adr(5 downto 2));
+-- 		end process DAQFIFODecodeProcess;
+--
+-- 		DoDAQFIFOPins: process(DAQFIFOFull, iobitsintop)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = DAQFIFOTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					if (ThePinDesc(i)(7 downto 0) and x"C0") = x"00" then 	-- DAQ data matches 0X .. 3X
+-- 						DAQFIFOData(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(5 downto 0))-1) <= iobitsintop(i);		-- 16 max ports
+-- 					end if;
+-- 					if ThePinDesc(i)(7 downto 0) = DAQFIFOStrobePin then
+-- 						 DAQFIFOStrobe(conv_integer(ThePinDesc(i)(23 downto 16))) <= iobitsintop(i);
+-- 					end if;
+-- 					if ThePinDesc(i)(7 downto 0) = DAQFIFOFullPin then
+-- 						AltData(i) <= DAQFIFOFull(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 					end if;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+-- --
+-- 	end generate;
 
 end dataflow;

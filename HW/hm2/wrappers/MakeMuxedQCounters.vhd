@@ -1,4 +1,3 @@
-
 library IEEE;
 use IEEE.std_logic_1164.all;  -- defines std_logic types
 use IEEE.std_logic_ARITH.ALL;
@@ -9,7 +8,7 @@ use IEEE.std_logic_UNSIGNED.ALL;
 
 -- This file is created for Machinekit intended use
 library pins;
-use work.PIN_G540x2_34_irq.all;
+use work.Pintypes.all;
 use work.IDROMConst.all;
 
 use work.oneofndecode.all;
@@ -47,12 +46,14 @@ entity MakeMuxedQCounters is
 		Aint: in std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		AltData :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
-		IOBitsint :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		CoreDataOut :  out std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		IOBitsCorein :  in std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 		clklow : in std_logic;
 		clkmed : in std_logic;
 		clkhigh : in std_logic;
-		Probe : inout std_logic
+		Probe : inout std_logic;
+		RateSources: out std_logic_vector(4 downto 0) := (others => 'Z');
+		rates: out std_logic_vector (4 downto 0)
 	);
 
 end MakeMuxedQCounters;
@@ -260,30 +261,30 @@ architecture dataflow of MakeMuxedQCounters is
 			ReadMuxedQCounterCCR <= OneOfNDecode(MuxedQCounters,MuxedQCounterCCRSel,Readstb,Aint(7 downto 2));
 		end process MuxedQCounterDecodeProcess;
 
-		DoMuxedQCounterPins: process(IOBitsint,MuxedQCtrSel)
+		DoMuxedQCounterPins: process(IOBitsCorein,MuxedQCtrSel)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = MuxedQCountTag then
 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
 						when MuxedQCountQAPin =>
-							MuxedQuadA(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+							MuxedQuadA(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 						when MuxedQCountQBPin =>
-							MuxedQuadB(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+							MuxedQuadB(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 						when MuxedQCountIdxPin =>
-							MuxedIndex(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+							MuxedIndex(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 						when MuxedQCountIdxMaskPin =>
-							MuxedIndexMask(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+							MuxedIndexMask(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 						when MuxedQCountProbePin =>
-							MuxedProbe <= IOBitsint(i); -- only 1 please!
+							MuxedProbe <= IOBitsCorein(i); -- only 1 please!
 						when others => null;
 					end case;
 				end if;
 				if ThePinDesc(i)(15 downto 8) = MuxedQCountSelTag then
 					case(ThePinDesc(i)(7 downto 0)) is	--secondary pin function
 						when MuxedQCountSel0Pin =>
-							AltData(i) <= MuxedQCtrSel(0);
+							CoreDataOut(i) <= MuxedQCtrSel(0);
 						when MuxedQCountSel1Pin =>
-							AltData(i) <= MuxedQCtrSel(1);
+							CoreDataOut(i) <= MuxedQCtrSel(1);
 						when others => null;
 					end case;
 				end if;

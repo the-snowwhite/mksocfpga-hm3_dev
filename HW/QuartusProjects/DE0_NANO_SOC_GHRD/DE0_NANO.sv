@@ -361,8 +361,10 @@ assign clkmed_sig = hm_clk_med;
 
 //import work::*;
 
-wire [IOWidth-1:0] iobits_sig;
-assign GPIO_0[IOWidth-1:0] = iobits_sig;
+wire [IOWidth-1:0] iobitsout_sig;
+wire [IOWidth-1:0] iobitsin_sig;
+assign GPIO_0[30-1:0] = iobitsout_sig;
+assign GPIO_1[3:0] = iobitsin_sig;
 
 wire [LIOWidth-1:0] liobits_sig;
 //assign GPIO_1[LIOWidth-1:0] = liobits_sig;
@@ -372,7 +374,7 @@ assign ARDUINO_IO[LIOWidth-1:0] = liobits_sig;
 //HostMot3 #(.IOWidth(IOWidth),.IOPorts(IOPorts)) HostMot3_inst
 HostMot3 HostMot3_inst
 (
-	.ibus(hm_datai) ,	// input [buswidth-1:0] ibus_sig
+	.ibustop(hm_datai) ,	// input [buswidth-1:0] ibus_sig
 	.obustop(hm_datao) ,	// output [buswidth-1:0] obus_sig
 //	.addr(hm_address) ,	// input [addrwidth-1:2] addr_sig	-- addr => A(AddrWidth-1 downto 2),
 	.addr(hm_address) ,	// input [addrwidth-1:2] addr_sig	-- addr => A(AddrWidth-1 downto 2),
@@ -385,7 +387,8 @@ HostMot3 HostMot3_inst
 	.intirq(int_sig) ,	// output  int_sig							--int => LINT, ---> PCI ?
 //	.dreq(dreq_sig) ,	// output  dreq_sig
 //	.demandmode(demandmode_sig) ,	// output  demandmode_sig
-	.iobitstop(iobits_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
+	.iobitsouttop(iobitsout_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
+	.iobitsintop(iobitsin_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
 	.liobits(liobits_sig) ,	// inout [lIOWidth-1:0] 			--liobits_sig
 //	.rates(rates_sig) ,	// output [4:0] rates_sig
 //	.leds(leds_sig) 	// output [ledcount-1:0] leds_sig		--leds => LEDS

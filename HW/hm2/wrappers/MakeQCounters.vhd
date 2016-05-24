@@ -1,4 +1,3 @@
-
 library IEEE;
 use IEEE.std_logic_1164.all;  -- defines std_logic types
 use IEEE.std_logic_ARITH.ALL;
@@ -9,17 +8,12 @@ use IEEE.std_logic_UNSIGNED.ALL;
 
 -- This file is created for Machinekit intended use
 library pins;
-use work.PIN_G540x2_34_irq.all;
+use work.Pintypes.all;
 use work.IDROMConst.all;
 
 use work.oneofndecode.all;
 
 entity MakeQCounters is
---  		QCounterAddr : std_Logic_Vector(7 downto 0) := QCounterAddr;
---  		QCounterCCRAddr : std_Logic_Vector(7 downto 0) := QCounterCCRAddr;
---  		UseProbe : boolean := false;
--- 		TSDivAddr : std_Logic_Vector(7 downto 0) := TSDivAddr
--- 	);
 	generic (
 		ThePinDesc: PinDescType := PinDesc;
   		ClockHigh: integer;
@@ -52,12 +46,14 @@ entity MakeQCounters is
 		Aint: in std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		AltData :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
-		IOBitsint :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		CoreDataOut :  out std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		IOBitsCorein :  in std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 		clklow : in std_logic;
 		clkmed : in std_logic;
 		clkhigh : in std_logic;
-		Probe : inout std_logic
+		Probe : inout std_logic;
+		RateSources: out std_logic_vector(4 downto 0) := (others => 'Z');
+		rates: out std_logic_vector (4 downto 0)
 	);
 
 end MakeQCounters;
@@ -198,21 +194,21 @@ architecture dataflow of MakeQCounters is
 			ReadQCounterCCR <= OneOfNDecode(QCounters,QCounterCCRSel,Readstb,Aint(7 downto 2));
 		end process QCounterDecodeProcess;
 
-		DoQCounterPins: process(IOBitsint)
+		DoQCounterPins: process(IOBitsCorein)
 		begin
 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
 				if ThePinDesc(i)(15 downto 8) = QCountTag then
 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
 						when QCountQAPin =>
-							QuadA(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+							QuadA(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 						when QCountQBPin =>
-							QuadB(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+							QuadB(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 						when QCountIdxPin =>
-							Index(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+							Index(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 						when QCountIdxMaskPin =>
-							IndexMask(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+							IndexMask(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 						when QCountProbePin =>
-							Probe <= IOBitsint(i);	-- only 1 please!
+							Probe <= IOBitsCorein(i);	-- only 1 please!
 						when others => null;
 					end case;
 				end if;

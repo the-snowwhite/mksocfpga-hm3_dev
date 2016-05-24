@@ -8,7 +8,7 @@ use IEEE.std_logic_UNSIGNED.ALL;
 
 -- This file is created for Machinekit intended use
 library pins;
-use work.PIN_G540x2_34_irq.all;
+use work.Pintypes.all;
 use work.IDROMConst.all;
 
 use work.oneofndecode.all;
@@ -39,21 +39,20 @@ entity MakeHm2Dpllmods is
   		TPPWMGens : integer;
 		QCounters: integer;
 		UseMuxedProbe: boolean;
-		UseProbe: boolean
-	);
+		UseProbe: boolean);
 	Port (
 		ibus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
 		obusint : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
 		Aint : in std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		AltData :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
-		IOBitsint :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		CoreDataOut :  out std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		IOBitsCorein :  in std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 		clklow : in std_logic;
 		clkmed : in std_logic;
 		clkhigh : in std_logic;
 		Probe : inout std_logic;
-		RateSources: out std_logic_vector(4 downto 0);
+		RateSources: out std_logic_vector(4 downto 0) := (others => 'Z');
 		rates: out std_logic_vector (4 downto 0)
 	);
 
@@ -201,17 +200,17 @@ architecture dataflow of MakeHm2Dpllmods is
 				if ThePinDesc(i)(15 downto 8) = HM2DPLLTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
 					case (ThePinDesc(i)(7 downto 0)) is
 						when HM2DPLLSyncInPin =>
-							DPLLSyncIn <= IOBitsint(i);
+							DPLLSyncIn <= IOBitsCorein(i);
 						when HM2DPLLRefOutPin =>
-							AltData(i) <= DPLLRefOut;
+							CoreDataOut(i) <= DPLLRefOut;
 						when HM2DPLLTimer1Pin =>
-							AltData(i) <= DPLLTimers(0);
+							CoreDataOut(i) <= DPLLTimers(0);
 						when HM2DPLLTimer2Pin =>
-							AltData(i) <= DPLLTimers(1);
+							CoreDataOut(i) <= DPLLTimers(1);
 						when HM2DPLLTimer3Pin =>
-							AltData(i) <= DPLLTimers(2);
+							CoreDataOut(i) <= DPLLTimers(2);
 						when HM2DPLLTimer4Pin =>
-							AltData(i) <= DPLLTimers(3);
+							CoreDataOut(i) <= DPLLTimers(3);
 						when others => null;
 
 					end case;

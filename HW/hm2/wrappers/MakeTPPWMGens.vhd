@@ -1,4 +1,3 @@
-
 library IEEE;
 use IEEE.std_logic_1164.all;  -- defines std_logic types
 use IEEE.std_logic_ARITH.ALL;
@@ -9,7 +8,7 @@ use IEEE.std_logic_UNSIGNED.ALL;
 
 -- This file is created for Machinekit intended use
 library pins;
-use work.PIN_G540x2_34_irq.all;
+use work.Pintypes.all;
 use work.IDROMConst.all;
 
 use work.oneofndecode.all;
@@ -44,15 +43,17 @@ entity MakeTPPWMGens is
 	Port (
 		ibus : in std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
 		obusint : out std_logic_vector(BusWidth -1 downto 0) := (others => 'Z');
-		Aint: in std_logic_vector(AddrWidth -1 downto 2);
+		Aint : in std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		AltData :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
-		IOBitsint :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		CoreDataOut :  out std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		IOBitsCorein :  in std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 		clklow : in std_logic;
 		clkmed : in std_logic;
 		clkhigh : in std_logic;
-		Probe : inout std_logic
+		Probe : inout std_logic;
+		RateSources: out std_logic_vector(4 downto 0) := (others => 'Z');
+		rates: out std_logic_vector (4 downto 0)
 	);
 
 end MakeTPPWMGens;
@@ -160,21 +161,21 @@ architecture dataflow of MakeTPPWMGens is
 				if ThePinDesc(i)(15 downto 8) = TPPWMTag then
 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
 						when TPPWMAOutPin =>
-							AltData(i) <= TPPWMGENOutA(conv_integer(ThePinDesc(i)(23 downto 16)));
+							CoreDataOut(i) <= TPPWMGENOutA(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when TPPWMBOutPin =>
-							AltData(i) <= TPPWMGENOutB(conv_integer(ThePinDesc(i)(23 downto 16)));
+							CoreDataOut(i) <= TPPWMGENOutB(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when TPPWMCOutPin =>
-							AltData(i) <= TPPWMGENOutC(conv_integer(ThePinDesc(i)(23 downto 16)));
+							CoreDataOut(i) <= TPPWMGENOutC(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when NTPPWMAOutPin =>
-							AltData(i) <= NTPPWMGENOutA(conv_integer(ThePinDesc(i)(23 downto 16)));
+							CoreDataOut(i) <= NTPPWMGENOutA(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when NTPPWMBOutPin =>
-							AltData(i) <= NTPPWMGENOutB(conv_integer(ThePinDesc(i)(23 downto 16)));
+							CoreDataOut(i) <= NTPPWMGENOutB(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when NTPPWMCOutPin =>
-							AltData(i) <= NTPPWMGENOutC(conv_integer(ThePinDesc(i)(23 downto 16)));
+							CoreDataOut(i) <= NTPPWMGENOutC(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when TPPWMEnaPin =>
-							AltData(i) <= TPPWMEna(conv_integer(ThePinDesc(i)(23 downto 16)));
+							CoreDataOut(i) <= TPPWMEna(conv_integer(ThePinDesc(i)(23 downto 16)));
 						when TPPWMFaultPin =>
-							TPPWMFault(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsint(i);
+							TPPWMFault(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
 						when others => null;
 					end case;
 				end if;
