@@ -1,6 +1,13 @@
-Quartus Build Status: [![Quartus Build Status](https://jenkins.machinekit.io/buildStatus/icon?job=mksocfpga)](https://jenkins.machinekit.io/buildStatus/icon?job=mksocfpga)
+24 may 2016
+This is a new copy of the mksocfpga repo, for experimental development towards a more modular configuration hal run-time style. 
 
-Debian Packaging Status: [![Debian Packaging Status](https://jenkins.machinekit.io/buildStatus/icon?job=mksocfpga-packaging)](https://jenkins.machinekit.io/buildStatus/icon?job=mksocfpga-packaging)
+I have created this repo as a placeholder for futuristic development of the mksocfpga project.
+
+Entitled Hostmot3
+
+Current focus here is on getting partial (re)configuration to work.
+
+---------------
 
 
 11-apr-2016
