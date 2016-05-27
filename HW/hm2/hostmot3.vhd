@@ -130,8 +130,8 @@ entity HostMot3 is
 	intirq: out std_logic;
 	dreq: out std_logic;
 	demandmode: out std_logic;
-	iobitsouttop: out std_logic_vector (IOWidth -1 downto 0);
-	iobitsintop: in std_logic_vector (IOWidth -1 downto 0);
+	iobitsouttop: inout std_logic_vector (IOWidth -1 downto 0) := (others => 'Z');
+	iobitsintop: inout std_logic_vector (IOWidth -1 downto 0) := (others => 'Z');
 	liobits: inout std_logic_vector (lIOWidth -1 downto 0);
 	rates: out std_logic_vector (4 downto 0);
 	leds: out std_logic_vector(ledcount-1 downto 0)

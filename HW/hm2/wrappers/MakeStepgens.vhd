@@ -46,8 +46,8 @@ entity MakeStepgens is
 		Aint: in std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		CoreDataOut :  out std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
-		IOBitsCorein :  in std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		CoreDataOut :  inout std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		IOBitsCorein :  inout std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
 		clklow : in std_logic;
 		clkmed : in std_logic;
 		clkhigh : in std_logic;

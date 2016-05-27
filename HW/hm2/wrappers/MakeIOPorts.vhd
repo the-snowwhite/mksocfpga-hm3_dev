@@ -70,10 +70,10 @@ entity MakeIOPorts is
  		Aint : out std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		iobitsouttop :  out std_logic_vector(IOWidth-1 downto 0) := (others => '0');
-		iobitsintop :  in std_logic_vector(IOWidth-1 downto 0) := (others => '0');
-		IOBitsCorein :  out std_logic_vector(IOWidth-1 downto 0) := (others => '0');
-		CoreDataOut :  in std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		iobitsouttop :  inout std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		iobitsintop :  inout std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		IOBitsCorein :  out std_logic_vector(IOWidth-1 downto 0);
+		CoreDataOut :  in std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 --		iobitstop :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 --		AltData :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 		clklow : in std_logic;
@@ -151,6 +151,7 @@ architecture dataflow of MakeIOPorts is
 
 	obustop <= obusint;
 	ibusint <= ibustop;
+	IOBitsCorein <= iobitsintop;
 
 	ahosmotid : entity work.hostmotid
 	generic map (

@@ -361,10 +361,22 @@ assign clkmed_sig = hm_clk_med;
 
 //import work::*;
 
-wire [IOWidth-1:0] iobitsout_sig;
-wire [IOWidth-1:0] iobitsin_sig;
-assign GPIO_0[30-1:0] = iobitsout_sig;
-assign GPIO_1[3:0] = iobitsin_sig;
+tri [IOWidth-1:0] iobitsout_sig;
+tri [IOWidth-1:0] iobitsin_sig;
+tri [4-1:0] gpiobitsout_sig;
+tri [4-1:0] gpiobitsin_sig;
+assign GPIO_0[24-1:0] = iobitsout_sig[24-1:0];
+assign GPIO_0[30-1:24] = iobitsin_sig[30-1:24];
+
+assign gpiobitsout_sig = iobitsout_sig[34-1:30];
+assign gpiobitsin_sig = iobitsin_sig[34-1:30];
+
+iobuf	iobuf_inst (
+	.datain ( gpiobitsin_sig ),
+	.oe ( oe_sig ),
+	.dataio ( GPIO_1[3:0] ),
+	.dataout ( gpiobitsout_sig )
+	);
 
 wire [LIOWidth-1:0] liobits_sig;
 //assign GPIO_1[LIOWidth-1:0] = liobits_sig;
