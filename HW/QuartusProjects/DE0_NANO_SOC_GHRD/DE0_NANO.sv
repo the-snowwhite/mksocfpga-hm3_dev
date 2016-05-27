@@ -129,38 +129,39 @@ module DE0_NANO(
 //  REG/WIRE declarations
 //=======================================================
 
-  parameter AddrWidth = 16;
-  parameter IOWidth = 34;
-  parameter LIOWidth = 6;
-  parameter IOPorts = 2;
+	parameter AddrWidth  = 16;
+	parameter IOWidth		= 34;
+	parameter LIOWidth	= 6;
+	parameter IOPorts		= 2;
+	parameter GPIOWidth	= 36;
+	parameter NumReg		= 6;
 
+	wire  hps_fpga_reset_n;
+	wire [1:0] fpga_debounced_buttons;
+	wire [6:0]  fpga_led_internal;
+	wire [2:0]  hps_reset_req;
+	wire        hps_cold_reset;
+	wire        hps_warm_reset;
+	wire        hps_debug_reset;
+	wire [27:0] stm_hw_events;
+	wire 		  fpga_clk_50;
+	// connection of internal logics
+	assign LED[7:1] = fpga_led_internal;
+	assign fpga_clk_50 = FPGA_CLK2_50;
+	assign stm_hw_events    = {{15{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
+	// hm2
+	wire [AddrWidth-3:0] 	hm_address;
+	wire [31:0] 	hm_datao;
+	wire [31:0] 	hm_datai;
+	wire       		hm_read;
+	wire 				hm_write;
+	wire [3:0]		hm_chipsel;
+	wire				hm_clk_med;
+	wire				hm_clk_high;
+	wire 				clklow_sig;
+	wire 				clkhigh_sig;
 
-  wire  hps_fpga_reset_n;
-  wire [1:0] fpga_debounced_buttons;
-  wire [6:0]  fpga_led_internal;
-  wire [2:0]  hps_reset_req;
-  wire        hps_cold_reset;
-  wire        hps_warm_reset;
-  wire        hps_debug_reset;
-  wire [27:0] stm_hw_events;
-  wire 		  fpga_clk_50;
-// connection of internal logics
-  assign LED[7:1] = fpga_led_internal;
-  assign fpga_clk_50 = FPGA_CLK2_50;
-  assign stm_hw_events    = {{15{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
-// hm2
-  wire [AddrWidth-3:0] 	hm_address;
-  wire [31:0] 	hm_datao;
-  wire [31:0] 	hm_datai;
-  wire       	hm_read;
-  wire 			hm_write;
-  wire [3:0]	hm_chipsel;
-  wire			hm_clk_med;
-  wire			hm_clk_high;
-  wire 			clklow_sig;
-  wire 			clkhigh_sig;
-
- //irq:
+	//irq:
 	wire int_sig;
 	assign ARDUINO_IO[15] = int_sig;
 
@@ -363,19 +364,49 @@ assign clkmed_sig = hm_clk_med;
 
 tri [IOWidth-1:0] iobitsout_sig;
 tri [IOWidth-1:0] iobitsin_sig;
-tri [4-1:0] gpiobitsout_sig;
-tri [4-1:0] gpiobitsin_sig;
-assign GPIO_0[24-1:0] = iobitsout_sig[24-1:0];
-assign GPIO_0[30-1:24] = iobitsin_sig[30-1:24];
+//tri [4-1:0] gpiobitsout_sig;
+//tri [4-1:0] gpiobitsin_sig;
+//assign GPIO_0[24-1:0] = iobitsout_sig[24-1:0];
+//assign GPIO_0[30-1:24] = iobitsin_sig[30-1:24];
 
 assign gpiobitsout_sig = iobitsout_sig[34-1:30];
 assign gpiobitsin_sig = iobitsin_sig[34-1:30];
 
+wire						read_write_sig;
+wire						write_dataenable_sig;
+wire	[NumReg-1:0]	gpio_sel_sig;
+
+wire [GPIOWidth-1:0] gpio_io_reg_sig [NumReg-1:0];
+
+wire [23:0] oe_sig_24_0 = gpio_io_reg_sig[0][23:0];
+wire [23:0] oe_sig_24_1 = gpio_io_reg_sig[1][23:0];
+
+wire [GPIOWidth-1:0] oe_sig = {oe_sig_24_1[9:0],oe_sig_24_0};
+assign GPIO_1 = oe_sig;
+
+gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
+(
+	.CLOCK(fpga_clk_50) ,	// input  CLOCK_sig
+	.reset_reg_N(hps_fpga_reset_n) ,	// input  reset_reg_N_sig
+	.data_ready(hm_write) ,	// input  data_ready_sig
+	.address(hm_address) ,	// input [AddrWidth-1:0] address_sig
+	.data_in(hm_datai) ,	// input [BusWidth-1:0] data_in_sig
+	.read_write(read_write_sig) ,	// output  read_write_sig
+	.write_dataenable(write_dataenable_sig) ,	// output  write_dataenable_sig
+	.gpio_sel(gpio_sel_sig) ,	// output [NumReg-1:0] gpio_sel_sig
+	.gpio_io_reg(gpio_io_reg_sig) 	// output [GPIOWidth-1:0] gpio_io_reg_sig
+);
+
+defparam gpio_adr_decoder_reg_inst.AddrWidth = 14;
+defparam gpio_adr_decoder_reg_inst.BusWidth = 32;
+defparam gpio_adr_decoder_reg_inst.GPIOWidth = 36;
+defparam gpio_adr_decoder_reg_inst.NumReg = 6;
+
 iobuf	iobuf_inst (
-	.datain ( gpiobitsin_sig ),
+	.datain ( iobitsout_sig ),
 	.oe ( oe_sig ),
-	.dataio ( GPIO_1[3:0] ),
-	.dataout ( gpiobitsout_sig )
+	.dataio ( GPIO_0 ),
+	.dataout ( iobitsin_sig )
 	);
 
 wire [LIOWidth-1:0] liobits_sig;

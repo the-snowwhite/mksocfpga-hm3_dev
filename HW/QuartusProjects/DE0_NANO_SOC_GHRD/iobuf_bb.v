@@ -38,10 +38,10 @@ module iobuf (
 	dataio,
 	dataout)/* synthesis synthesis_clearbox = 1 */;
 
-	input	[3:0]  datain;
-	input	[3:0]  oe;
-	inout	[3:0]  dataio;
-	output	[3:0]  dataout;
+	input	[33:0]  datain;
+	input	[33:0]  oe;
+	inout	[33:0]  dataio;
+	output	[33:0]  dataout;
 
 endmodule
 
@@ -54,19 +54,19 @@ endmodule
 // Retrieval info: CONSTANT: INTENDED_DEVICE_FAMILY STRING "Cyclone V"
 // Retrieval info: CONSTANT: enable_bus_hold STRING "FALSE"
 // Retrieval info: CONSTANT: left_shift_series_termination_control STRING "FALSE"
-// Retrieval info: CONSTANT: number_of_channels NUMERIC "4"
+// Retrieval info: CONSTANT: number_of_channels NUMERIC "34"
 // Retrieval info: CONSTANT: open_drain_output STRING "FALSE"
 // Retrieval info: CONSTANT: use_differential_mode STRING "FALSE"
 // Retrieval info: CONSTANT: use_dynamic_termination_control STRING "FALSE"
 // Retrieval info: CONSTANT: use_termination_control STRING "FALSE"
-// Retrieval info: USED_PORT: datain 0 0 4 0 INPUT NODEFVAL "datain[3..0]"
-// Retrieval info: USED_PORT: dataio 0 0 4 0 BIDIR NODEFVAL "dataio[3..0]"
-// Retrieval info: USED_PORT: dataout 0 0 4 0 OUTPUT NODEFVAL "dataout[3..0]"
-// Retrieval info: USED_PORT: oe 0 0 4 0 INPUT NODEFVAL "oe[3..0]"
-// Retrieval info: CONNECT: @datain 0 0 4 0 datain 0 0 4 0
-// Retrieval info: CONNECT: @oe 0 0 4 0 oe 0 0 4 0
-// Retrieval info: CONNECT: dataio 0 0 4 0 @dataio 0 0 4 0
-// Retrieval info: CONNECT: dataout 0 0 4 0 @dataout 0 0 4 0
+// Retrieval info: USED_PORT: datain 0 0 34 0 INPUT NODEFVAL "datain[33..0]"
+// Retrieval info: USED_PORT: dataio 0 0 34 0 BIDIR NODEFVAL "dataio[33..0]"
+// Retrieval info: USED_PORT: dataout 0 0 34 0 OUTPUT NODEFVAL "dataout[33..0]"
+// Retrieval info: USED_PORT: oe 0 0 34 0 INPUT NODEFVAL "oe[33..0]"
+// Retrieval info: CONNECT: @datain 0 0 34 0 datain 0 0 34 0
+// Retrieval info: CONNECT: @oe 0 0 34 0 oe 0 0 34 0
+// Retrieval info: CONNECT: dataio 0 0 34 0 @dataio 0 0 34 0
+// Retrieval info: CONNECT: dataout 0 0 34 0 @dataout 0 0 34 0
 // Retrieval info: GEN_FILE: TYPE_NORMAL iobuf.v TRUE
 // Retrieval info: GEN_FILE: TYPE_NORMAL iobuf.inc FALSE
 // Retrieval info: GEN_FILE: TYPE_NORMAL iobuf.cmp FALSE
