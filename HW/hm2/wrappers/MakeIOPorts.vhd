@@ -8,8 +8,8 @@ use IEEE.std_logic_UNSIGNED.ALL;
 -- holotronic.dk
 
 -- This file is created for Machinekit intended use
-library pins;
-use work.Pintypes.all;
+library pin;
+use pin.Pintypes.all;
 use work.IDROMConst.all;
 
 use work.oneofndecode.all;
@@ -70,8 +70,8 @@ entity MakeIOPorts is
  		Aint : out std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		iobitsouttop :  inout std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
-		iobitsintop :  inout std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		iobitsouttop :  out std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		iobitsintop :  in std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
 		IOBitsCorein :  out std_logic_vector(IOWidth-1 downto 0);
 		CoreDataOut :  in std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 --		iobitstop :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');

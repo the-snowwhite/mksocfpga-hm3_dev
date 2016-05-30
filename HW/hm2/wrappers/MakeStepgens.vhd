@@ -7,8 +7,8 @@ use IEEE.std_logic_UNSIGNED.ALL;
 -- holotronic.dk
 
 -- This file is created for Machinekit intended use
-library pins;
-use work.Pintypes.all;
+library pin;
+use pin.Pintypes.all;
 use work.IDROMConst.all;
 
 use work.oneofndecode.all;

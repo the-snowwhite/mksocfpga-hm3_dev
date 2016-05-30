@@ -7,8 +7,8 @@ use IEEE.std_logic_UNSIGNED.ALL;
 -- holotronic.dk
 
 -- This file is created for Machinekit intended use
-library pins;
-use work.Pintypes.all;
+library pin;
+use pin.Pintypes.all;
 use work.IDROMConst.all;
 
 use work.oneofndecode.all;
@@ -46,8 +46,8 @@ entity MakePWMgens is
 		Aint: in std_logic_vector(AddrWidth -1 downto 2);
 		readstb : in std_logic;
 		writestb : in std_logic;
-		CoreDataOut :  out std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
-		IOBitsCorein :  in std_logic_vector(IOWidth-1 downto 0) := (others => '0');
+		CoreDataOut :  inout std_logic_vector(IOWidth-1 downto 0) := (others => 'Z');
+		IOBitsCorein :  inout std_logic_vector(IOWidth-1 downto 0) := (others => '0');
 		clklow : in std_logic;
 		clkmed : in std_logic;
 		clkhigh : in std_logic;

@@ -66,7 +66,6 @@ use IEEE.std_logic_UNSIGNED.ALL;
 --     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 --     POSSIBILITY OF SUCH DAMAGE.
 --
-use work.Pintypes.all;
 use work.IDROMConst.all;
 use work.log2.all;
 use work.decodedstrobe.all;
@@ -85,35 +84,35 @@ use work.ModuleExists.all;
 entity HostMot3 is
   	generic
 	(
-		ThePinDesc: PinDescType := PinDesc;
-		TheModuleID: ModuleIDType := ModuleID;
-		IDROMType: integer := 3;
-		SepClocks: boolean := true;
-		OneWS: boolean := true;
-		UseStepGenPrescaler : boolean := true;
-		UseIRQLogic: boolean := true;
-		PWMRefWidth: integer := 13;
-		UseWatchDog: boolean := true;
-		OffsetToModules: integer := 64;
-		OffsetToPinDesc: integer := 448;
-		ClockHigh: integer := ClockHigh25;
-		ClockMed: integer := ClockMed25;
-		ClockLow: integer := ClockMed20;
-		BoardNameLow : std_Logic_Vector(31 downto 0) := BoardNameMESA;
-		BoardNameHigh : std_Logic_Vector(31 downto 0) := BoardName5i25;
-		FPGASize: integer := 9;
-		FPGAPins: integer := 144;
-		IOPorts: integer := 2;
-		IOWidth: integer := 34;
-		LIOWidth: integer := 6;
-		PortWidth: integer := 17;
-		BusWidth: integer := 32;
-		AddrWidth: integer := 16;
-		InstStride0: integer := 4;
-		InstStride1: integer := 64;
-		RegStride0: integer := 256;
-		RegStride1: integer := 256;
-		LEDCount: integer := 2
+		ThePinDesc: PinDescType;
+		TheModuleID: ModuleIDType;
+		IDROMType: integer;
+		SepClocks: boolean;
+		OneWS: boolean;
+		UseStepGenPrescaler: boolean;
+		UseIRQLogic: boolean;
+		PWMRefWidth: integer;
+		UseWatchDog: boolean;
+		OffsetToModules: integer;
+		OffsetToPinDesc: integer;
+		ClockHigh: integer;
+		ClockMed: integer;
+		ClockLow: integer;
+		BoardNameLow : std_Logic_Vector(31 downto 0);
+		BoardNameHigh : std_Logic_Vector(31 downto 0);
+		FPGASize: integer;
+		FPGAPins: integer;
+		IOPorts: integer;
+		IOWidth: integer;
+		LIOWidth: integer;
+		PortWidth: integer;
+		BusWidth: integer;
+		AddrWidth: integer;
+		InstStride0: integer;
+		InstStride1: integer;
+		RegStride0: integer;
+		RegStride1: integer;
+		LEDCount: integer
 		);
 	port
    (
@@ -130,8 +129,8 @@ entity HostMot3 is
 	intirq: out std_logic;
 	dreq: out std_logic;
 	demandmode: out std_logic;
-	iobitsouttop: inout std_logic_vector (IOWidth -1 downto 0) := (others => 'Z');
-	iobitsintop: inout std_logic_vector (IOWidth -1 downto 0) := (others => 'Z');
+	iobitsouttop: out std_logic_vector (IOWidth -1 downto 0) := (others => 'Z');
+	iobitsintop: in std_logic_vector (IOWidth -1 downto 0) := (others => 'Z');
 	liobits: inout std_logic_vector (lIOWidth -1 downto 0);
 	rates: out std_logic_vector (4 downto 0);
 	leds: out std_logic_vector(ledcount-1 downto 0)

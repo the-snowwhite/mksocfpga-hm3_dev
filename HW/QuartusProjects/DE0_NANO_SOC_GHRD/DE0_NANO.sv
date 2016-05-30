@@ -128,14 +128,17 @@ module DE0_NANO(
 //=======================================================
 //  REG/WIRE declarations
 //=======================================================
-
+// DE0-Nano Dev kit and I/O adaptors specific info
+import boardtype::*;
+parameter NumIOReg = 6;
+/*
 	parameter AddrWidth  = 16;
 	parameter IOWidth		= 34;
 	parameter LIOWidth	= 6;
 	parameter IOPorts		= 2;
 	parameter GPIOWidth	= 36;
-	parameter NumReg		= 6;
-
+	parameter NumIOReg		= 6;
+*/
 	wire  hps_fpga_reset_n;
 	wire [1:0] fpga_debounced_buttons;
 	wire [6:0]  fpga_led_internal;
@@ -151,8 +154,8 @@ module DE0_NANO(
 	assign stm_hw_events    = {{15{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
 	// hm2
 	wire [AddrWidth-3:0] 	hm_address;
-	wire [31:0] 	hm_datao;
-	wire [31:0] 	hm_datai;
+	tri [31:0] 	hm_datao;
+	tri [31:0] 	hm_datai;
 	wire       		hm_read;
 	wire 				hm_write;
 	wire [3:0]		hm_chipsel;
@@ -333,26 +336,15 @@ altera_edge_detector pulse_debug_reset (
   defparam pulse_debug_reset.EDGE_TYPE = 1;
   defparam pulse_debug_reset.IGNORE_RST_WHILE_BUSY = 1;
 
-reg [25:0] counter;
-reg  led_level;
-always @	(posedge fpga_clk_50 or negedge hps_fpga_reset_n)
-begin
-if(~hps_fpga_reset_n)
-begin
-		counter<=0;
-		led_level<=0;
-end
+led_blinker led_blinker_inst
+(
+	.fpga_clk_50(fpga_clk_50) ,	// input  fpga_clk_50_sig
+	.hps_fpga_reset_n(hps_fpga_reset_n) ,	// input  hps_fpga_reset_n_sig
+	.LED(LED[0]) 	// output  LED_sig
+);
 
-else if(counter==24999999)
-	begin
-		counter<=0;
-		led_level<=~led_level;
-	end
-else
-		counter<=counter+1'b1;
-end
+defparam led_blinker_inst.COUNT_MAX = 24999999;
 
-assign LED[0]=led_level;
 
 // Mesa code ------------------------------------------------------//
 
@@ -362,60 +354,64 @@ assign clkmed_sig = hm_clk_med;
 
 //import work::*;
 
-tri [IOWidth-1:0] iobitsout_sig;
-tri [IOWidth-1:0] iobitsin_sig;
+wire [IOWidth-1:0] iobitsout_sig;
+wire [IOWidth-1:0] iobitsin_sig;
 //tri [4-1:0] gpiobitsout_sig;
 //tri [4-1:0] gpiobitsin_sig;
 //assign GPIO_0[24-1:0] = iobitsout_sig[24-1:0];
 //assign GPIO_0[30-1:24] = iobitsin_sig[30-1:24];
 
-assign gpiobitsout_sig = iobitsout_sig[34-1:30];
-assign gpiobitsin_sig = iobitsin_sig[34-1:30];
+// assign gpiobitsout_sig = iobitsout_sig[34-1:30];
+// assign gpiobitsin_sig = iobitsin_sig[34-1:30];
 
-wire						read_write_sig;
-wire						write_dataenable_sig;
-wire	[NumReg-1:0]	gpio_sel_sig;
+//wire						read_write_sig;
+//wire						write_dataenable_sig;
+//wire	[NumIOReg-1:0]	gpio_sel_sig;
 
-wire [GPIOWidth-1:0] gpio_io_reg_sig [NumReg-1:0];
+	wire [MuxGPIOIOWidth-1:0]	oe_sig;
+//
+//	wire [23:0] oe_sig_24 [NumIOReg-1:0];
+//	wire [23:0] ddr_reg [NumIOReg-1:0];
 
-wire [23:0] oe_sig_24_0 = gpio_io_reg_sig[0][23:0];
-wire [23:0] oe_sig_24_1 = gpio_io_reg_sig[1][23:0];
+//	assign oe_sig_24[23:0] = ddr_reg[23:0];
 
-wire [GPIOWidth-1:0] oe_sig = {oe_sig_24_1[9:0],oe_sig_24_0};
-assign GPIO_1 = oe_sig;
+//	assign oe_sig = {ddr_reg[1][9:0],ddr_reg[0]};
+
 
 gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 (
 	.CLOCK(fpga_clk_50) ,	// input  CLOCK_sig
 	.reset_reg_N(hps_fpga_reset_n) ,	// input  reset_reg_N_sig
-	.data_ready(hm_write) ,	// input  data_ready_sig
-	.address(hm_address) ,	// input [AddrWidth-1:0] address_sig
-	.data_in(hm_datai) ,	// input [BusWidth-1:0] data_in_sig
-	.read_write(read_write_sig) ,	// output  read_write_sig
-	.write_dataenable(write_dataenable_sig) ,	// output  write_dataenable_sig
-	.gpio_sel(gpio_sel_sig) ,	// output [NumReg-1:0] gpio_sel_sig
-	.gpio_io_reg(gpio_io_reg_sig) 	// output [GPIOWidth-1:0] gpio_io_reg_sig
+	.write_reg(hm_write) ,	// input  data_ready_sig
+//	.read_reg(hm_read) ,	// input  data_ready_sig
+	.busaddress(hm_address) ,	// input [AddrWidth-1:0] address_sig
+	.busdata_in(hm_datai) ,	// input [BusWidth-1:0] data_in_sig
+//	.busdata_out(hm_datao) ,	// output [BusWidth-1:0] data_in_sig
+//	.iodatafromhm3 ( iobitsout_sig ),
+	.oe( oe_sig )
+//	.write_dataenable(write_dataenable_sig) ,	// output  write_dataenable_sig
+//	.gpio_sel(gpio_sel_sig) ,	// output [NumIOReg-1:0] gpio_sel_sig
+//	.iodatatohm3 ( iobitsin_sig )
 );
 
-defparam gpio_adr_decoder_reg_inst.AddrWidth = 14;
-defparam gpio_adr_decoder_reg_inst.BusWidth = 32;
-defparam gpio_adr_decoder_reg_inst.GPIOWidth = 36;
-defparam gpio_adr_decoder_reg_inst.NumReg = 6;
+defparam gpio_adr_decoder_reg_inst.AddrWidth = AddrWidth-2;
+defparam gpio_adr_decoder_reg_inst.BusWidth = BusWidth;
+defparam gpio_adr_decoder_reg_inst.MuxGPIOIOWidth = MuxGPIOIOWidth;
+defparam gpio_adr_decoder_reg_inst.NumIOReg = NumIOReg;
 
-iobuf	iobuf_inst (
+gpio_buf	gpio_buf_inst (
 	.datain ( iobitsout_sig ),
 	.oe ( oe_sig ),
 	.dataio ( GPIO_0 ),
 	.dataout ( iobitsin_sig )
 	);
 
-wire [LIOWidth-1:0] liobits_sig;
+	wire [LIOWidth-1:0] liobits_sig;
 //assign GPIO_1[LIOWidth-1:0] = liobits_sig;
 assign ARDUINO_IO[LIOWidth-1:0] = liobits_sig;
 
-
 //HostMot3 #(.IOWidth(IOWidth),.IOPorts(IOPorts)) HostMot3_inst
-HostMot3 HostMot3_inst
+HostMot3_cfg HostMot3_inst
 (
 	.ibustop(hm_datai) ,	// input [buswidth-1:0] ibus_sig
 	.obustop(hm_datao) ,	// output [buswidth-1:0] obus_sig
@@ -437,35 +433,34 @@ HostMot3 HostMot3_inst
 //	.leds(leds_sig) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
 	.leds(GPIO_0[35:34]) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
 );
-/*
-defparam HostMot3_inst.ThePinDesc = PinDesc;
-defparam HostMot3_inst.TheModuleID =  "ModuleID";
-defparam HostMot3_inst.IDROMType = 3;
-defparam HostMot3_inst.SepClocks = "true";
-defparam HostMot3_inst.OneWS = "true";
-defparam HostMot3_inst.UseIRQLogic = "true";
-defparam HostMot3_inst.PWMRefWidth = 13;
-defparam HostMot3_inst.UseWatchDog = "true";
-defparam HostMot3_inst.OffsetToModules = 64;
-defparam HostMot3_inst.OffsetToPinDesc = 448;
-defparam HostMot3_inst.ClockHigh = "ClockHigh25";
-defparam HostMot3_inst.ClockMed = "ClockMed25";
-defparam HostMot3_inst.ClockLow = "ClockLow25";
-defparam HostMot3_inst.BoardNameLow = BoardNameMESA;
-defparam HostMot3_inst.BoardNameHigh = "BoardName5i25";
-defparam HostMot3_inst.FPGASize = 9;
-defparam HostMot3_inst.FPGAPins = 144;
-defparam HostMot3_inst.IOPorts = 1;
-defparam HostMot3_inst.IOWidth = 34;
-defparam HostMot3_inst.LIOWidth = 6;
-defparam HostMot3_inst.PortWidth = 34;
-defparam HostMot3_inst.BusWidth = 32;
-defparam HostMot3_inst.AddrWidth = 16;
-defparam HostMot3_inst.InstStride0 = 4;
-defparam HostMot3_inst.InstStride1 = 64;
-defparam HostMot3_inst.RegStride0 = 256;
-defparam HostMot3_inst.RegStride1 = 256;
-defparam HostMot3_inst.LEDCount = 0;
-*/
+
+// defparam HostMot3_inst.ThePinDesc = PinDesc;
+// defparam HostMot3_inst.TheModuleID =  "ModuleID";
+// defparam HostMot3_inst.IDROMType = 3;
+defparam HostMot3_inst.SepClocks = SepClocks;
+defparam HostMot3_inst.OneWS = OneWS;
+// defparam HostMot3_inst.UseIRQLogic = "true";
+// defparam HostMot3_inst.PWMRefWidth = 13;
+// defparam HostMot3_inst.UseWatchDog = "true";
+// defparam HostMot3_inst.OffsetToModules = 64;
+// defparam HostMot3_inst.OffsetToPinDesc = 448;
+defparam HostMot3_inst.ClockHigh = ClockHigh;
+defparam HostMot3_inst.ClockMed = ClockMed;
+defparam HostMot3_inst.ClockLow = ClockLow;
+defparam HostMot3_inst.BoardNameLow = BoardNameLow;
+defparam HostMot3_inst.BoardNameHigh = BoardNameHigh;
+defparam HostMot3_inst.FPGASize = FPGASize;
+defparam HostMot3_inst.FPGAPins = FPGAPins;
+defparam HostMot3_inst.IOPorts = IOPorts;
+defparam HostMot3_inst.IOWidth = IOWidth;
+defparam HostMot3_inst.PortWidth = PortWidth;
+defparam HostMot3_inst.LIOWidth = LIOWidth;
+defparam HostMot3_inst.LEDCount = LEDCount;
+defparam HostMot3_inst.BusWidth = BusWidth;
+defparam HostMot3_inst.AddrWidth = AddrWidth;
+// defparam HostMot3_inst.InstStride0 = 4;
+// defparam HostMot3_inst.InstStride1 = 64;
+// defparam HostMot3_inst.RegStride0 = 256;
+// defparam HostMot3_inst.RegStride1 = 256;
 
 endmodule

@@ -4,7 +4,7 @@
 // MODULE: altiobuf_bidir 
 
 // ============================================================
-// File Name: iobuf.v
+// File Name: gpio_buf.v
 // Megafunction Name(s):
 // 			altiobuf_bidir
 //
@@ -44,7 +44,7 @@
 //synopsys translate_off
 `timescale 1 ps / 1 ps
 //synopsys translate_on
-module  iobuf_iobuf_bidir_bqo
+module  gpio_buf_iobuf_bidir_bqo
 	( 
 	datain,
 	dataio,
@@ -1531,14 +1531,14 @@ module  iobuf_iobuf_bidir_bqo
 	assign
 		dataio = wire_obufa_o,
 		dataout = wire_ibufa_o;
-endmodule //iobuf_iobuf_bidir_bqo
+endmodule //gpio_buf_iobuf_bidir_bqo
 //VALID FILE
 
 
 // synopsys translate_off
 `timescale 1 ps / 1 ps
 // synopsys translate_on
-module iobuf (
+module gpio_buf (
 	datain,
 	oe,
 	dataio,
@@ -1552,7 +1552,7 @@ module iobuf (
 	wire [33:0] sub_wire0;
 	wire [33:0] dataout = sub_wire0[33:0];
 
-	iobuf_iobuf_bidir_bqo	iobuf_iobuf_bidir_bqo_component (
+	gpio_buf_iobuf_bidir_bqo	gpio_buf_iobuf_bidir_bqo_component (
 				.dataio (dataio),
 				.datain (datain),
 				.oe (oe),
@@ -1582,10 +1582,10 @@ endmodule
 // Retrieval info: CONNECT: @oe 0 0 34 0 oe 0 0 34 0
 // Retrieval info: CONNECT: dataio 0 0 34 0 @dataio 0 0 34 0
 // Retrieval info: CONNECT: dataout 0 0 34 0 @dataout 0 0 34 0
-// Retrieval info: GEN_FILE: TYPE_NORMAL iobuf.v TRUE
-// Retrieval info: GEN_FILE: TYPE_NORMAL iobuf.inc FALSE
-// Retrieval info: GEN_FILE: TYPE_NORMAL iobuf.cmp FALSE
-// Retrieval info: GEN_FILE: TYPE_NORMAL iobuf.bsf FALSE
-// Retrieval info: GEN_FILE: TYPE_NORMAL iobuf_inst.v TRUE
-// Retrieval info: GEN_FILE: TYPE_NORMAL iobuf_bb.v TRUE
+// Retrieval info: GEN_FILE: TYPE_NORMAL gpio_buf.v TRUE
+// Retrieval info: GEN_FILE: TYPE_NORMAL gpio_buf.inc FALSE
+// Retrieval info: GEN_FILE: TYPE_NORMAL gpio_buf.cmp FALSE
+// Retrieval info: GEN_FILE: TYPE_NORMAL gpio_buf.bsf FALSE
+// Retrieval info: GEN_FILE: TYPE_NORMAL gpio_buf_inst.v FALSE
+// Retrieval info: GEN_FILE: TYPE_NORMAL gpio_buf_bb.v FALSE
 // Retrieval info: LIB_FILE: cyclonev
