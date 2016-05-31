@@ -154,8 +154,8 @@ parameter NumIOReg = 6;
 	assign stm_hw_events    = {{15{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
 	// hm2
 	wire [AddrWidth-3:0] 	hm_address;
-	tri [31:0] 	hm_datao;
-	tri [31:0] 	hm_datai;
+	tri [31:0] 		hm_datao;
+	tri [31:0] 		hm_datai;
 	wire       		hm_read;
 	wire 				hm_write;
 	wire [3:0]		hm_chipsel;
@@ -164,6 +164,8 @@ parameter NumIOReg = 6;
 	wire 				clklow_sig;
 	wire 				clkhigh_sig;
 
+	wire [LEDCount-1:0] leds_sig;
+	
 	//irq:
 	wire int_sig;
 	assign ARDUINO_IO[15] = int_sig;
@@ -383,29 +385,32 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.CLOCK(fpga_clk_50) ,	// input  CLOCK_sig
 	.reset_reg_N(hps_fpga_reset_n) ,	// input  reset_reg_N_sig
 	.write_reg(hm_write) ,	// input  data_ready_sig
-//	.read_reg(hm_read) ,	// input  data_ready_sig
+	.leds_sig(leds_sig) ,	// input  data_ready_sig
 	.busaddress(hm_address) ,	// input [AddrWidth-1:0] address_sig
 	.busdata_in(hm_datai) ,	// input [BusWidth-1:0] data_in_sig
 //	.busdata_out(hm_datao) ,	// output [BusWidth-1:0] data_in_sig
-//	.iodatafromhm3 ( iobitsout_sig ),
-	.oe( oe_sig )
+	.iodatafromhm3 ( iobitsout_sig ),
+	.ioport( GPIO_0 ),
 //	.write_dataenable(write_dataenable_sig) ,	// output  write_dataenable_sig
 //	.gpio_sel(gpio_sel_sig) ,	// output [NumIOReg-1:0] gpio_sel_sig
-//	.iodatatohm3 ( iobitsin_sig )
+	.iodatatohm3 ( iobitsin_sig )
 );
 
 defparam gpio_adr_decoder_reg_inst.AddrWidth = AddrWidth-2;
 defparam gpio_adr_decoder_reg_inst.BusWidth = BusWidth;
+defparam gpio_adr_decoder_reg_inst.GPIOWidth = GPIOWidth;
 defparam gpio_adr_decoder_reg_inst.MuxGPIOIOWidth = MuxGPIOIOWidth;
 defparam gpio_adr_decoder_reg_inst.NumIOReg = NumIOReg;
+defparam gpio_adr_decoder_reg_inst.MuxLedWidth = MuxLedWidth;
 
-gpio_buf	gpio_buf_inst (
-	.datain ( iobitsout_sig ),
-	.oe ( oe_sig ),
-	.dataio ( GPIO_0 ),
-	.dataout ( iobitsin_sig )
-	);
-
+//
+//gpio_buf	gpio_buf_inst (
+//	.datain ( iobitsout_sig ),
+//	.oe ( oe_sig ),
+//	.dataio ( GPIO_0 ),
+//	.dataout ( iobitsin_sig )
+//);
+//
 	wire [LIOWidth-1:0] liobits_sig;
 //assign GPIO_1[LIOWidth-1:0] = liobits_sig;
 assign ARDUINO_IO[LIOWidth-1:0] = liobits_sig;
@@ -430,8 +435,8 @@ HostMot3_cfg HostMot3_inst
 	.iobitsintop(iobitsin_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
 	.liobits(liobits_sig) ,	// inout [lIOWidth-1:0] 			--liobits_sig
 //	.rates(rates_sig) ,	// output [4:0] rates_sig
-//	.leds(leds_sig) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
-	.leds(GPIO_0[35:34]) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
+	.leds(leds_sig) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
+//	.leds(GPIO_0[35:34]) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
 );
 
 // defparam HostMot3_inst.ThePinDesc = PinDesc;

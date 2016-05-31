@@ -9,32 +9,36 @@
 */
 
 module gpio_adr_decoder_reg(
-	input											CLOCK,
-	input											reset_reg_N,
-	input											write_reg,
-//	input											read_reg,
-	input	[AddrWidth-3:0]					busaddress,
-	input	[BusWidth-1:0]						busdata_in,
-//	input	[MuxGPIOIOWidth-1:0]				iodatafromhm3,
+	input													CLOCK,
+	input													reset_reg_N,
+	input													write_reg,
+	input	[MuxLedWidth-1:0]							leds_sig,
+	input	[AddrWidth-3:0]							busaddress,
+	input	[BusWidth-1:0]								busdata_in,
+	input	[MuxGPIOIOWidth-1:0]						iodatafromhm3,
 //
-	output	[MuxGPIOIOWidth-1:0]			oe
+	inout	[GPIOWidth-1:0]							ioport,
 // 	output 	reg								write_dataenable,
 //	output 	reg	[NumIOReg-1:0]			gpio_sel,
-//	output	[MuxGPIOIOWidth-1:0]			iodatatohm3
+	output	[MuxGPIOIOWidth-1:0]			iodatatohm3
 //	output 	reg	[BusWidth-1:0]			busdata_out
 );
 
 parameter AddrWidth     	= 14;
 parameter BusWidth			= 32;
+parameter GPIOWidth			= 36;
 parameter MuxGPIOIOWidth	= 34;
 parameter NumIOReg			= 6;
+parameter MuxLedWidth 		= 2;
 
 	wire reset_reg = ~reset_reg_N;
+	wire [GPIOWidth-1:0] io_read_data;
+
 	reg [AddrWidth-1:0] busaddr;
 	reg [23:0] busdata_in_reg;
 	reg [23:0]	ddr_reg[NumIOReg-1:0];
 	
-	assign oe = {ddr_reg[1][9:0],ddr_reg[0]};
+	assign oe = {2'b1,ddr_reg[1][9:0],ddr_reg[0]};
 
 //	assign busaddr = {busaddress,2'b0};
 //	reg syx_data_rdy_r[3:0];
@@ -60,6 +64,19 @@ parameter NumIOReg			= 6;
 //
 //	assign oe_sig = {oe_sig_24[1][9:0],oe_sig_24[0]};
 //	assign od_sig = {od_sig_24[1][9:0],od_sig_24[0]};
+
+bidir_io bidir_io_inst
+(
+	.oe(oe) ,	// input  oe_sig
+	.out_data({leds_sig,iodatafromhm3}) ,	// input [IOIOWidth-1:0] out_data_sig
+	.ioport(ioport) ,	// inout [IOIOWidth-1:0] ioport_sig
+	.read_data(io_read_data) 	// output [IOIOWidth-1:0] read_data_sig
+);
+
+defparam bidir_io_inst.IOWidth = GPIOWidth;
+
+assign iodatatohm3 = io_read_data[GPIOWidth-MuxLedWidth-1:0];
+
 
 
 //	genvar i;
