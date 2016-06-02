@@ -142,10 +142,10 @@ parameter NumIOReg = 6;
 	wire  hps_fpga_reset_n;
 	wire [1:0] fpga_debounced_buttons;
 	wire [6:0]  fpga_led_internal;
-	wire [2:0]  hps_reset_req;
-	wire        hps_cold_reset;
-	wire        hps_warm_reset;
-	wire        hps_debug_reset;
+//	wire [2:0]  hps_reset_req;
+//	wire        hps_cold_reset;
+//	wire        hps_warm_reset;
+//	wire        hps_debug_reset;
 	wire [27:0] stm_hw_events;
 	wire 		  fpga_clk_50;
 	// connection of internal logics
@@ -153,18 +153,18 @@ parameter NumIOReg = 6;
 	assign fpga_clk_50 = FPGA_CLK2_50;
 	assign stm_hw_events    = {{15{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
 	// hm2
-	wire [AddrWidth-3:0] 	hm_address;
-	tri [31:0] 		hm_datao;
-	tri [31:0] 		hm_datai;
-	wire       		hm_read;
-	wire 				hm_write;
-	wire [3:0]		hm_chipsel;
-	wire				hm_clk_med;
-	wire				hm_clk_high;
-	wire 				clklow_sig;
-	wire 				clkhigh_sig;
+	wire [AddrWidth-3:0]	hm_address;
+	tri [31:0] 				hm_datao;
+	tri [31:0] 				hm_datai;
+	wire       				hm_read;
+	wire 						hm_write;
+	wire [3:0]				hm_chipsel;
+	wire						hm_clk_med;
+	wire						hm_clk_high;
+	wire 						clklow_sig;
+	wire 						clkhigh_sig;
 
-	wire [LEDCount-1:0] leds_sig;
+	wire [LEDCount-1:0]	leds_sig;
 	
 	//irq:
 	wire int_sig;
@@ -272,82 +272,39 @@ parameter NumIOReg = 6;
     .hps_0_f2h_stm_hw_events_stm_hwevents  (stm_hw_events ),  //        hps_0_f2h_stm_hw_events.stm_hwevents
     .hps_0_f2h_warm_reset_req_reset_n      (~hps_warm_reset ),      //       hps_0_f2h_warm_reset_req.reset_n
 // hm2reg_io_0_conduit
-	.mk_io_hm2_datain                  		(hm_datao),                   //                   .hm2_datain
-	.mk_io_hm2_dataout                 	  	(hm_datai),                   //                    hm2reg.hm2_dataout
-	.mk_io_hm2_address                 	  	(hm_address),                 //                   .hm2_address
-	.mk_io_hm2_write                   		(hm_write),                   //                   .hm2_write
-	.mk_io_hm2_read                    		(hm_read),                    //                   .hm2_read
-	.mk_io_hm2_chipsel            			(hm_chipsel),                 //                   .hm2_chipsel
-	.mk_io_hm2_int_in            			(int_sig),                    //                   .int_sig
-	.clk_100mhz_out_clk                    	(hm_clk_med),                 //            clk_100mhz_out.clk
-	.clk_200mhz_out_clk                    	(hm_clk_high),                //            clk_100mhz_out.clk
-	.adc_io_convst                            (ADC_CONVST),               //                       adc.CONVST
-	.adc_io_sck                            (ADC_SCK),                     //                          .SCK
-	.adc_io_sdi                             (ADC_SDI),                    //                          .SDI
-	.adc_io_sdo                            (ADC_SDO)                      //                          .SDO
+	.mk_io_hm2_datain                  		(hm_datao),							//			.hm2_datain
+	.mk_io_hm2_dataout                 	  	(hm_datai),							//			.hm2reg.hm2_dataout
+	.mk_io_hm2_address                 	  	(hm_address),	//			.hm2_address
+	.mk_io_hm2_write                   		(hm_write),							//			.hm2_write
+	.mk_io_hm2_read                    		(hm_read),							//			.hm2_read
+	.mk_io_hm2_chipsel            			(hm_chipsel),						//			.hm2_chipsel
+	.mk_io_hm2_int_in            				(int_sig),							//			.int_sig
+	.clk_100mhz_out_clk                    (hm_clk_med),						//			clk_100mhz_out.clk
+	.clk_200mhz_out_clk                    (hm_clk_high),						//			clk_100mhz_out.clk
+	.adc_io_convst									(ADC_CONVST),						//			adc.CONVST
+	.adc_io_sck										(ADC_SCK),							//			.SCK
+	.adc_io_sdi										(ADC_SDI),							//			.SDI
+	.adc_io_sdo										(ADC_SDO)							//			.SDO
 //      .axi_str_data                      (out_data[7:0]),               //               stream_port.data
 //      .axi_str_valid                     (out_data[8]),                 //                          .valid
 //      .axi_str_ready                     (ar_in_sig[1])                 //                          .ready
  );
-
-// Debounce logic to clean out glitches within 1ms
-debounce debounce_inst (
-  .clk                                  (fpga_clk_50),
-  .reset_n                              (hps_fpga_reset_n),
-  .data_in                              (KEY),
-  .data_out                             (fpga_debounced_buttons)
-);
-  defparam debounce_inst.WIDTH = 2;
-  defparam debounce_inst.POLARITY = "LOW";
-  defparam debounce_inst.TIMEOUT = 50000;               // at 50Mhz this is a debounce time of 1ms
-  defparam debounce_inst.TIMEOUT_WIDTH = 16;            // ceil(log2(TIMEOUT))
-
-// Source/Probe megawizard instance
-hps_reset hps_reset_inst (
-  .source_clk (fpga_clk_50),
-  .source     (hps_reset_req)
-);
-
-altera_edge_detector pulse_cold_reset (
-  .clk       (fpga_clk_50),
-  .rst_n     (hps_fpga_reset_n),
-  .signal_in (hps_reset_req[0]),
-  .pulse_out (hps_cold_reset)
-);
-  defparam pulse_cold_reset.PULSE_EXT = 6;
-  defparam pulse_cold_reset.EDGE_TYPE = 1;
-  defparam pulse_cold_reset.IGNORE_RST_WHILE_BUSY = 1;
-
-altera_edge_detector pulse_warm_reset (
-  .clk       (fpga_clk_50),
-  .rst_n     (hps_fpga_reset_n),
-  .signal_in (hps_reset_req[1]),
-  .pulse_out (hps_warm_reset)
-);
-  defparam pulse_warm_reset.PULSE_EXT = 2;
-  defparam pulse_warm_reset.EDGE_TYPE = 1;
-  defparam pulse_warm_reset.IGNORE_RST_WHILE_BUSY = 1;
-
-altera_edge_detector pulse_debug_reset (
-  .clk       (fpga_clk_50),
-  .rst_n     (hps_fpga_reset_n),
-  .signal_in (hps_reset_req[2]),
-  .pulse_out (hps_debug_reset)
-);
-  defparam pulse_debug_reset.PULSE_EXT = 32;
-  defparam pulse_debug_reset.EDGE_TYPE = 1;
-  defparam pulse_debug_reset.IGNORE_RST_WHILE_BUSY = 1;
-
-led_blinker led_blinker_inst
+ 
+top_io_modules top_io_modules_inst
 (
-	.fpga_clk_50(fpga_clk_50) ,	// input  fpga_clk_50_sig
-	.hps_fpga_reset_n(hps_fpga_reset_n) ,	// input  hps_fpga_reset_n_sig
+	.clk(clklow_sig) ,	// input  clk_sig
+	.reset_n(hps_fpga_reset_n) ,	// input  reset_n_sig
+	.button_in(KEY) ,	// input [KEY_WIDTH-1:0] button_in_sig
+	.button_out(fpga_debounced_buttons) ,	// output [KEY_WIDTH-1:0] button_out_sig
+	.hps_cold_reset(hps_cold_reset) ,	// output  hps_cold_reset_sig
+	.hps_warm_reset(hps_warm_reset) ,	// output  hps_warm_reset_sig
+	.hps_debug_reset(hps_debug_reset) ,	// output  hps_debug_reset_sig
 	.LED(LED[0]) 	// output  LED_sig
 );
 
-defparam led_blinker_inst.COUNT_MAX = 24999999;
+defparam top_io_modules_inst.KEY_WIDTH = 2;
 
-
+ 
 // Mesa code ------------------------------------------------------//
 
 assign clklow_sig = fpga_clk_50;
@@ -382,7 +339,8 @@ wire [IOWidth-1:0] iobitsin_sig;
 
 gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 (
-	.CLOCK(fpga_clk_50) ,	// input  CLOCK_sig
+	.CLOCK(clklow_sig) ,	// input  CLOCK_sig
+	.reg_clk(clkhigh_sig) ,	// input  CLOCK_sig
 	.reset_reg_N(hps_fpga_reset_n) ,	// input  reset_reg_N_sig
 	.write_reg(hm_write) ,	// input  data_ready_sig
 	.leds_sig(leds_sig) ,	// input  data_ready_sig
@@ -411,9 +369,9 @@ defparam gpio_adr_decoder_reg_inst.MuxLedWidth = MuxLedWidth;
 //	.dataout ( iobitsin_sig )
 //);
 //
-	wire [LIOWidth-1:0] liobits_sig;
-//assign GPIO_1[LIOWidth-1:0] = liobits_sig;
-assign ARDUINO_IO[LIOWidth-1:0] = liobits_sig;
+// 	wire [LIOWidth-1:0] liobits_sig;
+// //assign GPIO_1[LIOWidth-1:0] = liobits_sig;
+// assign ARDUINO_IO[LIOWidth-1:0] = liobits_sig;
 
 //HostMot3 #(.IOWidth(IOWidth),.IOPorts(IOPorts)) HostMot3_inst
 HostMot3_cfg HostMot3_inst
@@ -433,7 +391,7 @@ HostMot3_cfg HostMot3_inst
 //	.demandmode(demandmode_sig) ,	// output  demandmode_sig
 	.iobitsouttop(iobitsout_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
 	.iobitsintop(iobitsin_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
-	.liobits(liobits_sig) ,	// inout [lIOWidth-1:0] 			--liobits_sig
+//	.liobits(liobits_sig) ,	// inout [lIOWidth-1:0] 			--liobits_sig
 //	.rates(rates_sig) ,	// output [4:0] rates_sig
 	.leds(leds_sig) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
 //	.leds(GPIO_0[35:34]) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
