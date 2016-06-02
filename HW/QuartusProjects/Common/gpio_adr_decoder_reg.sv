@@ -10,6 +10,7 @@
 
 module gpio_adr_decoder_reg(
 	input													CLOCK,
+	input													reg_clk,
 	input													reset_reg_N,
 	input													write_reg,
 	input	[MuxLedWidth-1:0]							leds_sig,
@@ -22,7 +23,7 @@ module gpio_adr_decoder_reg(
 //	output 	reg	[BusWidth-1:0]			busdata_out
 );
 
-parameter AddrWidth     	= 14;
+parameter AddrWidth     	= 16;
 parameter BusWidth			= 32;
 parameter GPIOWidth			= 36;
 parameter MuxGPIOIOWidth	= 34;
@@ -35,20 +36,20 @@ parameter MuxLedWidth 		= 2;
 	reg [AddrWidth-1:0]			busaddr;
 	reg [23:0]						busdata_in_reg;
 	reg [23:0]						ddr_reg[NumIOReg-1:0];
+	reg [23:0]						odrain_reg[NumIOReg-1:0];
 	reg [MuxLedWidth-1:0]		leds_r;
 	reg [MuxGPIOIOWidth-1:0]	iodatafromhm3_r;
-	
-	assign oe = {2'b1,ddr_reg[1][9:0],ddr_reg[0]};
 
-//	assign busaddr = {busaddress,2'b0};
+	wire [GPIOWidth-1:0]	oe;
+	wire [GPIOWidth-1:0]	od;
+
+	assign oe = {2'b1,ddr_reg[1][9:0],ddr_reg[0]};
+	assign od = {2'b1,odrain_reg[1][9:0],odrain_reg[0]};
+
 //	reg syx_data_rdy_r[3:0];
 	reg [1:0] write_r;
 //	reg [1:0]read_r;
-//	reg [BusWidth-1:0]	ddr_reg[NumIOReg-1:0];
-//	reg [BusWidth-1:0]	odrain_reg[NumIOReg-1:0];
 
-//	wire [MuxGPIOIOWidth-1:0]	oe_sig;
-//	wire [MuxGPIOIOWidth-1:0]	od_sig;
 //	tri [MuxGPIOIOWidth-1:0]	iodatafromhm3_sig;
 //
 //	wire [23:0] oe_sig_24 [NumIOReg-1:0];
@@ -92,7 +93,7 @@ parameter MuxLedWidth 		= 2;
 //		end
 //	endgenerate
 
-	always @(posedge CLOCK or posedge reset_reg)begin
+	always @(posedge reg_clk or posedge reset_reg)begin
 		if (reset_reg)begin
 			busaddr <= 0;
 			busdata_in_reg <= 0;
@@ -121,6 +122,8 @@ parameter MuxLedWidth 		= 2;
 		if (reset_reg)begin
 			ddr_reg[0] <= 0; ddr_reg[1] <= 0; ddr_reg[2] <= 0;
 			ddr_reg[3] <= 0; ddr_reg[4] <= 0; ddr_reg[5] <= 0;
+			odrain_reg[0] <= 0; odrain_reg[1] <= 0; odrain_reg[2] <= 0;
+			odrain_reg[3] <= 0; odrain_reg[4] <= 0; odrain_reg[5] <= 0;
 		end
 		else begin
 			case (busaddr)
@@ -130,12 +133,12 @@ parameter MuxLedWidth 		= 2;
 				14'h110C : begin ddr_reg[3] <= busdata_in_reg; end
 				14'h1110 : begin ddr_reg[4] <= busdata_in_reg; end
 				14'h1114 : begin ddr_reg[5] <= busdata_in_reg; end
-//				14'h1300 : begin odrain_reg[0] <= busdata_in; end
-//				14'h1304 : begin odrain_reg[1] <= busdata_in; end
-//				14'h1308 : begin odrain_reg[2] <= busdata_in; end
-//				14'h130C : begin odrain_reg[3] <= busdata_in; end
-//				14'h1310 : begin odrain_reg[4] <= busdata_in; end
-//				14'h1314 : begin odrain_reg[5] <= busdata_in; end
+				14'h1300 : begin odrain_reg[0] <= busdata_in_reg; end
+				14'h1304 : begin odrain_reg[1] <= busdata_in_reg; end
+				14'h1308 : begin odrain_reg[2] <= busdata_in_reg; end
+				14'h130C : begin odrain_reg[3] <= busdata_in_reg; end
+				14'h1310 : begin odrain_reg[4] <= busdata_in_reg; end
+				14'h1314 : begin odrain_reg[5] <= busdata_in_reg; end
 			endcase
 		end
 	end
@@ -143,6 +146,7 @@ parameter MuxLedWidth 		= 2;
 bidir_io bidir_io_inst
 (
 	.oe(oe) ,	// input  oe_sig
+	.od(od) ,	// input  od_sig
 	.out_data({leds_r,iodatafromhm3_r}) ,	// input [IOIOWidth-1:0] out_data_sig
 	.ioport(ioport) ,	// inout [IOIOWidth-1:0] ioport_sig
 	.read_data(io_read_data) 	// output [IOIOWidth-1:0] read_data_sig
