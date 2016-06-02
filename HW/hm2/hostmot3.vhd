@@ -1188,663 +1188,663 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 
 -------------------------------------Standard UART---------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------
-
-	makeuartrmod:  if UARTs >0  generate
-	signal LoadUARTRData: std_logic_vector(UARTs -1 downto 0);
-	signal LoadUARTRBitRate: std_logic_vector(UARTs -1 downto 0);
-	signal ReadUARTRBitrate: std_logic_vector(UARTs -1 downto 0);
-	signal ClearUARTRFIFO: std_logic_vector(UARTs -1 downto 0);
-	signal ReadUARTRFIFOCount: std_logic_vector(UARTs -1 downto 0);
-	signal ReadUARTRModeReg: std_logic_vector(UARTs -1 downto 0);
-	signal LoadUARTRModeReg: std_logic_vector(UARTs -1 downto 0);
-	signal UARTRFIFOHasData: std_logic_vector(UARTs -1 downto 0);
-	signal URData: std_logic_vector(UARTs -1 downto 0);
-	signal LoadUARTTData: std_logic_vector(UARTs -1 downto 0);
-	signal LoadUARTTBitRate: std_logic_vector(UARTs -1 downto 0);
-	signal LoadUARTTModeReg: std_logic_vector(UARTs -1 downto 0);
-	signal CLearUARTTFIFO: std_logic_vector(UARTs -1 downto 0);
-	signal ReadUARTTFIFOCount: std_logic_vector(UARTs -1 downto 0);
-	signal ReadUARTTBitrate: std_logic_vector(UARTs -1 downto 0);
-	signal ReadUARTTModeReg: std_logic_vector(UARTs -1 downto 0);
-	signal UARTTFIFOEmpty: std_logic_vector(UARTs -1 downto 0);
-	signal UTDrvEn: std_logic_vector(UARTs -1 downto 0);
-	signal UTData: std_logic_vector(UARTs -1 downto 0);
-	signal UARTTDataSel : std_logic;
-	signal UARTTBitrateSel : std_logic;
-	signal UARTTFIFOCountSel : std_logic;
-	signal UARTTModeRegSel : std_logic;
-	signal UARTRDataSel : std_logic;
-	signal UARTRBitrateSel : std_logic;
-	signal UARTRFIFOCountSel : std_logic;
-	signal UARTRModeRegSel : std_logic;
-
-	begin
-		makeuartrs: for i in 0 to UARTs -1 generate
-			auarrx: entity work.uartr
-			port map (
-				clk => clklow,
-				ibus => ibusint,
-				obus => obusint,
-				addr => Aint(3 downto 2),
-				popfifo => LoadUARTRData(i),
-				loadbitrate => LoadUARTRBitRate(i),
-				readbitrate => ReadUARTRBitrate(i),
-				clrfifo => ClearUARTRFIFO(i),
-				readfifocount => ReadUARTRFIFOCount(i),
-				loadmode => LoadUARTRModeReg(i),
-				readmode => ReadUARTRModeReg(i),
-				fifohasdata => UARTRFIFOHasData(i),
-				rxmask => UTDrvEn(i),			-- for half duplex rx mask
-				rxdata => URData(i)
-				);
-		end generate;
-
-		UARTRDecodeProcess : process (Aint,Readstb,writestb,UARTRDataSel,UARTRBitRateSel,UARTRFIFOCountSel,UARTRModeRegSel)
-		begin
-			if Aint(15 downto 8) = UARTRDataAddr then	 --  UART RX data register select
-				UARTRDataSel <= '1';
-			else
-				UARTRDataSel <= '0';
-			end if;
-			if Aint(15 downto 8) = UARTRFIFOCountAddr then	 --  UART RX FIFO count register select
-				UARTRFIFOCountSel <= '1';
-			else
-				UARTRFIFOCountSel <= '0';
-			end if;
-			if Aint(15 downto 8) = UARTRBitrateAddr then	 --  UART RX bit rate register select
-				UARTRBitrateSel <= '1';
-			else
-				UARTRBitrateSel <= '0';
-			end if;
-			if Aint(15 downto 8) = UARTRModeRegAddr then	 --  UART RX status register select
-				UARTRModeRegSel <= '1';
-			else
-				UARTRModeRegSel <= '0';
-			end if;			LoadUARTRData <= OneOfNDecode(UARTs,UARTRDataSel,Readstb,Aint(7 downto 4));
-			LoadUARTRBitRate <= OneOfNDecode(UARTs,UARTRBitRateSel,writestb,Aint(7 downto 4));
-			ReadUARTRBitrate <= OneOfNDecode(UARTs,UARTRBitRateSel,Readstb,Aint(7 downto 4));
-			ClearUARTRFIFO <= OneOfNDecode(UARTs,UARTRFIFOCountSel,writestb,Aint(7 downto 4));
-			ReadUARTRFIFOCount <= OneOfNDecode(UARTs,UARTRFIFOCountSel,Readstb,Aint(7 downto 4));
-			LoadUARTRModeReg <= OneOfNDecode(UARTs,UARTRModeRegSel,writestb,Aint(7 downto 4));
-			ReadUARTRModeReg <= OneOfNDecode(UARTs,UARTRModeRegSel,Readstb,Aint(7 downto 4));
-		end process UARTRDecodeProcess;
-
-		DoUARTRPins: process(IOBitsCorein)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = UARTRTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					if (ThePinDesc(i)(7 downto 0)) = URDataPin then
-						URData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
-					end if;
-				end if;
-			end loop;
-		end process;
-
-		DoLocalUARTRPins: process(LIOBits) -- only for 4I90 LIO currently
-		begin
-			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
-				report("Doing UARTR LIOLoop: "& integer'image(i));
-				if ThePinDesc(i+IOWidth)(15 downto 8) = UARTRTag then 	-- GTag (Local I/O starts at end of external I/O)
-					if (ThePinDesc(i+IOWidth)(7 downto 0)) = URDataPin then
-						URData(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16))) <= LIOBits(i);
-						report("Local URDataPin found at LIOBit " & integer'image(i));
-					end if;
-				end if;
-			end loop;
-		end process;
-
-		makeuarttxs: for i in 0 to UARTs -1 generate
-			auartx:  entity work.uartx
-			port map (
-				clk => clklow,
-				ibus => ibusint,
-				obus => obusint,
-				addr => Aint(3 downto 2),
-				pushfifo => LoadUARTTData(i),
-				loadbitrate => LoadUARTTBitRate(i),
-				readbitrate => ReadUARTTBitrate(i),
-				clrfifo => ClearUARTTFIFO(i),
-				readfifocount => ReadUARTTFIFOCount(i),
-				loadmode => LoadUARTTModeReg(i),
-				readmode => ReadUARTTModeReg(i),
-				fifoempty => UARTTFIFOEmpty(i),
-				txen => '1',
-				drven => UTDrvEn(i),
-				txdata => UTData(i)
-				);
-		end generate;
-
-		UARTTDecodeProcess : process (Aint,Readstb,writestb,UARTTDataSel,UARTTBitRateSel,UARTTModeRegSel,UARTTFIFOCountSel)
-		begin
-			if Aint(15 downto 8) = UARTTDataAddr then	 --  UART TX data register select
-				UARTTDataSel <= '1';
-			else
-				UARTTDataSel <= '0';
-			end if;
-			if Aint(15 downto 8) = UARTTFIFOCountAddr then	 --  UART TX FIFO count register select
-				UARTTFIFOCountSel <= '1';
-			else
-				UARTTFIFOCountSel <= '0';
-			end if;
-			if Aint(15 downto 8) = UARTTBitrateAddr then	 --  UART TX bit rate register select
-				UARTTBitrateSel <= '1';
-			else
-				UARTTBitrateSel <= '0';
-			end if;
-			if Aint(15 downto 8) = UARTTModeRegAddr then	 --  UART TX bit mode register select
-				UARTTModeRegSel <= '1';
-			else
-				UARTTModeRegSel <= '0';
-			end if;
-			LoadUARTTData <= OneOfNDecode(UARTs,UARTTDataSel,writestb,Aint(7 downto 4));
-			LoadUARTTBitRate <= OneOfNDecode(UARTs,UARTTBitRateSel,writestb,Aint(7 downto 4));
-			ReadUARTTBitrate <= OneOfNDecode(UARTs,UARTTBitRateSel,Readstb,Aint(7 downto 4));
-			LoadUARTTModeReg <= OneOfNDecode(UARTs,UARTTModeRegSel,writestb,Aint(7 downto 4));
-				ReadUARTTModeReg <= OneOfNDecode(UARTs,UARTTModeRegSel,Readstb,Aint(7 downto 4));
-			ClearUARTTFIFO <= OneOfNDecode(UARTs,UARTTFIFOCountSel,writestb,Aint(7 downto 4));
-			ReadUARTTFIFOCount <= OneOfNDecode(UARTs,UARTTFIFOCountSel,Readstb,Aint(7 downto 4));
-		end process UARTTDecodeProcess;
-
-		DoUARTTPins: process(UTData, UTDrvEn)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = UARTTTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
-						when UTDataPin =>
-							IOBitsCorein(i) <= UTData(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when UTDrvEnPin =>
-							IOBitsCorein(i) <=  not UTDrvEn(conv_integer(ThePinDesc(i)(23 downto 16))); -- ExtIO is active low enable
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-
-		DoLocalUARTTPins: process(UTData, UTDrvEn)
-		begin
-			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
-				report("Doing UARTT LIOLoop: "& integer'image(i));
-				if ThePinDesc(IOWidth+i)(15 downto 8) = UARTTTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					case (ThePinDesc(IOWidth+i)(7 downto 0)) is	--secondary pin function
-						when UTDataPin =>
-							LIOBits(i) <= UTData(conv_integer(ThePinDesc(IOWidth+i)(23 downto 16)));
-							report("Local UTDataPin found at LIOBit " & integer'image(i));
-						when UTDrvEnPin =>
-							LIOBits(i) <= UTDrvEn(conv_integer(ThePinDesc(IOWidth+i)(23 downto 16))); --LIO is active high enable
-							report("Local UTDrvEnPin found at LIOBit " & integer'image(i));
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-
-	end generate;
+--
+-- 	makeuartrmod:  if UARTs >0  generate
+-- 	signal LoadUARTRData: std_logic_vector(UARTs -1 downto 0);
+-- 	signal LoadUARTRBitRate: std_logic_vector(UARTs -1 downto 0);
+-- 	signal ReadUARTRBitrate: std_logic_vector(UARTs -1 downto 0);
+-- 	signal ClearUARTRFIFO: std_logic_vector(UARTs -1 downto 0);
+-- 	signal ReadUARTRFIFOCount: std_logic_vector(UARTs -1 downto 0);
+-- 	signal ReadUARTRModeReg: std_logic_vector(UARTs -1 downto 0);
+-- 	signal LoadUARTRModeReg: std_logic_vector(UARTs -1 downto 0);
+-- 	signal UARTRFIFOHasData: std_logic_vector(UARTs -1 downto 0);
+-- 	signal URData: std_logic_vector(UARTs -1 downto 0);
+-- 	signal LoadUARTTData: std_logic_vector(UARTs -1 downto 0);
+-- 	signal LoadUARTTBitRate: std_logic_vector(UARTs -1 downto 0);
+-- 	signal LoadUARTTModeReg: std_logic_vector(UARTs -1 downto 0);
+-- 	signal CLearUARTTFIFO: std_logic_vector(UARTs -1 downto 0);
+-- 	signal ReadUARTTFIFOCount: std_logic_vector(UARTs -1 downto 0);
+-- 	signal ReadUARTTBitrate: std_logic_vector(UARTs -1 downto 0);
+-- 	signal ReadUARTTModeReg: std_logic_vector(UARTs -1 downto 0);
+-- 	signal UARTTFIFOEmpty: std_logic_vector(UARTs -1 downto 0);
+-- 	signal UTDrvEn: std_logic_vector(UARTs -1 downto 0);
+-- 	signal UTData: std_logic_vector(UARTs -1 downto 0);
+-- 	signal UARTTDataSel : std_logic;
+-- 	signal UARTTBitrateSel : std_logic;
+-- 	signal UARTTFIFOCountSel : std_logic;
+-- 	signal UARTTModeRegSel : std_logic;
+-- 	signal UARTRDataSel : std_logic;
+-- 	signal UARTRBitrateSel : std_logic;
+-- 	signal UARTRFIFOCountSel : std_logic;
+-- 	signal UARTRModeRegSel : std_logic;
+--
+-- 	begin
+-- 		makeuartrs: for i in 0 to UARTs -1 generate
+-- 			auarrx: entity work.uartr
+-- 			port map (
+-- 				clk => clklow,
+-- 				ibus => ibusint,
+-- 				obus => obusint,
+-- 				addr => Aint(3 downto 2),
+-- 				popfifo => LoadUARTRData(i),
+-- 				loadbitrate => LoadUARTRBitRate(i),
+-- 				readbitrate => ReadUARTRBitrate(i),
+-- 				clrfifo => ClearUARTRFIFO(i),
+-- 				readfifocount => ReadUARTRFIFOCount(i),
+-- 				loadmode => LoadUARTRModeReg(i),
+-- 				readmode => ReadUARTRModeReg(i),
+-- 				fifohasdata => UARTRFIFOHasData(i),
+-- 				rxmask => UTDrvEn(i),			-- for half duplex rx mask
+-- 				rxdata => URData(i)
+-- 				);
+-- 		end generate;
+--
+-- 		UARTRDecodeProcess : process (Aint,Readstb,writestb,UARTRDataSel,UARTRBitRateSel,UARTRFIFOCountSel,UARTRModeRegSel)
+-- 		begin
+-- 			if Aint(15 downto 8) = UARTRDataAddr then	 --  UART RX data register select
+-- 				UARTRDataSel <= '1';
+-- 			else
+-- 				UARTRDataSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = UARTRFIFOCountAddr then	 --  UART RX FIFO count register select
+-- 				UARTRFIFOCountSel <= '1';
+-- 			else
+-- 				UARTRFIFOCountSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = UARTRBitrateAddr then	 --  UART RX bit rate register select
+-- 				UARTRBitrateSel <= '1';
+-- 			else
+-- 				UARTRBitrateSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = UARTRModeRegAddr then	 --  UART RX status register select
+-- 				UARTRModeRegSel <= '1';
+-- 			else
+-- 				UARTRModeRegSel <= '0';
+-- 			end if;			LoadUARTRData <= OneOfNDecode(UARTs,UARTRDataSel,Readstb,Aint(7 downto 4));
+-- 			LoadUARTRBitRate <= OneOfNDecode(UARTs,UARTRBitRateSel,writestb,Aint(7 downto 4));
+-- 			ReadUARTRBitrate <= OneOfNDecode(UARTs,UARTRBitRateSel,Readstb,Aint(7 downto 4));
+-- 			ClearUARTRFIFO <= OneOfNDecode(UARTs,UARTRFIFOCountSel,writestb,Aint(7 downto 4));
+-- 			ReadUARTRFIFOCount <= OneOfNDecode(UARTs,UARTRFIFOCountSel,Readstb,Aint(7 downto 4));
+-- 			LoadUARTRModeReg <= OneOfNDecode(UARTs,UARTRModeRegSel,writestb,Aint(7 downto 4));
+-- 			ReadUARTRModeReg <= OneOfNDecode(UARTs,UARTRModeRegSel,Readstb,Aint(7 downto 4));
+-- 		end process UARTRDecodeProcess;
+--
+-- 		DoUARTRPins: process(IOBitsCorein)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = UARTRTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					if (ThePinDesc(i)(7 downto 0)) = URDataPin then
+-- 						URData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
+-- 					end if;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+--
+-- 		DoLocalUARTRPins: process(LIOBits) -- only for 4I90 LIO currently
+-- 		begin
+-- 			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
+-- 				report("Doing UARTR LIOLoop: "& integer'image(i));
+-- 				if ThePinDesc(i+IOWidth)(15 downto 8) = UARTRTag then 	-- GTag (Local I/O starts at end of external I/O)
+-- 					if (ThePinDesc(i+IOWidth)(7 downto 0)) = URDataPin then
+-- 						URData(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16))) <= LIOBits(i);
+-- 						report("Local URDataPin found at LIOBit " & integer'image(i));
+-- 					end if;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+--
+-- 		makeuarttxs: for i in 0 to UARTs -1 generate
+-- 			auartx:  entity work.uartx
+-- 			port map (
+-- 				clk => clklow,
+-- 				ibus => ibusint,
+-- 				obus => obusint,
+-- 				addr => Aint(3 downto 2),
+-- 				pushfifo => LoadUARTTData(i),
+-- 				loadbitrate => LoadUARTTBitRate(i),
+-- 				readbitrate => ReadUARTTBitrate(i),
+-- 				clrfifo => ClearUARTTFIFO(i),
+-- 				readfifocount => ReadUARTTFIFOCount(i),
+-- 				loadmode => LoadUARTTModeReg(i),
+-- 				readmode => ReadUARTTModeReg(i),
+-- 				fifoempty => UARTTFIFOEmpty(i),
+-- 				txen => '1',
+-- 				drven => UTDrvEn(i),
+-- 				txdata => UTData(i)
+-- 				);
+-- 		end generate;
+--
+-- 		UARTTDecodeProcess : process (Aint,Readstb,writestb,UARTTDataSel,UARTTBitRateSel,UARTTModeRegSel,UARTTFIFOCountSel)
+-- 		begin
+-- 			if Aint(15 downto 8) = UARTTDataAddr then	 --  UART TX data register select
+-- 				UARTTDataSel <= '1';
+-- 			else
+-- 				UARTTDataSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = UARTTFIFOCountAddr then	 --  UART TX FIFO count register select
+-- 				UARTTFIFOCountSel <= '1';
+-- 			else
+-- 				UARTTFIFOCountSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = UARTTBitrateAddr then	 --  UART TX bit rate register select
+-- 				UARTTBitrateSel <= '1';
+-- 			else
+-- 				UARTTBitrateSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = UARTTModeRegAddr then	 --  UART TX bit mode register select
+-- 				UARTTModeRegSel <= '1';
+-- 			else
+-- 				UARTTModeRegSel <= '0';
+-- 			end if;
+-- 			LoadUARTTData <= OneOfNDecode(UARTs,UARTTDataSel,writestb,Aint(7 downto 4));
+-- 			LoadUARTTBitRate <= OneOfNDecode(UARTs,UARTTBitRateSel,writestb,Aint(7 downto 4));
+-- 			ReadUARTTBitrate <= OneOfNDecode(UARTs,UARTTBitRateSel,Readstb,Aint(7 downto 4));
+-- 			LoadUARTTModeReg <= OneOfNDecode(UARTs,UARTTModeRegSel,writestb,Aint(7 downto 4));
+-- 				ReadUARTTModeReg <= OneOfNDecode(UARTs,UARTTModeRegSel,Readstb,Aint(7 downto 4));
+-- 			ClearUARTTFIFO <= OneOfNDecode(UARTs,UARTTFIFOCountSel,writestb,Aint(7 downto 4));
+-- 			ReadUARTTFIFOCount <= OneOfNDecode(UARTs,UARTTFIFOCountSel,Readstb,Aint(7 downto 4));
+-- 		end process UARTTDecodeProcess;
+--
+-- 		DoUARTTPins: process(UTData, UTDrvEn)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = UARTTTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
+-- 						when UTDataPin =>
+-- 							IOBitsCorein(i) <= UTData(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when UTDrvEnPin =>
+-- 							IOBitsCorein(i) <=  not UTDrvEn(conv_integer(ThePinDesc(i)(23 downto 16))); -- ExtIO is active low enable
+-- 						when others => null;
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+--
+-- 		DoLocalUARTTPins: process(UTData, UTDrvEn)
+-- 		begin
+-- 			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
+-- 				report("Doing UARTT LIOLoop: "& integer'image(i));
+-- 				if ThePinDesc(IOWidth+i)(15 downto 8) = UARTTTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					case (ThePinDesc(IOWidth+i)(7 downto 0)) is	--secondary pin function
+-- 						when UTDataPin =>
+-- 							LIOBits(i) <= UTData(conv_integer(ThePinDesc(IOWidth+i)(23 downto 16)));
+-- 							report("Local UTDataPin found at LIOBit " & integer'image(i));
+-- 						when UTDrvEnPin =>
+-- 							LIOBits(i) <= UTDrvEn(conv_integer(ThePinDesc(IOWidth+i)(23 downto 16))); --LIO is active high enable
+-- 							report("Local UTDrvEnPin found at LIOBit " & integer'image(i));
+-- 						when others => null;
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+--
+-- 	end generate;
 
 -------------------------------------Packet UART---------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------
-
-	makepktuartrmod:  if PktUARTs >0  generate
-	signal ReadPktUARTRData: std_logic_vector(PktUARTs -1 downto 0);
-	signal LoadPktUARTRBitRate: std_logic_vector(PktUARTs -1 downto 0);
-	signal ReadPktUARTRBitrate: std_logic_vector(PktUARTs -1 downto 0);
-	signal ReadPktUARTRFrameCount: std_logic_vector(PktUARTs -1 downto 0);
-	signal ReadPktUARTRModeReg: std_logic_vector(PktUARTs -1 downto 0);
-	signal LoadPktUARTRModeReg: std_logic_vector(PktUARTs -1 downto 0);
-	signal PktURData: std_logic_vector(PktUARTs -1 downto 0);
-	signal LoadPktUARTTData: std_logic_vector(PktUARTs -1 downto 0);
-	signal LoadPktUARTTFrameCount: std_logic_vector(PktUARTs -1 downto 0);
-	signal ReadPktUARTTFrameCount: std_logic_vector(PktUARTs -1 downto 0);
-	signal LoadPktUARTTBitRate: std_logic_vector(PktUARTs -1 downto 0);
-	signal ReadPktUARTTBitrate: std_logic_vector(PktUARTs -1 downto 0);
-	signal LoadPktUARTTModeReg: std_logic_vector(PktUARTs -1 downto 0);
-	signal ReadPktUARTTModeReg: std_logic_vector(PktUARTs -1 downto 0);
-	signal PktUTDrvEn: std_logic_vector(PktUARTs -1 downto 0);
-	signal PktUTData: std_logic_vector(PktUARTs -1 downto 0);
-	signal PktUARTTDataSel : std_logic;
-	signal PktUARTTBitrateSel : std_logic;
-	signal PktUARTTFrameCountSel : std_logic;
-	signal PktUARTTModeRegSel : std_logic;
-	signal PktUARTRDataSel : std_logic;
-	signal PktUARTRBitrateSel : std_logic;
-	signal PktUARTRFrameCountSel : std_logic;
-	signal PktUARTRModeRegSel : std_logic;
-
-	begin
-		makepktuartrs: for i in 0 to PktUARTs -1 generate
-			pktauarrx: entity work.pktuartr
-			generic map (
-				MaxFrameSize => 1024 )
-			port map (
-				clk => clklow,
-				ibus => ibusint,
-				obus => obusint,
-				popdata => ReadPktUARTRData(i),
-				poprc => ReadPktUARTRFrameCount(i),
-				loadbitrate => LoadPktUARTRBitRate(i),
-				readbitrate => ReadPktUARTRBitrate(i),
-				loadmode => LoadPktUARTRModeReg(i),
-				readmode => ReadPktUARTRModeReg(i),
-				rxmask => PktUTDrvEn(i),			-- for half duplex rx mask
-				rxdata => PktURData(i)
-				);
-		end generate;
-
-		PktUARTRDecodeProcess : process (Aint,Readstb,writestb,PktUARTRDataSel,PktUARTRBitRateSel,
-		                                 PktUARTRFrameCountSel,PktUARTRModeRegSel)
-		begin
-			if Aint(15 downto 8) = PktUARTRDataAddr then	 --  PktUART RX data register select
-				PktUARTRDataSel <= '1';
-			else
-				PktUARTRDataSel <= '0';
-			end if;
-			if Aint(15 downto 8) = PktUARTRFrameCountAddr then	 --  PktUART RX FIFO count register select
-				PktUARTRFrameCountSel <= '1';
-			else
-				PktUARTRFrameCountSel <= '0';
-			end if;
-			if Aint(15 downto 8) = PktUARTRBitrateAddr then	 --  PktUART RX bit rate register select
-				PktUARTRBitrateSel <= '1';
-			else
-				PktUARTRBitrateSel <= '0';
-			end if;
-			if Aint(15 downto 8) = PktUARTRModeRegAddr then	 --  PktUART RX status register select
-				PktUARTRModeRegSel <= '1';
-			else
-				PktUARTRModeRegSel <= '0';
-			end if;
-
-			ReadPktUARTRData <= OneOfNDecode(PktUARTs,PktUARTRDataSel,Readstb,Aint(5 downto 2));
-			LoadPktUARTRBitRate <= OneOfNDecode(PktUARTs,PktUARTRBitRateSel,writestb,Aint(5 downto 2));
-			ReadPktUARTRBitrate <= OneOfNDecode(PktUARTs,PktUARTRBitRateSel,Readstb,Aint(5 downto 2));
-			ReadPktUARTRFrameCount <= OneOfNDecode(PktUARTs,PktUARTRFrameCountSel,Readstb,Aint(5 downto 2));
-			LoadPktUARTRModeReg <= OneOfNDecode(PktUARTs,PktUARTRModeRegSel,writestb,Aint(5 downto 2));
-			ReadPktUARTRModeReg <= OneOfNDecode(PktUARTs,PktUARTRModeRegSel,Readstb,Aint(5 downto 2));
-
-		end process PktUARTRDecodeProcess;
-
-		DoPktUARTRPins: process(IOBitsCorein)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = PktUARTRTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					if (ThePinDesc(i)(7 downto 0)) = PktURDataPin then
-						PktURData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
-					end if;
-				end if;
-			end loop;
-		end process;
-
-		DoLocalPktUARTRPins: process(IOBitsCorein) -- only for 4I90 LIO currently
-		begin
-			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
-				report("Doing PktUARTR LIOLoop: "& integer'image(i));
-				if ThePinDesc(i+IOWidth)(15 downto 8) = PktUARTRTag then 	-- GTag (Local I/O starts at end of external I/O)
-					if (ThePinDesc(i+IOWidth)(7 downto 0)) = PktURDataPin then
-						PktURData(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16))) <= LIOBits(i);
-						report("Local PktURDataPin found at LIOBit " & integer'image(i));
-					end if;
-				end if;
-			end loop;
-		end process;
-
-		makepktuarttxs: for i in 0 to PktUARTs -1 generate
-			apktuartx:  entity work.pktuartx
-			generic map (
-				MaxFrameSize => 1024 )
-			port map (
-				clk => clklow,
-				ibus => ibusint,
-				obus => obusint,
-				pushdata => LoadPktUARTTData(i),
-				pushsc	=> LoadPktUARTTFrameCount(i),
-				readsc   => ReadPktUARTTFrameCount(i),
-				loadbitrate => LoadPktUARTTBitRate(i),
-				readbitrate => ReadPktUARTTBitrate(i),
-				loadmode => LoadPktUARTTModeReg(i),
-				readmode => ReadPktUARTTModeReg(i),
-				drven => PktUTDrvEn(i),
-				txdata => PktUTData(i)
-				);
-		end generate;
-
-		PktUARTTDecodeProcess : process (Aint,readstb,writestb,PktUARTTDataSel,PktUARTTBitRateSel,
-													PktUARTTModeRegSel,PktUARTTFrameCountSel)
-		begin
-			if Aint(15 downto 8) = PktUARTTDataAddr then	 --  PktUART TX data register select
-				PktUARTTDataSel <= '1';
-			else
-				PktUARTTDataSel <= '0';
-			end if;
-			if Aint(15 downto 8) = PktUARTTFrameCountAddr then	 --  PktUART TX FIFO count register select
-				PktUARTTFrameCountSel <= '1';
-			else
-				PktUARTTFrameCountSel <= '0';
-			end if;
-			if Aint(15 downto 8) = PktUARTTBitrateAddr then	 --  PktUART TX bit rate register select
-				PktUARTTBitrateSel <= '1';
-			else
-				PktUARTTBitrateSel <= '0';
-			end if;
-			if Aint(15 downto 8) = PktUARTTModeRegAddr then	 --  PktUART TX bit mode register select
-				PktUARTTModeRegSel <= '1';
-			else
-				PktUARTTModeRegSel <= '0';
-			end if;
-			LoadPktUARTTData <= OneOfNDecode(PktUARTs,PktUARTTDataSel,writestb,Aint(5 downto 2));
-			LoadPktUARTTFrameCount <= OneOfNDecode(PktUARTs,PktUARTTFrameCountSel,writestb,Aint(5 downto 2));
-			ReadPktUARTTFrameCount <= OneOfNDecode(PktUARTs,PktUARTTFrameCountSel,readstb,Aint(5 downto 2));
-			LoadPktUARTTBitRate <= OneOfNDecode(PktUARTs,PktUARTTBitRateSel,writestb,Aint(5 downto 2));
-			ReadPktUARTTBitrate <= OneOfNDecode(PktUARTs,PktUARTTBitRateSel,Readstb,Aint(5 downto 2));
-			LoadPktUARTTModeReg <= OneOfNDecode(PktUARTs,PktUARTTModeRegSel,writestb,Aint(5 downto 2));
-			ReadPktUARTTModeReg <= OneOfNDecode(PktUARTs,PktUARTTModeRegSel,Readstb,Aint(5 downto 2));
-		end process PktUARTTDecodeProcess;
-
-		DoPktUARTTPins: process(PktUTData, PktUTDrvEn)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = PktUARTTTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
-						when PktUTDataPin =>
-							IOBitsCorein(i) <= PktUTData(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when UTDrvEnPin =>
-							IOBitsCorein(i) <=  not PktUTDrvEn(conv_integer(ThePinDesc(i)(23 downto 16))); -- ExtIO is active low enable
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-
-		DoLocalPktUARTTPins: process(PktUTData, PktUTDrvEn)
-		begin
-			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
-				report("Doing PktUARTT LIOLoop: "& integer'image(i));
-				if ThePinDesc(IOWidth+i)(15 downto 8) = PktUARTTTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					case (ThePinDesc(IOWidth+i)(7 downto 0)) is	--secondary pin function
-						when PktUTDataPin =>
-							LIOBits(i) <= PktUTData(conv_integer(ThePinDesc(IOWidth+i)(23 downto 16)));
-							report("Local PktUTDataPin found at LIOBit " & integer'image(i));
-						when UTDrvEnPin =>
-							LIOBits(i) <= PktUTDrvEn(conv_integer(ThePinDesc(IOWidth+i)(23 downto 16))); --LIO is active high enable
-							report("Local PktUTDrvEnPin found at LIOBit " & integer'image(i));
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-
-	end generate;
-
-	makebinoscmod:  if BinOscs >0  generate
-	signal LoadBinOscEna: std_logic_vector(BinOscs -1 downto 0);
-	type BinOscOutType is array(BinOscs-1 downto 0) of std_logic_vector(BinOscWidth-1 downto 0);
-	signal BinOscOut: BinOscOutType;
-	signal LoadBinOscEnaSel: std_logic;
-	begin
-		makebinoscs: for i in 0 to BinOscs -1 generate
-			aBinOsc: entity work.binosc
-			generic map (
-				width => BinOscWidth
-				)
-			port map (
-				clk => clklow,
-				ibus0 => ibusint(0),
-				loadena => LoadBinOscEna(i),
-				oscout => BinOscOut(i)
-				);
-		end generate;
-
-		BinOscDecodeProcess : process (Aint,writestb,LoadBinOscEnaSel)
-		begin
-			if Aint(15 downto 8) = BinOscEnaAddr then	 	--  Charge Pump Power Supply enable decode
-				LoadBinOscEnaSel <= '1';
-			else
-				LoadBinOscEnaSel <= '0';
-			end if;
-			LoadBinOscEna <= OneOfNDecode(BinOscs,LoadBinOscEnaSel,writestb,Aint(5 downto 2)); -- 16 max
-		end process BinOscDecodeProcess;
-
-		DoBinOscPins: process(BinOscOut)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = BinOscTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					IOBitsCorein(i) <= BinOscOut(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(6 downto 0))-1);
-					report("External BinOscOutPin found");
-				end if;
-			end loop;
-		end process;
-
-		DoLocalBinOscPins: process(BinOscOut) -- only for 4I69 LIO currently
-		begin
-			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
-				if ThePinDesc(i+IOWidth)(15 downto 8) = BinOscTag then	-- GTag (Local I/O starts at end of external I/O)
-					LIOBits(i) <= BinOscOut(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16)))(conv_integer(ThePinDesc(i+IOWIDTH)(6 downto 0))-1);
-					report("Local BinOscOutPin found");
-				end if;
-			end loop;
-		end process;
-	end generate;
-
-	makewavegenmod:  if WaveGens >0  generate
-	signal LoadWaveGenRate: std_logic_vector(WaveGens -1 downto 0);
-	signal LoadWaveGenLength: std_logic_vector(WaveGens -1 downto 0);
-	signal LoadWaveGenPDMRate: std_logic_vector(WaveGens -1 downto 0);
-	signal LoadWaveGenTablePtr: std_logic_vector(WaveGens -1 downto 0);
-	signal LoadWaveGenTableData: std_logic_vector(WaveGens -1 downto 0);
-	signal WavegenPDMA: std_logic_vector(WaveGens -1 downto 0);
-	signal WaveGenPDMB: std_logic_vector(WaveGens -1 downto 0);
-	signal WaveGenTrigger0: std_logic_vector(WaveGens -1 downto 0);
-	signal WaveGenTrigger1: std_logic_vector(WaveGens -1 downto 0);
-	signal WaveGenTrigger2: std_logic_vector(WaveGens -1 downto 0);
-	signal WaveGenTrigger3: std_logic_vector(WaveGens -1 downto 0);
-	signal WaveGenRateSel: std_logic;
-	signal WaveGenLengthSel: std_logic;
-	signal WaveGenPDMRateSel: std_logic;
-	signal WaveGenTablePtrSel: std_logic;
-	signal WaveGenTableDataSel: std_logic;
-	begin
-		makewavegens: for i in 0 to WaveGens -1 generate
-			awavegen:  entity work.wavegen
-			port map (
-				clk => clklow,
-				hclk => clkhigh,
-				ibus => ibusint,
---				obus => obusint,
-				loadrate => LoadWaveGenRate(i),
-				loadlength => LoadWaveGenLength(i),
-				loadpdmrate => LoadWaveGenPDMRate(i),
-				loadtableptr => LoadWaveGenTablePtr(i),
-				loadtabledata =>LoadWaveGenTableData(i),
-				trigger0 => WaveGenTrigger0(i),
-				trigger1 => WaveGenTrigger1(i),
-				trigger2 => WaveGenTrigger2(i),
-				trigger3 => WaveGenTrigger3(i),
-				pdmouta => WaveGenPDMA(i),
-				pdmoutb => WaveGenPDMB(i)
-				);
-		end generate;
-
-		WaveGenDecodeProcess : process (Aint,Readstb,writestb,WaveGenRateSel,WaveGenLengthSel,
-			                             WaveGenPDMRateSel,WaveGenTablePtrSel,WaveGenTableDataSel)
-		begin
-			if Aint(15 downto 8) = WaveGenRateAddr then	 --  WaveGen table index rate
-				WaveGenRateSel <= '1';
-			else
-				WaveGenRateSel <= '0';
-			end if;
-			if Aint(15 downto 8) = WaveGenLengthAddr then	 --  WaveGen table length
-				WaveGenlengthSel <= '1';
-			else
-				WaveGenlengthSel <= '0';
-			end if;
-			if Aint(15 downto 8) = WaveGenPDMRateAddr then	 --  WaveGen PDMRate
-				WaveGenPDMRateSel <= '1';
-			else
-				WaveGenPDMRateSel <= '0';
-			end if;
-			if Aint(15 downto 8) = WaveGenTablePtrAddr then	 --  WaveGen TablePtr
-				WaveGenTablePtrSel <= '1';
-			else
-				WaveGenTablePtrSel <= '0';
-			end if;
-			if Aint(15 downto 8) = WaveGenTableDataAddr then	 --  WaveGen TableData
-				WaveGenTableDataSel <= '1';
-			else
-				WaveGenTableDataSel <= '0';
-			end if;
-			LoadWaveGenRate <= OneOfNDecode(WaveGens,WaveGenRateSel,writestb,Aint(5 downto 2));
-			LoadWaveGenLength <= OneOfNDecode(WaveGens,WaveGenLengthSel,writestb,Aint(5 downto 2));
-			LoadWaveGenPDMRate <= OneOfNDecode(WaveGens,WaveGenPDMRateSel,writestb,Aint(5 downto 2));
-			LoadWaveGenTablePtr <= OneOfNDecode(WaveGens,WaveGenTablePtrSel,writestb,Aint(5 downto 2));
-			LoadWaveGenTableData <= OneOfNDecode(WaveGens,WaveGenTableDataSel,writestb,Aint(5 downto 2));
-		end process WaveGenDecodeProcess;
-
-		DoWaveGenPins: process(WaveGenPDMA,WaveGenPDMB, WaveGenTrigger0,
-										WaveGenTrigger1, WaveGenTrigger2, WaveGenTrigger3)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = WaveGenTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
-						when PDMAOutPin =>
-							IOBitsCorein(i) <= WaveGenPDMA(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when PDMBOutPin =>
-							IOBitsCorein(i) <= WaveGenPDMB(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when Trigger0OutPin =>
-							IOBitsCorein(i) <= WaveGenTrigger0(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when Trigger1OutPin =>
-							IOBitsCorein(i) <= WaveGenTrigger1(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when Trigger2OutPin =>
-							IOBitsCorein(i) <= WaveGenTrigger2(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when Trigger3OutPin =>
-							IOBitsCorein(i) <= WaveGenTrigger3(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-	end generate;
-
-	makeresolvermod:  if ResolverMods >0  generate
-	signal LoadResModCommand: std_logic_vector(ResolverMods -1 downto 0);
-	signal ReadResModCommand: std_logic_vector(ResolverMods -1 downto 0);
-	signal LoadResModData: std_logic_vector(ResolverMods -1 downto 0);
-	signal ReadResModData: std_logic_vector(ResolverMods -1 downto 0);
-	signal ReadResModStatus: std_logic_vector(ResolverMods -1 downto 0);
-	signal ReadResModVelRam: std_logic_vector(ResolverMods -1 downto 0);
-	signal ReadResModPosRam: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModPDMP: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModPDMM: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModSPICS: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModSPIClk: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModSPIDI0: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModSPIDI1: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModPwrEn: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModChan0: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModChan1: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModChan2: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModTestBit: std_logic_vector(ResolverMods -1 downto 0);
-	signal ResModCommandSel: std_logic;
-	signal ResModDataSel: std_logic;
-	signal ResModStatusSel: std_logic;
-	signal ResModVelRAMSel: std_logic;
-	signal ResModPosRAMSel: std_logic; 	begin
-		makeresolvers: for i in 0 to ResolverMods -1 generate
-			aresolver: entity work.resolver
-			port map(
-				clk => clklow,
-				ibus => ibusint,
-				obus => obusint,
-				hloadcommand => LoadResModCommand(i),
-				hreadcommand => ReadResModCommand(i),
-				hloaddata => LoadResModData(i),
-				hreaddata => ReadResModData(i),
-				hreadstatus => ReadResModStatus(i),
-				regaddr => addr(4 downto 2), 		-- early address for DPRAM access
-				readvel => ReadResModVelRam(i),
-				readpos => ReadResModPosRam(i),
-				testbit => ResModTestBit(i),
-				respdmp => ResModPDMP(i),
-				respdmm => ResModPDMM(i),
-				spics => ResModSPICS(i),
-				spiclk => ResModSPIClk(i),
-				spidi0 => ResModSPIDI0(i),
-				spidi1 => ResModSPIDI1(i),
-				pwren => ResModPwrEn(i),
-				chan0 => ResModChan0(i),
-				chan1 => ResModChan1(i),
-				chan2 => ResModChan2(i)
-				);
-		end generate;
-
- 		ResolverModDecodeProcess : process (Aint,Readstb,writestb,ResModCommandSel,ResModDataSel,ResModVelRAMSel,ResModPosRAMSel)
-		begin
-			if Aint(15 downto 8) = ResModCommandAddr then
-				ResModCommandSel <= '1';
-			else
-				ResModCommandSel <= '0';
-			end if;
-			if Aint(15 downto 8) = ResModDataAddr then
-				ResModDataSel <= '1';
-			else
-				ResModDataSel <= '0';
-			end if;
-			if Aint(15 downto 8) = ResModStatusAddr then
-				ResModStatusSel <= '1';
-			else
-				ResModStatusSel <= '0';
-			end if;
-			if Aint(15 downto 8) = ResModVelRAMAddr then
-				ResModVelRAMSel <= '1';
-			else
-				ResModVelRAMSel <= '0';
-			end if;
-			if Aint(15 downto 8) = ResModPosRAMAddr then
-				ResModPosRAMSel <= '1';
-			else
-				ResModPosRAMSel <= '0';
-			end if;
-			LoadResModCommand <= OneOfNDecode(ResolverMods,ResModCommandSel,writestb,Aint(7 downto 6));
-			ReadResModCommand <= OneOfNDecode(ResolverMods,ResModCommandSel,Readstb,Aint(7 downto 6));
-			LoadResModData <= OneOfNDecode(ResolverMods,ResModDataSel,writestb,Aint(7 downto 6));
-			ReadResModData <= OneOfNDecode(ResolverMods,ResModDataSel,Readstb,Aint(7 downto 6));
-			ReadResModStatus <= OneOfNDecode(ResolverMods,ResModStatusSel,Readstb,Aint(7 downto 6));
-			ReadResModVelRam <= OneOfNDecode(ResolverMods,ResModVelRAMSel,Readstb,Aint(7 downto 6)); -- 16 addresses per resmod
-			ReadResModPosRam <= OneOfNDecode(ResolverMods,ResModPosRAMSel,Readstb,Aint(7 downto 6)); -- 16 addresses per resmod
-		end process ResolverModDecodeProcess;
-
-		DoResModPins: process(ResModPwrEn,ResModChan2,ResModChan1,ResModChan0,
-									 ResModSPIClk,ResModSPICS,ResModPDMM,ResModPDMP)
-		begin
-			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
-				if ThePinDesc(i)(15 downto 8) = ResModTag then
-					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
-						when ResModPwrEnPin =>
-							IOBitsCorein(i) <= ResModPwrEn(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when ResModPDMPPin =>
-							IOBitsCorein(i) <= ResModPDMP(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when ResModPDMMPin =>
-							IOBitsCorein(i) <= ResModPDMM(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when ResModChan0Pin =>
-							IOBitsCorein(i) <= ResModChan0(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when ResModChan1Pin =>
-							IOBitsCorein(i) <= ResModChan1(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when ResModChan2Pin =>
-							IOBitsCorein(i) <= ResModChan2(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when ResModSPICSPin =>
-							IOBitsCorein(i) <= ResModSPICS(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when ResModSPIClkPin =>
-							IOBitsCorein(i) <= ResModSPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when ResModTestBitPin =>
-							IOBitsCorein(i) <= ResModTestBit(conv_integer(ThePinDesc(i)(23 downto 16)));
-						when ResModSPIDI0Pin =>
-							ResModSPIDI0(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
-						when ResModSPIDI1Pin =>
-							ResModSPIDI1(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
-						when others => null;
-					end case;
-				end if;
-			end loop;
-		end process;
-	end generate;
-
+--
+-- 	makepktuartrmod:  if PktUARTs >0  generate
+-- 	signal ReadPktUARTRData: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal LoadPktUARTRBitRate: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal ReadPktUARTRBitrate: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal ReadPktUARTRFrameCount: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal ReadPktUARTRModeReg: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal LoadPktUARTRModeReg: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal PktURData: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal LoadPktUARTTData: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal LoadPktUARTTFrameCount: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal ReadPktUARTTFrameCount: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal LoadPktUARTTBitRate: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal ReadPktUARTTBitrate: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal LoadPktUARTTModeReg: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal ReadPktUARTTModeReg: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal PktUTDrvEn: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal PktUTData: std_logic_vector(PktUARTs -1 downto 0);
+-- 	signal PktUARTTDataSel : std_logic;
+-- 	signal PktUARTTBitrateSel : std_logic;
+-- 	signal PktUARTTFrameCountSel : std_logic;
+-- 	signal PktUARTTModeRegSel : std_logic;
+-- 	signal PktUARTRDataSel : std_logic;
+-- 	signal PktUARTRBitrateSel : std_logic;
+-- 	signal PktUARTRFrameCountSel : std_logic;
+-- 	signal PktUARTRModeRegSel : std_logic;
+--
+-- 	begin
+-- 		makepktuartrs: for i in 0 to PktUARTs -1 generate
+-- 			pktauarrx: entity work.pktuartr
+-- 			generic map (
+-- 				MaxFrameSize => 1024 )
+-- 			port map (
+-- 				clk => clklow,
+-- 				ibus => ibusint,
+-- 				obus => obusint,
+-- 				popdata => ReadPktUARTRData(i),
+-- 				poprc => ReadPktUARTRFrameCount(i),
+-- 				loadbitrate => LoadPktUARTRBitRate(i),
+-- 				readbitrate => ReadPktUARTRBitrate(i),
+-- 				loadmode => LoadPktUARTRModeReg(i),
+-- 				readmode => ReadPktUARTRModeReg(i),
+-- 				rxmask => PktUTDrvEn(i),			-- for half duplex rx mask
+-- 				rxdata => PktURData(i)
+-- 				);
+-- 		end generate;
+--
+-- 		PktUARTRDecodeProcess : process (Aint,Readstb,writestb,PktUARTRDataSel,PktUARTRBitRateSel,
+-- 		                                 PktUARTRFrameCountSel,PktUARTRModeRegSel)
+-- 		begin
+-- 			if Aint(15 downto 8) = PktUARTRDataAddr then	 --  PktUART RX data register select
+-- 				PktUARTRDataSel <= '1';
+-- 			else
+-- 				PktUARTRDataSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = PktUARTRFrameCountAddr then	 --  PktUART RX FIFO count register select
+-- 				PktUARTRFrameCountSel <= '1';
+-- 			else
+-- 				PktUARTRFrameCountSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = PktUARTRBitrateAddr then	 --  PktUART RX bit rate register select
+-- 				PktUARTRBitrateSel <= '1';
+-- 			else
+-- 				PktUARTRBitrateSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = PktUARTRModeRegAddr then	 --  PktUART RX status register select
+-- 				PktUARTRModeRegSel <= '1';
+-- 			else
+-- 				PktUARTRModeRegSel <= '0';
+-- 			end if;
+--
+-- 			ReadPktUARTRData <= OneOfNDecode(PktUARTs,PktUARTRDataSel,Readstb,Aint(5 downto 2));
+-- 			LoadPktUARTRBitRate <= OneOfNDecode(PktUARTs,PktUARTRBitRateSel,writestb,Aint(5 downto 2));
+-- 			ReadPktUARTRBitrate <= OneOfNDecode(PktUARTs,PktUARTRBitRateSel,Readstb,Aint(5 downto 2));
+-- 			ReadPktUARTRFrameCount <= OneOfNDecode(PktUARTs,PktUARTRFrameCountSel,Readstb,Aint(5 downto 2));
+-- 			LoadPktUARTRModeReg <= OneOfNDecode(PktUARTs,PktUARTRModeRegSel,writestb,Aint(5 downto 2));
+-- 			ReadPktUARTRModeReg <= OneOfNDecode(PktUARTs,PktUARTRModeRegSel,Readstb,Aint(5 downto 2));
+--
+-- 		end process PktUARTRDecodeProcess;
+--
+-- 		DoPktUARTRPins: process(IOBitsCorein)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = PktUARTRTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					if (ThePinDesc(i)(7 downto 0)) = PktURDataPin then
+-- 						PktURData(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
+-- 					end if;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+--
+-- 		DoLocalPktUARTRPins: process(IOBitsCorein) -- only for 4I90 LIO currently
+-- 		begin
+-- 			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
+-- 				report("Doing PktUARTR LIOLoop: "& integer'image(i));
+-- 				if ThePinDesc(i+IOWidth)(15 downto 8) = PktUARTRTag then 	-- GTag (Local I/O starts at end of external I/O)
+-- 					if (ThePinDesc(i+IOWidth)(7 downto 0)) = PktURDataPin then
+-- 						PktURData(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16))) <= LIOBits(i);
+-- 						report("Local PktURDataPin found at LIOBit " & integer'image(i));
+-- 					end if;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+--
+-- 		makepktuarttxs: for i in 0 to PktUARTs -1 generate
+-- 			apktuartx:  entity work.pktuartx
+-- 			generic map (
+-- 				MaxFrameSize => 1024 )
+-- 			port map (
+-- 				clk => clklow,
+-- 				ibus => ibusint,
+-- 				obus => obusint,
+-- 				pushdata => LoadPktUARTTData(i),
+-- 				pushsc	=> LoadPktUARTTFrameCount(i),
+-- 				readsc   => ReadPktUARTTFrameCount(i),
+-- 				loadbitrate => LoadPktUARTTBitRate(i),
+-- 				readbitrate => ReadPktUARTTBitrate(i),
+-- 				loadmode => LoadPktUARTTModeReg(i),
+-- 				readmode => ReadPktUARTTModeReg(i),
+-- 				drven => PktUTDrvEn(i),
+-- 				txdata => PktUTData(i)
+-- 				);
+-- 		end generate;
+--
+-- 		PktUARTTDecodeProcess : process (Aint,readstb,writestb,PktUARTTDataSel,PktUARTTBitRateSel,
+-- 													PktUARTTModeRegSel,PktUARTTFrameCountSel)
+-- 		begin
+-- 			if Aint(15 downto 8) = PktUARTTDataAddr then	 --  PktUART TX data register select
+-- 				PktUARTTDataSel <= '1';
+-- 			else
+-- 				PktUARTTDataSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = PktUARTTFrameCountAddr then	 --  PktUART TX FIFO count register select
+-- 				PktUARTTFrameCountSel <= '1';
+-- 			else
+-- 				PktUARTTFrameCountSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = PktUARTTBitrateAddr then	 --  PktUART TX bit rate register select
+-- 				PktUARTTBitrateSel <= '1';
+-- 			else
+-- 				PktUARTTBitrateSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = PktUARTTModeRegAddr then	 --  PktUART TX bit mode register select
+-- 				PktUARTTModeRegSel <= '1';
+-- 			else
+-- 				PktUARTTModeRegSel <= '0';
+-- 			end if;
+-- 			LoadPktUARTTData <= OneOfNDecode(PktUARTs,PktUARTTDataSel,writestb,Aint(5 downto 2));
+-- 			LoadPktUARTTFrameCount <= OneOfNDecode(PktUARTs,PktUARTTFrameCountSel,writestb,Aint(5 downto 2));
+-- 			ReadPktUARTTFrameCount <= OneOfNDecode(PktUARTs,PktUARTTFrameCountSel,readstb,Aint(5 downto 2));
+-- 			LoadPktUARTTBitRate <= OneOfNDecode(PktUARTs,PktUARTTBitRateSel,writestb,Aint(5 downto 2));
+-- 			ReadPktUARTTBitrate <= OneOfNDecode(PktUARTs,PktUARTTBitRateSel,Readstb,Aint(5 downto 2));
+-- 			LoadPktUARTTModeReg <= OneOfNDecode(PktUARTs,PktUARTTModeRegSel,writestb,Aint(5 downto 2));
+-- 			ReadPktUARTTModeReg <= OneOfNDecode(PktUARTs,PktUARTTModeRegSel,Readstb,Aint(5 downto 2));
+-- 		end process PktUARTTDecodeProcess;
+--
+-- 		DoPktUARTTPins: process(PktUTData, PktUTDrvEn)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = PktUARTTTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
+-- 						when PktUTDataPin =>
+-- 							IOBitsCorein(i) <= PktUTData(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when UTDrvEnPin =>
+-- 							IOBitsCorein(i) <=  not PktUTDrvEn(conv_integer(ThePinDesc(i)(23 downto 16))); -- ExtIO is active low enable
+-- 						when others => null;
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+--
+-- 		DoLocalPktUARTTPins: process(PktUTData, PktUTDrvEn)
+-- 		begin
+-- 			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
+-- 				report("Doing PktUARTT LIOLoop: "& integer'image(i));
+-- 				if ThePinDesc(IOWidth+i)(15 downto 8) = PktUARTTTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					case (ThePinDesc(IOWidth+i)(7 downto 0)) is	--secondary pin function
+-- 						when PktUTDataPin =>
+-- 							LIOBits(i) <= PktUTData(conv_integer(ThePinDesc(IOWidth+i)(23 downto 16)));
+-- 							report("Local PktUTDataPin found at LIOBit " & integer'image(i));
+-- 						when UTDrvEnPin =>
+-- 							LIOBits(i) <= PktUTDrvEn(conv_integer(ThePinDesc(IOWidth+i)(23 downto 16))); --LIO is active high enable
+-- 							report("Local PktUTDrvEnPin found at LIOBit " & integer'image(i));
+-- 						when others => null;
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+--
+-- 	end generate;
+--
+-- 	makebinoscmod:  if BinOscs >0  generate
+-- 	signal LoadBinOscEna: std_logic_vector(BinOscs -1 downto 0);
+-- 	type BinOscOutType is array(BinOscs-1 downto 0) of std_logic_vector(BinOscWidth-1 downto 0);
+-- 	signal BinOscOut: BinOscOutType;
+-- 	signal LoadBinOscEnaSel: std_logic;
+-- 	begin
+-- 		makebinoscs: for i in 0 to BinOscs -1 generate
+-- 			aBinOsc: entity work.binosc
+-- 			generic map (
+-- 				width => BinOscWidth
+-- 				)
+-- 			port map (
+-- 				clk => clklow,
+-- 				ibus0 => ibusint(0),
+-- 				loadena => LoadBinOscEna(i),
+-- 				oscout => BinOscOut(i)
+-- 				);
+-- 		end generate;
+--
+-- 		BinOscDecodeProcess : process (Aint,writestb,LoadBinOscEnaSel)
+-- 		begin
+-- 			if Aint(15 downto 8) = BinOscEnaAddr then	 	--  Charge Pump Power Supply enable decode
+-- 				LoadBinOscEnaSel <= '1';
+-- 			else
+-- 				LoadBinOscEnaSel <= '0';
+-- 			end if;
+-- 			LoadBinOscEna <= OneOfNDecode(BinOscs,LoadBinOscEnaSel,writestb,Aint(5 downto 2)); -- 16 max
+-- 		end process BinOscDecodeProcess;
+--
+-- 		DoBinOscPins: process(BinOscOut)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = BinOscTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					IOBitsCorein(i) <= BinOscOut(conv_integer(ThePinDesc(i)(23 downto 16)))(conv_integer(ThePinDesc(i)(6 downto 0))-1);
+-- 					report("External BinOscOutPin found");
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+--
+-- 		DoLocalBinOscPins: process(BinOscOut) -- only for 4I69 LIO currently
+-- 		begin
+-- 			for i in 0 to LIOWidth -1 loop				-- loop through all the local I/O pins
+-- 				if ThePinDesc(i+IOWidth)(15 downto 8) = BinOscTag then	-- GTag (Local I/O starts at end of external I/O)
+-- 					LIOBits(i) <= BinOscOut(conv_integer(ThePinDesc(i+IOWidth)(23 downto 16)))(conv_integer(ThePinDesc(i+IOWIDTH)(6 downto 0))-1);
+-- 					report("Local BinOscOutPin found");
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+-- 	end generate;
+--
+-- 	makewavegenmod:  if WaveGens >0  generate
+-- 	signal LoadWaveGenRate: std_logic_vector(WaveGens -1 downto 0);
+-- 	signal LoadWaveGenLength: std_logic_vector(WaveGens -1 downto 0);
+-- 	signal LoadWaveGenPDMRate: std_logic_vector(WaveGens -1 downto 0);
+-- 	signal LoadWaveGenTablePtr: std_logic_vector(WaveGens -1 downto 0);
+-- 	signal LoadWaveGenTableData: std_logic_vector(WaveGens -1 downto 0);
+-- 	signal WavegenPDMA: std_logic_vector(WaveGens -1 downto 0);
+-- 	signal WaveGenPDMB: std_logic_vector(WaveGens -1 downto 0);
+-- 	signal WaveGenTrigger0: std_logic_vector(WaveGens -1 downto 0);
+-- 	signal WaveGenTrigger1: std_logic_vector(WaveGens -1 downto 0);
+-- 	signal WaveGenTrigger2: std_logic_vector(WaveGens -1 downto 0);
+-- 	signal WaveGenTrigger3: std_logic_vector(WaveGens -1 downto 0);
+-- 	signal WaveGenRateSel: std_logic;
+-- 	signal WaveGenLengthSel: std_logic;
+-- 	signal WaveGenPDMRateSel: std_logic;
+-- 	signal WaveGenTablePtrSel: std_logic;
+-- 	signal WaveGenTableDataSel: std_logic;
+-- 	begin
+-- 		makewavegens: for i in 0 to WaveGens -1 generate
+-- 			awavegen:  entity work.wavegen
+-- 			port map (
+-- 				clk => clklow,
+-- 				hclk => clkhigh,
+-- 				ibus => ibusint,
+-- --				obus => obusint,
+-- 				loadrate => LoadWaveGenRate(i),
+-- 				loadlength => LoadWaveGenLength(i),
+-- 				loadpdmrate => LoadWaveGenPDMRate(i),
+-- 				loadtableptr => LoadWaveGenTablePtr(i),
+-- 				loadtabledata =>LoadWaveGenTableData(i),
+-- 				trigger0 => WaveGenTrigger0(i),
+-- 				trigger1 => WaveGenTrigger1(i),
+-- 				trigger2 => WaveGenTrigger2(i),
+-- 				trigger3 => WaveGenTrigger3(i),
+-- 				pdmouta => WaveGenPDMA(i),
+-- 				pdmoutb => WaveGenPDMB(i)
+-- 				);
+-- 		end generate;
+--
+-- 		WaveGenDecodeProcess : process (Aint,Readstb,writestb,WaveGenRateSel,WaveGenLengthSel,
+-- 			                             WaveGenPDMRateSel,WaveGenTablePtrSel,WaveGenTableDataSel)
+-- 		begin
+-- 			if Aint(15 downto 8) = WaveGenRateAddr then	 --  WaveGen table index rate
+-- 				WaveGenRateSel <= '1';
+-- 			else
+-- 				WaveGenRateSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = WaveGenLengthAddr then	 --  WaveGen table length
+-- 				WaveGenlengthSel <= '1';
+-- 			else
+-- 				WaveGenlengthSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = WaveGenPDMRateAddr then	 --  WaveGen PDMRate
+-- 				WaveGenPDMRateSel <= '1';
+-- 			else
+-- 				WaveGenPDMRateSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = WaveGenTablePtrAddr then	 --  WaveGen TablePtr
+-- 				WaveGenTablePtrSel <= '1';
+-- 			else
+-- 				WaveGenTablePtrSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = WaveGenTableDataAddr then	 --  WaveGen TableData
+-- 				WaveGenTableDataSel <= '1';
+-- 			else
+-- 				WaveGenTableDataSel <= '0';
+-- 			end if;
+-- 			LoadWaveGenRate <= OneOfNDecode(WaveGens,WaveGenRateSel,writestb,Aint(5 downto 2));
+-- 			LoadWaveGenLength <= OneOfNDecode(WaveGens,WaveGenLengthSel,writestb,Aint(5 downto 2));
+-- 			LoadWaveGenPDMRate <= OneOfNDecode(WaveGens,WaveGenPDMRateSel,writestb,Aint(5 downto 2));
+-- 			LoadWaveGenTablePtr <= OneOfNDecode(WaveGens,WaveGenTablePtrSel,writestb,Aint(5 downto 2));
+-- 			LoadWaveGenTableData <= OneOfNDecode(WaveGens,WaveGenTableDataSel,writestb,Aint(5 downto 2));
+-- 		end process WaveGenDecodeProcess;
+--
+-- 		DoWaveGenPins: process(WaveGenPDMA,WaveGenPDMB, WaveGenTrigger0,
+-- 										WaveGenTrigger1, WaveGenTrigger2, WaveGenTrigger3)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = WaveGenTag then 	-- this hideous masking of pinnumbers/vs pintype is why they should be separate bytes, maybe IDROM type 4...
+-- 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function, drop MSB
+-- 						when PDMAOutPin =>
+-- 							IOBitsCorein(i) <= WaveGenPDMA(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when PDMBOutPin =>
+-- 							IOBitsCorein(i) <= WaveGenPDMB(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when Trigger0OutPin =>
+-- 							IOBitsCorein(i) <= WaveGenTrigger0(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when Trigger1OutPin =>
+-- 							IOBitsCorein(i) <= WaveGenTrigger1(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when Trigger2OutPin =>
+-- 							IOBitsCorein(i) <= WaveGenTrigger2(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when Trigger3OutPin =>
+-- 							IOBitsCorein(i) <= WaveGenTrigger3(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when others => null;
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+-- 	end generate;
+--
+-- 	makeresolvermod:  if ResolverMods >0  generate
+-- 	signal LoadResModCommand: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ReadResModCommand: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal LoadResModData: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ReadResModData: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ReadResModStatus: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ReadResModVelRam: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ReadResModPosRam: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModPDMP: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModPDMM: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModSPICS: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModSPIClk: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModSPIDI0: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModSPIDI1: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModPwrEn: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModChan0: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModChan1: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModChan2: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModTestBit: std_logic_vector(ResolverMods -1 downto 0);
+-- 	signal ResModCommandSel: std_logic;
+-- 	signal ResModDataSel: std_logic;
+-- 	signal ResModStatusSel: std_logic;
+-- 	signal ResModVelRAMSel: std_logic;
+-- 	signal ResModPosRAMSel: std_logic; 	begin
+-- 		makeresolvers: for i in 0 to ResolverMods -1 generate
+-- 			aresolver: entity work.resolver
+-- 			port map(
+-- 				clk => clklow,
+-- 				ibus => ibusint,
+-- 				obus => obusint,
+-- 				hloadcommand => LoadResModCommand(i),
+-- 				hreadcommand => ReadResModCommand(i),
+-- 				hloaddata => LoadResModData(i),
+-- 				hreaddata => ReadResModData(i),
+-- 				hreadstatus => ReadResModStatus(i),
+-- 				regaddr => addr(4 downto 2), 		-- early address for DPRAM access
+-- 				readvel => ReadResModVelRam(i),
+-- 				readpos => ReadResModPosRam(i),
+-- 				testbit => ResModTestBit(i),
+-- 				respdmp => ResModPDMP(i),
+-- 				respdmm => ResModPDMM(i),
+-- 				spics => ResModSPICS(i),
+-- 				spiclk => ResModSPIClk(i),
+-- 				spidi0 => ResModSPIDI0(i),
+-- 				spidi1 => ResModSPIDI1(i),
+-- 				pwren => ResModPwrEn(i),
+-- 				chan0 => ResModChan0(i),
+-- 				chan1 => ResModChan1(i),
+-- 				chan2 => ResModChan2(i)
+-- 				);
+-- 		end generate;
+--
+--  		ResolverModDecodeProcess : process (Aint,Readstb,writestb,ResModCommandSel,ResModDataSel,ResModVelRAMSel,ResModPosRAMSel)
+-- 		begin
+-- 			if Aint(15 downto 8) = ResModCommandAddr then
+-- 				ResModCommandSel <= '1';
+-- 			else
+-- 				ResModCommandSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = ResModDataAddr then
+-- 				ResModDataSel <= '1';
+-- 			else
+-- 				ResModDataSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = ResModStatusAddr then
+-- 				ResModStatusSel <= '1';
+-- 			else
+-- 				ResModStatusSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = ResModVelRAMAddr then
+-- 				ResModVelRAMSel <= '1';
+-- 			else
+-- 				ResModVelRAMSel <= '0';
+-- 			end if;
+-- 			if Aint(15 downto 8) = ResModPosRAMAddr then
+-- 				ResModPosRAMSel <= '1';
+-- 			else
+-- 				ResModPosRAMSel <= '0';
+-- 			end if;
+-- 			LoadResModCommand <= OneOfNDecode(ResolverMods,ResModCommandSel,writestb,Aint(7 downto 6));
+-- 			ReadResModCommand <= OneOfNDecode(ResolverMods,ResModCommandSel,Readstb,Aint(7 downto 6));
+-- 			LoadResModData <= OneOfNDecode(ResolverMods,ResModDataSel,writestb,Aint(7 downto 6));
+-- 			ReadResModData <= OneOfNDecode(ResolverMods,ResModDataSel,Readstb,Aint(7 downto 6));
+-- 			ReadResModStatus <= OneOfNDecode(ResolverMods,ResModStatusSel,Readstb,Aint(7 downto 6));
+-- 			ReadResModVelRam <= OneOfNDecode(ResolverMods,ResModVelRAMSel,Readstb,Aint(7 downto 6)); -- 16 addresses per resmod
+-- 			ReadResModPosRam <= OneOfNDecode(ResolverMods,ResModPosRAMSel,Readstb,Aint(7 downto 6)); -- 16 addresses per resmod
+-- 		end process ResolverModDecodeProcess;
+--
+-- 		DoResModPins: process(ResModPwrEn,ResModChan2,ResModChan1,ResModChan0,
+-- 									 ResModSPIClk,ResModSPICS,ResModPDMM,ResModPDMP)
+-- 		begin
+-- 			for i in 0 to IOWidth -1 loop				-- loop through all the external I/O pins
+-- 				if ThePinDesc(i)(15 downto 8) = ResModTag then
+-- 					case (ThePinDesc(i)(7 downto 0)) is	--secondary pin function
+-- 						when ResModPwrEnPin =>
+-- 							IOBitsCorein(i) <= ResModPwrEn(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when ResModPDMPPin =>
+-- 							IOBitsCorein(i) <= ResModPDMP(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when ResModPDMMPin =>
+-- 							IOBitsCorein(i) <= ResModPDMM(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when ResModChan0Pin =>
+-- 							IOBitsCorein(i) <= ResModChan0(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when ResModChan1Pin =>
+-- 							IOBitsCorein(i) <= ResModChan1(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when ResModChan2Pin =>
+-- 							IOBitsCorein(i) <= ResModChan2(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when ResModSPICSPin =>
+-- 							IOBitsCorein(i) <= ResModSPICS(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when ResModSPIClkPin =>
+-- 							IOBitsCorein(i) <= ResModSPIClk(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when ResModTestBitPin =>
+-- 							IOBitsCorein(i) <= ResModTestBit(conv_integer(ThePinDesc(i)(23 downto 16)));
+-- 						when ResModSPIDI0Pin =>
+-- 							ResModSPIDI0(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
+-- 						when ResModSPIDI1Pin =>
+-- 							ResModSPIDI1(conv_integer(ThePinDesc(i)(23 downto 16))) <= IOBitsCorein(i);
+-- 						when others => null;
+-- 					end case;
+-- 				end if;
+-- 			end loop;
+-- 		end process;
+-- 	end generate;
+--
 	makesserialmod:  if SSerials >0  generate
 	signal LoadSSerialCommand: std_logic_vector(SSerials -1 downto 0);
 	signal ReadSSerialCommand: std_logic_vector(SSerials -1 downto 0);
