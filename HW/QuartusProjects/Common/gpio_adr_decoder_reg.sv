@@ -18,9 +18,7 @@ module gpio_adr_decoder_reg(
 	input	[MuxGPIOIOWidth-1:0]						iodatafromhm3,
 //
 	inout	[GPIOWidth-1:0]							ioport,
-// 	output 	reg								write_dataenable,
-//	output 	reg	[NumIOReg-1:0]			gpio_sel,
-	output	[MuxGPIOIOWidth-1:0]			iodatatohm3
+	output reg [MuxGPIOIOWidth-1:0]				iodatatohm3
 //	output 	reg	[BusWidth-1:0]			busdata_out
 );
 
@@ -34,9 +32,11 @@ parameter MuxLedWidth 		= 2;
 	wire reset_reg = ~reset_reg_N;
 	wire [GPIOWidth-1:0] io_read_data;
 
-	reg [AddrWidth-1:0] busaddr;
-	reg [23:0] busdata_in_reg;
-	reg [23:0]	ddr_reg[NumIOReg-1:0];
+	reg [AddrWidth-1:0]			busaddr;
+	reg [23:0]						busdata_in_reg;
+	reg [23:0]						ddr_reg[NumIOReg-1:0];
+	reg [MuxLedWidth-1:0]		leds_r;
+	reg [MuxGPIOIOWidth-1:0]	iodatafromhm3_r;
 	
 	assign oe = {2'b1,ddr_reg[1][9:0],ddr_reg[0]};
 
@@ -64,19 +64,6 @@ parameter MuxLedWidth 		= 2;
 //
 //	assign oe_sig = {oe_sig_24[1][9:0],oe_sig_24[0]};
 //	assign od_sig = {od_sig_24[1][9:0],od_sig_24[0]};
-
-bidir_io bidir_io_inst
-(
-	.oe(oe) ,	// input  oe_sig
-	.out_data({leds_sig,iodatafromhm3}) ,	// input [IOIOWidth-1:0] out_data_sig
-	.ioport(ioport) ,	// inout [IOIOWidth-1:0] ioport_sig
-	.read_data(io_read_data) 	// output [IOIOWidth-1:0] read_data_sig
-);
-
-defparam bidir_io_inst.IOWidth = GPIOWidth;
-
-assign iodatatohm3 = io_read_data[GPIOWidth-MuxLedWidth-1:0];
-
 
 
 //	genvar i;
@@ -109,7 +96,8 @@ assign iodatatohm3 = io_read_data[GPIOWidth-MuxLedWidth-1:0];
 		if (reset_reg)begin
 			busaddr <= 0;
 			busdata_in_reg <= 0;
-//			iodatatohm3 <= 0;
+			leds_r <= 0;
+			iodatafromhm3_r <= 0;
 			write_r <= 0;
 //			read_r <= 'b0;
 //			iodatatohm3 <= 0;
@@ -119,6 +107,10 @@ assign iodatatohm3 = io_read_data[GPIOWidth-MuxLedWidth-1:0];
 			busdata_in_reg <= busdata_in[23:0];
 			write_r[0] <= write_reg;
 			write_r[1] <= write_r[0];
+			leds_r <= leds_sig;
+			iodatafromhm3_r <= iodatafromhm3;
+			iodatatohm3 <= io_read_data[GPIOWidth-MuxLedWidth-1:0];
+
 //			read_r[0] <= read_reg;
 //			read_r[1] <= read_r[0];
 //			iodatatohm3 <= tohm2data;
@@ -147,6 +139,16 @@ assign iodatatohm3 = io_read_data[GPIOWidth-MuxLedWidth-1:0];
 			endcase
 		end
 	end
+
+bidir_io bidir_io_inst
+(
+	.oe(oe) ,	// input  oe_sig
+	.out_data({leds_r,iodatafromhm3_r}) ,	// input [IOIOWidth-1:0] out_data_sig
+	.ioport(ioport) ,	// inout [IOIOWidth-1:0] ioport_sig
+	.read_data(io_read_data) 	// output [IOIOWidth-1:0] read_data_sig
+);
+
+defparam bidir_io_inst.IOWidth = GPIOWidth;
 
 //	always @(posedge reset_reg or posedge read_r[1] or posedge CLOCK)begin
 //		if (reset_reg)begin
