@@ -137,7 +137,7 @@ parameter NumIOReg = 6;
 	parameter LIOWidth	= 6;
 	parameter IOPorts		= 2;
 	parameter GPIOWidth	= 36;
-	parameter NumIOReg		= 6;
+	parameter NumIOReg	= 6;
 */
 	wire  hps_fpga_reset_n;
 	wire [1:0] fpga_debounced_buttons;
@@ -166,7 +166,7 @@ parameter NumIOReg = 6;
 	wire 						clkhigh_sig;
 
 	wire [LEDCount-1:0]	leds_sig;
-	
+
 	//irq:
 	wire int_sig;
 	assign ARDUINO_IO[15] = int_sig;
@@ -290,7 +290,7 @@ parameter NumIOReg = 6;
 //      .axi_str_valid                     (out_data[8]),                 //                          .valid
 //      .axi_str_ready                     (ar_in_sig[1])                 //                          .ready
  );
- 
+
 top_io_modules top_io_modules_inst
 (
 	.clk(clklow_sig) ,	// input  clk_sig
@@ -305,7 +305,7 @@ top_io_modules top_io_modules_inst
 
 defparam top_io_modules_inst.KEY_WIDTH = 2;
 
- 
+
 // Mesa code ------------------------------------------------------//
 
 assign clklow_sig = fpga_clk_50;
@@ -344,10 +344,11 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.reg_clk(clkhigh_sig) ,	// input  CLOCK_sig
 	.reset_reg_N(hps_fpga_reset_n) ,	// input  reset_reg_N_sig
 	.write_reg(hm_write) ,	// input  data_ready_sig
+	.read_reg(hm_read) ,	// input  data_ready_sig
 	.leds_sig(leds_sig) ,	// input  data_ready_sig
 	.busaddress(hm_address) ,	// input [AddrWidth-1:0] address_sig
 	.busdata_in(hm_datai) ,	// input [BusWidth-1:0] data_in_sig
-//	.busdata_out(hm_datao) ,	// output [BusWidth-1:0] data_in_sig
+	.busdata_out(hm_datao) ,	// output [BusWidth-1:0] data_in_sig
 	.iodatafromhm3 ( iobitsout_sig ),
 	.ioport( GPIO_0 ),
 //	.write_dataenable(write_dataenable_sig) ,	// output  write_dataenable_sig
@@ -361,14 +362,8 @@ defparam gpio_adr_decoder_reg_inst.GPIOWidth = GPIOWidth;
 defparam gpio_adr_decoder_reg_inst.MuxGPIOIOWidth = MuxGPIOIOWidth;
 defparam gpio_adr_decoder_reg_inst.NumIOReg = NumIOReg;
 defparam gpio_adr_decoder_reg_inst.MuxLedWidth = MuxLedWidth;
+defparam gpio_adr_decoder_reg_inst.NumGPIO = NumGPIO;
 
-//
-//gpio_buf	gpio_buf_inst (
-//	.datain ( iobitsout_sig ),
-//	.oe ( oe_sig ),
-//	.dataio ( GPIO_0 ),
-//	.dataout ( iobitsin_sig )
-//);
 //
 // 	wire [LIOWidth-1:0] liobits_sig;
 // //assign GPIO_1[LIOWidth-1:0] = liobits_sig;

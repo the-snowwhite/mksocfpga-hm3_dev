@@ -207,8 +207,8 @@ architecture dataflow of MakeIOPorts is
 
 		LoadPortCMD <= OneOfNDecode(IOPorts,PortSel,writestb,Adr(4 downto 2)); -- 8 max
 		ReadPortCMD <= OneOfNDecode(IOPorts,PortSel,readstb,Adr(4 downto 2));
-		LoadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,writestb,Adr(4 downto 2));
-		ReadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,readstb,Adr(4 downto 2));
+		LoadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,writestb,Adr(7 downto 2));
+		ReadDDRCMD <= OneOfNDecode(IOPorts,DDRSel,readstb,Adr(7 downto 2));
 
 		LoadAltDataSrcCMD <= OneOfNDecode(IOPorts,AltDataSrcSel,writestb,Adr(4 downto 2));
 		LoadOpenDrainModeCMD <= OneOfNDecode(IOPorts,OpenDrainModeSel,writestb,Adr(4 downto 2));
