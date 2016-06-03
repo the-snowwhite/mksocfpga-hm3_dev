@@ -119,7 +119,7 @@ entity HostMot3_cfg is
     iobitsouttop	: out std_logic_vector (IOWidth -1 downto 0);
     iobitsintop	: in std_logic_vector (IOWidth -1 downto 0);
 --     liobits			: inout std_logic_vector (LIOWidth -1 downto 0);
-    rates			: out std_logic_vector (4 downto 0);
+--     rates			: out std_logic_vector (4 downto 0);
     leds				: out std_logic_vector(LEDCount-1 downto 0) );
 end HostMot3_cfg;
 
@@ -198,6 +198,6 @@ begin
         iobitsouttop            => iobitsouttop_sig,
         iobitsintop             => iobitsintop_sig,
 --         liobits                 => liobits,
-        rates                   => rates,
+--         rates                   => rates,
         leds                    => leds_sig );
 end arch;
