@@ -143,9 +143,9 @@ parameter NumIOReg = 6;
 	wire [1:0] fpga_debounced_buttons;
 	wire [6:0]  fpga_led_internal;
 //	wire [2:0]  hps_reset_req;
-//	wire        hps_cold_reset;
-//	wire        hps_warm_reset;
-//	wire        hps_debug_reset;
+	wire        hps_cold_reset;
+	wire        hps_warm_reset;
+	wire        hps_debug_reset;
 	wire [27:0] stm_hw_events;
 	wire 		  fpga_clk_50;
 	// connection of internal logics
@@ -162,6 +162,7 @@ parameter NumIOReg = 6;
 	wire						hm_clk_med;
 	wire						hm_clk_high;
 	wire 						clklow_sig;
+	wire 						clkmed_sig;
 	wire 						clkhigh_sig;
 
 	wire [LEDCount-1:0]	leds_sig;
