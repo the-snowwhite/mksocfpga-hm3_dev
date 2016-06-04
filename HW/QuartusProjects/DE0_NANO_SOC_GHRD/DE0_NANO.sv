@@ -153,20 +153,29 @@ parameter NumIOReg = 6;
 	assign fpga_clk_50 = FPGA_CLK2_50;
 	assign stm_hw_events    = {{15{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
 	// hm2
-	wire [AddrWidth-3:0]	hm_address;
-	wire [31:0] 			hm_datao;
-	wire [31:0] 			hm_datai;
-	wire [31:0] 			busdata_out;
-	wire       				hm_read;
-	wire 						hm_write;
-	wire [3:0]				hm_chipsel;
-	wire						hm_clk_med;
-	wire						hm_clk_high;
-	wire 						clklow_sig;
-	wire 						clkmed_sig;
-	wire 						clkhigh_sig;
+	wire [AddrWidth-3:0]			hm_address;
+	wire [31:0] 					hm_datao;
+	wire [31:0] 					hm_datai;
+	wire [31:0] 					busdata_out;
+	wire       						hm_read;
+	wire 								hm_write;
+	wire [3:0]						hm_chipsel;
+	wire								hm_clk_med;
+	wire								hm_clk_high;
+	wire 								clklow_sig;
+	wire 								clkmed_sig;
+	wire 								clkhigh_sig;
 
-	wire [LEDCount-1:0]	leds_sig;
+// Mesa I/O Signals:
+	wire [LEDCount-1:0]			hm2_leds_sig;
+	wire [IOWidth-1:0] 			hm2_bitsout_sig;
+	wire [IOWidth-1:0] 			hm2_bitsin_sig;
+
+	wire [MuxLedWidth-1:0]		io_leds_sig[NumGPIO-1:0];
+	wire [MuxGPIOIOWidth-1:0] 	io_bitsout_sig[NumGPIO-1:0];
+	wire [MuxGPIOIOWidth-1:0] 	io_bitsin_sig[NumGPIO-1:0];
+
+	wire [GPIOWidth-1:0]			GPIO[NumGPIO-1:0];
 
 	//irq:
 	wire int_sig;
@@ -313,31 +322,17 @@ assign clklow_sig = fpga_clk_50;
 assign clkhigh_sig = hm_clk_high;
 assign clkmed_sig = hm_clk_med;
 
-//import work::*;
-
-wire [IOWidth-1:0] iobitsout_sig;
-wire [IOWidth-1:0] iobitsin_sig;
-//tri [4-1:0] gpiobitsout_sig;
-//tri [4-1:0] gpiobitsin_sig;
-//assign GPIO_0[24-1:0] = iobitsout_sig[24-1:0];
-//assign GPIO_0[30-1:24] = iobitsin_sig[30-1:24];
-
-// assign gpiobitsout_sig = iobitsout_sig[34-1:30];
-// assign gpiobitsin_sig = iobitsin_sig[34-1:30];
-
-//wire						read_write_sig;
-//wire						write_dataenable_sig;
-//wire	[NumIOReg-1:0]	gpio_sel_sig;
-
-	wire [MuxGPIOIOWidth-1:0]	oe_sig;
-//
-//	wire [23:0] oe_sig_24 [NumIOReg-1:0];
-//	wire [23:0] ddr_reg [NumIOReg-1:0];
-
-//	assign oe_sig_24[23:0] = ddr_reg[23:0];
-
-//	assign oe_sig = {ddr_reg[1][9:0],ddr_reg[0]};
-
+genvar ig;
+generate for(ig=0;ig<NumGPIO;ig=ig+1) begin : iosigloop
+	assign io_leds_sig[ig] = hm2_leds_sig[(ig*MuxLedWidth)+:MuxLedWidth];
+	assign io_bitsout_sig[ig] = hm2_bitsout_sig[(ig*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
+	assign io_bitsin_sig[ig] = hm2_bitsin_sig[(ig*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
+	if(ig == 0) assign GPIO_0 = GPIO[ig];
+	if(ig == 1) assign GPIO_1 = GPIO[ig];
+//	if(ig == 2) assign GPIO_2 = GPIO[ig];
+//	if(ig == 3) assign GPIO_3 = GPIO[ig];
+end
+endgenerate
 
 gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 (
@@ -346,15 +341,13 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.reset_reg_N(hps_fpga_reset_n) ,	// input  reset_reg_N_sig
 	.write_reg(hm_write) ,	// input  data_ready_sig
 	.read_reg(hm_read) ,	// input  data_ready_sig
-	.leds_sig(leds_sig) ,	// input  data_ready_sig
+	.leds_sig(io_leds_sig) ,	// input  data_ready_sig
 	.busaddress(hm_address) ,	// input [AddrWidth-1:0] address_sig
 	.busdata_in(hm_datai) ,	// input [BusWidth-1:0] data_in_sig
-	.iodatafromhm3 ( iobitsout_sig ),
+	.iodatafromhm3 ( io_bitsout_sig ),
 	.busdata_fromhm2 ( hm_datao ),
-	.ioport( GPIO_0 ),
-//	.write_dataenable(write_dataenable_sig) ,	// output  write_dataenable_sig
-//	.gpio_sel(gpio_sel_sig) ,	// output [NumIOReg-1:0] gpio_sel_sig
-	.iodatatohm3 ( iobitsin_sig ),
+	.ioport( GPIO ),
+	.iodatatohm3 ( io_bitsin_sig ),
 	.busdata_out ( busdata_out )
 );
 
@@ -387,11 +380,11 @@ HostMot3_cfg HostMot3_inst
 	.intirq(int_sig) ,	// output  int_sig							--int => LINT, ---> PCI ?
 //	.dreq(dreq_sig) ,	// output  dreq_sig
 //	.demandmode(demandmode_sig) ,	// output  demandmode_sig
-	.iobitsouttop(iobitsout_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
-	.iobitsintop(iobitsin_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
+	.iobitsouttop(hm2_bitsout_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
+	.iobitsintop(hm2_bitsin_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
 //	.liobits(liobits_sig) ,	// inout [lIOWidth-1:0] 			--liobits_sig
 //	.rates(rates_sig) ,	// output [4:0] rates_sig
-	.leds(leds_sig) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
+	.leds(hm2_leds_sig) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
 //	.leds(GPIO_0[35:34]) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
 );
 

@@ -1,7 +1,7 @@
 module bidir_io 
-#(parameter IOWidth=36)
+#(parameter IOWidth=36, parameter PortNumWidth=8)
 (
-	input [6:0] portselnum[IOWidth-1:0],
+	input [PortNumWidth-1:0] portselnum [IOWidth-1:0],
 	input [IOWidth-1:0] oe,
 	input [IOWidth-1:0] od,
 	input [IOWidth-1:0] out_data,

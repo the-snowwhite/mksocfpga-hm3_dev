@@ -14,14 +14,15 @@ module gpio_adr_decoder_reg(
 	input													reset_reg_N,
 	input													write_reg,
 	input													read_reg,
-	input	[MuxLedWidth-1:0]							leds_sig,
+	input	[MuxLedWidth-1:0]							leds_sig[NumGPIO-1:0],
 	input	[AddrWidth-3:0]							busaddress,
 	input	[BusWidth-1:0]								busdata_in,
-	input	[MuxGPIOIOWidth-1:0]						iodatafromhm3,
+	input	[MuxGPIOIOWidth-1:0]						iodatafromhm3[NumGPIO-1:0],
 	input [BusWidth-1:0]								busdata_fromhm2,
 //
-	inout	[GPIOWidth-1:0]							ioport,
-	output reg [MuxGPIOIOWidth-1:0]				iodatatohm3,
+	inout	[GPIOWidth-1:0]							ioport[NumGPIO-1:0],
+//
+	output reg [MuxGPIOIOWidth-1:0]				iodatatohm3[NumGPIO-1:0],
 	output 	reg	[BusWidth-1:0]					busdata_out
 );
 
@@ -38,7 +39,7 @@ parameter MuxregPrIOReg		= 6;
 parameter TotalNumregs 	= MuxregPrIOReg * NumIOReg * PortNumsPrReg;
 
 	wire reset_reg = ~reset_reg_N;
-	wire [GPIOWidth-1:0] io_read_data;
+	wire [GPIOWidth-1:0] io_read_data[NumGPIO-1:0];
 
 	reg [1:0] write_r;
 	reg [3:0] read_r;
@@ -47,20 +48,36 @@ parameter TotalNumregs 	= MuxregPrIOReg * NumIOReg * PortNumsPrReg;
 	reg [23:0]						ddr_reg[NumIOReg-1:0];
 	reg [23:0]						odrain_reg[NumIOReg-1:0];
 	reg [32:0]						mux_reg[NumIOReg-1:0][MuxregPrIOReg-1:0];
-	reg [MuxLedWidth-1:0]		leds_r;
-	reg [MuxGPIOIOWidth-1:0]	iodatafromhm3_r;
+	reg [MuxLedWidth-1:0]		leds_r[NumGPIO-1:0];
+	reg [MuxGPIOIOWidth-1:0]	iodatafromhm3_r[NumGPIO-1:0];
 	reg [PortNumWidth-1:0] 		portselnum[TotalNumregs-1:0];
 
-	wire [GPIOWidth-1:0]	oe;
-	wire [GPIOWidth-1:0]	od;
+	wire [GPIOWidth-1:0]	oe[NumGPIO-1:0];
+	wire [GPIOWidth-1:0]	od[NumGPIO-1:0];
 
 	wire [PortNumWidth-1:0] portnumsel[NumGPIO-1:0][GPIOWidth-1:0];
 
 	wire read_ready;
 
-	assign oe = {2'b11,ddr_reg[1][9:0],ddr_reg[0]};
-	assign od = {2'b0,odrain_reg[1][9:0],odrain_reg[0]};
-
+	generate begin
+		if (NumGPIO >= 1) begin
+			assign oe[0] = {2'b11,ddr_reg[1][9:0],ddr_reg[0][23:0]};
+			assign od[0] = {2'b0,odrain_reg[1][9:0],odrain_reg[0][23:0]};
+		end
+		if (NumGPIO >= 2) begin
+			assign oe[1] = {2'b11,ddr_reg[2][19:0],ddr_reg[1][23:10]};
+			assign od[1] = {2'b11,odrain_reg[2][19:0],odrain_reg[1][23:10]};
+		end
+		if (NumGPIO >= 3) begin
+			assign oe[2] = {2'b11,ddr_reg[4][5:0],ddr_reg[3][23:0],ddr_reg[2][23:20]};
+			assign od[2] = {2'b11,odrain_reg[4][5:0],odrain_reg[3][23:0],odrain_reg[2][23:20]};
+		end
+		if (NumGPIO == 4) begin
+			assign oe[3] = {2'b11,ddr_reg[5][15:0],ddr_reg[4][23:6]};
+			assign od[3] = {2'b11,odrain_reg[5][15:0],odrain_reg[4][23:6]};
+		end
+	end
+	endgenerate
 //	reg syx_data_rdy_r[3:0];
 
 //	wire [MuxGPIOIOWidth-1:0] tohm2data;
@@ -92,8 +109,8 @@ parameter TotalNumregs 	= MuxregPrIOReg * NumIOReg * PortNumsPrReg;
 		if (reset_reg)begin
 			busaddr <= 0;
 			busdata_in_reg <= 0;
-			leds_r <= 0;
-			iodatafromhm3_r <= 0;
+			leds_r <= '{NumGPIO{'0}};
+			iodatafromhm3_r <= '{NumGPIO{~0}};
 			write_r <= 0;
 			read_r <=  0;
 //			iodatatohm3 <= 0;
@@ -105,7 +122,8 @@ parameter TotalNumregs 	= MuxregPrIOReg * NumIOReg * PortNumsPrReg;
 			write_r[1] <= write_r[0];
 			leds_r <= leds_sig;
 			iodatafromhm3_r <= iodatafromhm3;
-			iodatatohm3 <= io_read_data[GPIOWidth-MuxLedWidth-1:0];
+//			iodatatohm3<= io_read_data[GPIOWidth-MuxLedWidth-1:0];
+			iodatatohm3<= io_read_data;
 			read_r[0] <= read_reg;
 			read_r[1] <= read_r[0];
 			read_r[2] <= read_r[1];
@@ -115,7 +133,7 @@ parameter TotalNumregs 	= MuxregPrIOReg * NumIOReg * PortNumsPrReg;
 	end
 
 		assign read_ready = read_r[1] | read_r[2] | read_r[3];
-	
+
 	genvar l,pl;
 	generate for(l=0;l<NumIOReg;l=l+1) begin : reg_initloop
 		for(pl=0;pl<MuxregPrIOReg;pl=pl+1) begin : initpnumloop
@@ -136,18 +154,37 @@ parameter TotalNumregs 	= MuxregPrIOReg * NumIOReg * PortNumsPrReg;
 	end
 	endgenerate
 
-bidir_io bidir_io_inst
-(
-	.portselnum(portnumsel[0]),
-	.oe(oe) ,	// input  oe_sig
-	.od(od) ,	// input  od_sig
-	.out_data({leds_r,iodatafromhm3_r}) ,	// input [IOIOWidth-1:0] out_data_sig
-	.ioport(ioport) ,	// inout [IOIOWidth-1:0] ioport_sig
-	.read_data(io_read_data) 	// output [IOIOWidth-1:0] read_data_sig
-);
-
-defparam bidir_io_inst.IOWidth = GPIOWidth;
-
+	genvar il;
+	generate for(il=0;il<NumGPIO;il=il+1) begin : gpiooutloop
+		bidir_io #(.IOWidth(GPIOWidth),.PortNumWidth(PortNumWidth)) bidir_io_inst
+		(
+			.portselnum(portnumsel[il]),
+			.oe(oe[il]) ,	// input  oe_sig
+			.od(od[il]) ,	// input  od_sig
+			.out_data({leds_r[il],iodatafromhm3_r[il]}) ,	// input [IOIOWidth-1:0] out_data_sig
+			.ioport(ioport[il]) ,	// inout [IOIOWidth-1:0] ioport_sig
+			.read_data(io_read_data[il]) 	// output [IOIOWidth-1:0] read_data_sig
+		);
+//		defparam bidir_io_inst[il].IOWidth = GPIOWidth;
+//		defparam bidir_io_inst[il].PortNumWidth = PortNumWidth;
+	end
+//	
+//	else begin
+//		bidir_io #(.IOWidth(GPIOWidth),.PortNumWidth(PortNumWidth)) bidir_io_inst [NumGPIO-1:0]
+//		(
+//			.portselnum(portnumsel),
+//			.oe(oe) ,	// input  oe_sig
+//			.od(od) ,	// input  od_sig
+//			.out_data('{leds_r,iodatafromhm3_r}) ,	// input [IOIOWidth-1:0] out_data_sig
+//			.ioport(ioport) ,	// inout [IOIOWidth-1:0] ioport_sig
+//			.read_data(io_read_data) 	// output [IOIOWidth-1:0] read_data_sig
+//		);
+//
+////		defparam bidir_io_inst[].IOWidth = GPIOWidth;
+////		defparam bidir_io_inst[].PortNumWidth = PortNumWidth;
+//	end
+	endgenerate
+	
 	always @(posedge reset_reg or posedge read_ready or posedge CLOCK)begin
 		if (reset_reg)begin
 //				busdata_out <= ~ 'bz;
