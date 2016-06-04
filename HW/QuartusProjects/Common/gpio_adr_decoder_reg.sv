@@ -18,6 +18,7 @@ module gpio_adr_decoder_reg(
 	input	[AddrWidth-3:0]							busaddress,
 	input	[BusWidth-1:0]								busdata_in,
 	input	[MuxGPIOIOWidth-1:0]						iodatafromhm3,
+	input [BusWidth-1:0]								busdata_fromhm2,
 //
 	inout	[GPIOWidth-1:0]							ioport,
 	output reg [MuxGPIOIOWidth-1:0]				iodatatohm3,
@@ -40,7 +41,7 @@ parameter TotalNumregs 	= MuxregPrIOReg * NumIOReg * PortNumsPrReg;
 	wire [GPIOWidth-1:0] io_read_data;
 
 	reg [1:0] write_r;
-	reg [1:0]read_r;
+	reg [3:0] read_r;
 	reg [AddrWidth-1:0]			busaddr;
 	reg [32:0]						busdata_in_reg;
 	reg [23:0]						ddr_reg[NumIOReg-1:0];
@@ -55,6 +56,7 @@ parameter TotalNumregs 	= MuxregPrIOReg * NumIOReg * PortNumsPrReg;
 
 	wire [PortNumWidth-1:0] portnumsel[NumGPIO-1:0][GPIOWidth-1:0];
 
+	wire read_ready;
 
 	assign oe = {2'b11,ddr_reg[1][9:0],ddr_reg[0]};
 	assign od = {2'b0,odrain_reg[1][9:0],odrain_reg[0]};
@@ -86,7 +88,7 @@ parameter TotalNumregs 	= MuxregPrIOReg * NumIOReg * PortNumsPrReg;
 	end
 	endgenerate
 
-		always @(posedge reg_clk or posedge reset_reg)begin
+	always @(posedge reg_clk or posedge reset_reg)begin
 		if (reset_reg)begin
 			busaddr <= 0;
 			busdata_in_reg <= 0;
@@ -106,10 +108,14 @@ parameter TotalNumregs 	= MuxregPrIOReg * NumIOReg * PortNumsPrReg;
 			iodatatohm3 <= io_read_data[GPIOWidth-MuxLedWidth-1:0];
 			read_r[0] <= read_reg;
 			read_r[1] <= read_r[0];
+			read_r[2] <= read_r[1];
+			read_r[3] <= read_r[2];
 //			iodatatohm3 <= tohm2data;
 		end
 	end
 
+		assign read_ready = read_r[1] | read_r[2] | read_r[3];
+	
 	genvar l,pl;
 	generate for(l=0;l<NumIOReg;l=l+1) begin : reg_initloop
 		for(pl=0;pl<MuxregPrIOReg;pl=pl+1) begin : initpnumloop
@@ -122,15 +128,8 @@ parameter TotalNumregs 	= MuxregPrIOReg * NumIOReg * PortNumsPrReg;
 				end
 				else begin
 					if (busaddr == (14'h1100+(l*4))) begin if(pl == 0) ddr_reg[l] <= busdata_in_reg[23:0]; end
-					if (busaddr == (14'h1120+(l*4)))begin mux_reg[l][pl] <= busdata_in_reg; end
+					if (busaddr == (14'h1120+(l*4))) begin mux_reg[l][pl] <= busdata_in_reg; end
 					if (busaddr == (14'h1300+(l*4))) begin if(pl == 0) odrain_reg[l] <= busdata_in_reg[23:0]; end
-// 						14'h1120 : begin mux_reg[pl>>2][l] <= busdata_in_reg; end
-// 						(14'h1138 +(l*4)) : begin mux_reg[1][l] <= busdata_in_reg; end
-// 						(14'h1150 +(l*4)) : begin mux_reg[2][l] <= busdata_in_reg; end
-// 						(14'h116C +(l*4)) : begin mux_reg[3][l] <= busdata_in_reg; end
-// 						(14'h1180 +(l*4)) : begin mux_reg[4][l] <= busdata_in_reg; end
-// 						(14'h1198 +(l*4)) : begin mux_reg[5][l] <= busdata_in_reg; end
-// 						14'h1300 : begin if(pl == 0) odrain_reg[l] <= busdata_in_reg[23:0]; end
 				end
 			end
 		end
@@ -149,12 +148,13 @@ bidir_io bidir_io_inst
 
 defparam bidir_io_inst.IOWidth = GPIOWidth;
 
-	always @(posedge reset_reg or posedge read_r[1] or posedge reg_clk)begin
+	always @(posedge reset_reg or posedge read_ready or posedge CLOCK)begin
 		if (reset_reg)begin
-				busdata_out <= ~ 'bz;
+//				busdata_out <= ~ 'bz;
+				busdata_out <= 0;
 			end
-		else if (read_r[1]) begin
-			case (busaddr)
+		else if (read_ready) begin
+			unique case (busaddr)
 				14'h1120 : begin busdata_out <= mux_reg[0][0]; end
 				14'h1124 : begin busdata_out <= mux_reg[0][1]; end
 				14'h1128 : begin busdata_out <= mux_reg[0][2]; end
@@ -176,11 +176,11 @@ defparam bidir_io_inst.IOWidth = GPIOWidth;
 // 				14'h130C : begin busdata_out <= odrain_reg[3]; end
 // 				14'h1310 : begin busdata_out <= odrain_reg[4]; end
 // 				14'h1314 : begin busdata_out <= odrain_reg[5]; end
-				default : begin busdata_out <= 'bz; end
+				default : begin busdata_out <= busdata_fromhm2; end
 			endcase
 		end
 		else if (CLOCK) begin
-			busdata_out <= 'bz;
+			busdata_out <= busdata_fromhm2;
 		end
 	end
 endmodule

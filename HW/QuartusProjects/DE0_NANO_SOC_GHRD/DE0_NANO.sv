@@ -154,8 +154,9 @@ parameter NumIOReg = 6;
 	assign stm_hw_events    = {{15{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
 	// hm2
 	wire [AddrWidth-3:0]	hm_address;
-	tri [31:0] 				hm_datao;
-	tri [31:0] 				hm_datai;
+	wire [31:0] 			hm_datao;
+	wire [31:0] 			hm_datai;
+	wire [31:0] 			busdata_out;
 	wire       				hm_read;
 	wire 						hm_write;
 	wire [3:0]				hm_chipsel;
@@ -273,7 +274,7 @@ parameter NumIOReg = 6;
     .hps_0_f2h_stm_hw_events_stm_hwevents  (stm_hw_events ),  //        hps_0_f2h_stm_hw_events.stm_hwevents
     .hps_0_f2h_warm_reset_req_reset_n      (~hps_warm_reset ),      //       hps_0_f2h_warm_reset_req.reset_n
 // hm2reg_io_0_conduit
-	.mk_io_hm2_datain                  		(hm_datao),							//			.hm2_datain
+	.mk_io_hm2_datain                  		(busdata_out),							//			.hm2_datain
 	.mk_io_hm2_dataout                 	  	(hm_datai),							//			.hm2reg.hm2_dataout
 	.mk_io_hm2_address                 	  	(hm_address),	//			.hm2_address
 	.mk_io_hm2_write                   		(hm_write),							//			.hm2_write
@@ -348,12 +349,13 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.leds_sig(leds_sig) ,	// input  data_ready_sig
 	.busaddress(hm_address) ,	// input [AddrWidth-1:0] address_sig
 	.busdata_in(hm_datai) ,	// input [BusWidth-1:0] data_in_sig
-	.busdata_out(hm_datao) ,	// output [BusWidth-1:0] data_in_sig
 	.iodatafromhm3 ( iobitsout_sig ),
+	.busdata_fromhm2 ( hm_datao ),
 	.ioport( GPIO_0 ),
 //	.write_dataenable(write_dataenable_sig) ,	// output  write_dataenable_sig
 //	.gpio_sel(gpio_sel_sig) ,	// output [NumIOReg-1:0] gpio_sel_sig
-	.iodatatohm3 ( iobitsin_sig )
+	.iodatatohm3 ( iobitsin_sig ),
+	.busdata_out ( busdata_out )
 );
 
 defparam gpio_adr_decoder_reg_inst.AddrWidth = AddrWidth-2;
