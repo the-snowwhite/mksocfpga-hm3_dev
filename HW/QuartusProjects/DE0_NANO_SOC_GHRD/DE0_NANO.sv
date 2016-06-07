@@ -346,12 +346,12 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.busdata_in(hm_datai) ,	// input [BusWidth-1:0] data_in_sig
 	.iodatafromhm3 ( io_bitsout_sig ),
 	.busdata_fromhm2 ( hm_datao ),
-	.ioport( GPIO ),
+	.gpioport( GPIO ),
 	.iodatatohm3 ( io_bitsin_sig ),
 	.busdata_out ( busdata_out )
 );
 
-defparam gpio_adr_decoder_reg_inst.AddrWidth = AddrWidth-2;
+defparam gpio_adr_decoder_reg_inst.AddrWidth = AddrWidth;
 defparam gpio_adr_decoder_reg_inst.BusWidth = BusWidth;
 defparam gpio_adr_decoder_reg_inst.GPIOWidth = GPIOWidth;
 defparam gpio_adr_decoder_reg_inst.MuxGPIOIOWidth = MuxGPIOIOWidth;
@@ -369,7 +369,6 @@ HostMot3_cfg HostMot3_inst
 (
 	.ibustop(hm_datai) ,	// input [buswidth-1:0] ibus_sig
 	.obustop(hm_datao) ,	// output [buswidth-1:0] obus_sig
-//	.addr(hm_address) ,	// input [addrwidth-1:2] addr_sig	-- addr => A(AddrWidth-1 downto 2),
 	.addr(hm_address) ,	// input [addrwidth-1:2] addr_sig	-- addr => A(AddrWidth-1 downto 2),
 	.readstb(hm_read ) ,	// input  readstb_sig
 	.writestb(hm_write) ,	// input  writestb_sig
