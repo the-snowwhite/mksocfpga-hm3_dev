@@ -339,6 +339,7 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.CLOCK(clklow_sig) ,	// input  CLOCK_sig
 	.reg_clk(clkhigh_sig) ,	// input  CLOCK_sig
 	.reset_reg_N(hps_fpga_reset_n) ,	// input  reset_reg_N_sig
+	.chip_sel(hm_chipsel[0]) ,	// input  data_ready_sig
 	.write_reg(hm_write) ,	// input  data_ready_sig
 	.read_reg(hm_read) ,	// input  data_ready_sig
 	.leds_sig(io_leds_sig) ,	// input  data_ready_sig
