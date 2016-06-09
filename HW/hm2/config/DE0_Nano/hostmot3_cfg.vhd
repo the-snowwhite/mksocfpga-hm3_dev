@@ -126,29 +126,30 @@ end HostMot3_cfg;
 architecture arch of HostMot3_cfg is
 
 	signal ibustop_sig : std_logic_vector(BusWidth -1 downto 0);
-	signal obustop_sig : std_logic_vector(BusWidth -1 downto 0);
+--	signal obustop_sig : std_logic_vector(BusWidth -1 downto 0);
 	signal addr_sig : std_logic_vector(AddrWidth -1 downto 2);
 	signal readstb_sig : std_logic;
 	signal writestb_sig : std_logic;
-	signal intirq_sig : std_logic;
-	signal iobitsouttop_sig : std_logic_vector(IOWidth -1 downto 0);
+--	signal intirq_sig : std_logic;
+--	signal iobitsouttop_sig : std_logic_vector(IOWidth -1 downto 0);
 	signal iobitsintop_sig : std_logic_vector(IOWidth -1 downto 0);
-	signal leds_sig : std_logic_vector(LEDCount -1 downto 0);
+--	signal leds_sig : std_logic_vector(LEDCount -1 downto 0);
 
 begin
-
+--	
+--	obustop <= obustop_sig;
+--	intirq <= intirq_sig;
+--	iobitsouttop <= iobitsouttop_sig;
+--	leds <= leds_sig;
+--			
 	process (clkhigh)
 	begin
 		if rising_edge(clkhigh) then
 			ibustop_sig <= ibustop;
-			obustop <= obustop_sig;
 			addr_sig <= addr;
 			readstb_sig <= readstb;
 			writestb_sig <= writestb;
-			intirq <= intirq_sig;
-			iobitsouttop <= iobitsouttop_sig;
 			iobitsintop_sig <= iobitsintop;
-			leds <= leds_sig;
 		end if;
 	end process;
 
@@ -185,19 +186,19 @@ begin
         RegStride1              => 256 )
     port map (
         ibustop                 => ibustop_sig,
-        obustop                 => obustop_sig,
+        obustop                 => obustop,
         addr                    => addr_sig,
         readstb                 => readstb_sig,
         writestb                => writestb_sig,
         clklow                  => clklow,
         clkmed                  => clkmed,
         clkhigh                 => clkhigh,
-        intirq                  => intirq_sig,
+        intirq                  => intirq,
         dreq                    => dreq,
         demandmode              => demandmode,
-        iobitsouttop            => iobitsouttop_sig,
+        iobitsouttop            => iobitsouttop,
         iobitsintop             => iobitsintop_sig,
 --         liobits                 => liobits,
 --         rates                   => rates,
-        leds                    => leds_sig );
+        leds                    => leds );
 end arch;

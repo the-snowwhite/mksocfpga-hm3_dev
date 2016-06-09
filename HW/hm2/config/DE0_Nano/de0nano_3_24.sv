@@ -9,7 +9,8 @@ package boardtype;
 //	parameter BoardNameLow		= 32'h41524554;		// "TERA"
 //	parameter BoardNameHigh		= 32'h4E304544;		// "DE0N"
 	parameter BoardNameLow		= 32'h4153454D;		// "MESA"
-	parameter BoardNameHigh		= 32'h34324935;		// "5I24"
+	parameter BoardNameHigh		= 32'h35324935;		// "5I25"
+//	parameter BoardNameHigh		= 32'h34324935;		// "5I24"
 	parameter FPGASize			= 9;			// Reported as 32-bit value in IDROM.vhd (9 matches Mesanet value for 5i25)
 													//   FIXME: Figure out Mesanet encoding and put something sensible here
 	parameter FPGAPins			= 144;	// Total Number of available I/O pins for Hostmot2 use Reported as 32-bit value in IDROM.vhd
