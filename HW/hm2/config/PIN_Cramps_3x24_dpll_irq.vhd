@@ -74,7 +74,7 @@ package Pintypes is
 	-- GTag			Version		Clock       	NumInst 	BaseAddr						NumRegisters			Strides	MultiRegs
 		(HM2DPLLTag,	x"00",	ClockLowTag,	x"01",	HM2DPLLBaseRateAddr&PadT,	HM2DPLLNumRegs,		x"00",	HM2DPLLMPBitMask),
 		(WatchDogTag,	x"00",	ClockLowTag,	x"01",	WatchDogTimeAddr&PadT,		WatchDogNumRegs,		x"00",	WatchDogMPBitMask),
-		(IOPortTag,		x"00",	ClockLowTag,	x"04",	PortAddr&PadT,					IOPortNumRegs,			x"00",	IOPortMPBitMask),
+		(IOPortTag,		x"00",	ClockLowTag,	x"03",	PortAddr&PadT,					IOPortNumRegs,			x"00",	IOPortMPBitMask),
 		(QcountTag,		x"02",	ClockLowTag,	x"02",	QcounterAddr&PadT,			QCounterNumRegs,		x"00",	QCounterMPBitMask),
 		(StepGenTag,	x"02",	ClockLowTag,	x"0A",	StepGenRateAddr&PadT,		StepGenNumRegs,		x"00",	StepGenMPBitMask),
 		(PWMTag,			x"00",	ClockHighTag,	x"06",	PWMValAddr&PadT,				PWMNumRegs,				x"00",	PWMMPBitMask),
@@ -127,13 +127,13 @@ package Pintypes is
 		IOPortTag & x"07" & StepGenTag & StepGenStepPin,	-- I/O 14	PIN 15	PIN 6	Z Step
 		IOPortTag & x"07" & StepGenTag & StepGenDirPin,		-- I/O 15	PIN 16	PIN 7	Z Dir
 		IOPortTag & x"00" & HM2DPLLTag & HM2DPLLRefOutPin,	-- I/O 16	PIN 17	PIN 17	Output 1 just GPIO
+		IOPortTag & x"00" & HM2DPLLTag & HM2DPLLTimer1Pin,	-- I/O 17	PIN 18	PIN 13	Input 4 just GPIO
+		IOPortTag & x"08" & StepGenTag & StepGenStepPin,	-- I/O 18	PIN 19	PIN 8	A Step
+		IOPortTag & x"08" & StepGenTag & StepGenDirPin,		-- I/O 19	PIN 20	PIN 9	A Dir
 
 
 --      Base       Sec      Sec       Sec
 --      func       unit     func      pin					-- hostmot2 DE0-Nano    Function
-		IOPortTag & x"00" & HM2DPLLTag & HM2DPLLTimer1Pin,	-- I/O 17	PIN 18	PIN 13	Input 4 just GPIO
-		IOPortTag & x"08" & StepGenTag & StepGenStepPin,	-- I/O 18	PIN 19	PIN 8	A Step
-		IOPortTag & x"08" & StepGenTag & StepGenDirPin,		-- I/O 19	PIN 20	PIN 9	A Dir
 		IOPortTag & x"09" & StepGenTag & StepGenStepPin,	-- I/O 20	PIN 21	PIN 16	Charge Pump (16 KHz)
 		IOPortTag & x"09" & StepGenTag & StepGenDirPin,		-- I/O 21	PIN 22	PIN 9	A Dir
 		IOPortTag & x"00" & QCountTag & QCountQAPin,			-- I/O 22	PIN 23	Input 1 (Quad A)
@@ -142,20 +142,19 @@ package Pintypes is
 		IOPortTag & x"01" & QCountTag & QCountQAPin,  		-- I/O 25	PIN 26	Input 1 (Quad A)
 		IOPortTag & x"01" & QCountTag & QCountQBPin,    	-- I/O 26	PIN 27	Input 2 (Quad B)
 		IOPortTag & x"01" & QCountTag & QCountIdxPin,  		-- I/O 27	PIN 28	Input 3 (Quad Idx)
---
 		IOPortTag & x"00" & NullTag & NullPin,  				-- I/O 28	PIN 29	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,    			-- I/O 29	PIN 30	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,					-- I/O 30	PIN 31	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,					-- I/O 31	PIN 32	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,					-- I/O 32	PIN 33	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,					-- I/O 33	PIN 34	just GPIO
+		IOPortTag & x"00" & PWMTag & PWMAOutPin,			-- I/O 34	GPIO_1 00	Spindle DAC PWM
+		IOPortTag & x"01" & PWMTag & PWMAOutPin,			-- I/O 35	GPIO_1 01	Spindle DAC PWM
+		IOPortTag & x"02" & PWMTag & PWMAOutPin,			-- I/O 36	GPIO_1 02	Spindle DAC PWM
 
 
 --      Base       Sec      Sec       Sec
 --      func       unit     func      pin					-- hostmot2 DE0-Nano    Function
-		IOPortTag & x"00" & PWMTag & PWMAOutPin,			-- I/O 34	GPIO_1 00	Spindle DAC PWM
-		IOPortTag & x"01" & PWMTag & PWMAOutPin,			-- I/O 35	GPIO_1 01	Spindle DAC PWM
-		IOPortTag & x"02" & PWMTag & PWMAOutPin,			-- I/O 36	GPIO_1 02	Spindle DAC PWM
 		IOPortTag & x"03" & PWMTag & PWMAOutPin,			-- I/O 37	GPIO_1 03	Spindle DAC PWM
 		IOPortTag & x"04" & PWMTag & PWMAOutPin,			-- I/O 38	GPIO_1 04	Spindle DAC PWM
 		IOPortTag & x"05" & PWMTag & PWMAOutPin,			-- I/O 39	GPIO_1 05	Spindle DAC PWM
@@ -170,14 +169,14 @@ package Pintypes is
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 48	GPIO_1 14	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,		    	-- I/O 49	GPIO_1 15	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 50	GPIO_1 16	just GPIO
-
-
---      Base       Sec      Sec       Sec
---      func       unit     func      pin					-- hostmot2 DE0-Nano    Function
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 51	GPIO_1 17	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 52   GPIO_1 18	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 53   GPIO_1 19	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 54	GPIO_1 20	just GPIO
+
+
+--      Base       Sec      Sec       Sec
+--      func       unit     func      pin					-- hostmot2 DE0-Nano    Function
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 55	GPIO_1 21	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 56	GPIO_1 22	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 57	GPIO_1 23	just GPIO
@@ -191,9 +190,12 @@ package Pintypes is
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 65	GPIO_1 31	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 66	GPIO_1 32	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 67	GPIO_1 33	just GPIO
+		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 68	GPIO_1 33	just GPIO
+		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 69	GPIO_1 33	just GPIO
+		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 70	GPIO_1 33	just GPIO
+		IOPortTag & x"00" & NullTag & NullPin,				-- I/O 71	GPIO_1 33	just GPIO
 
 		        -- Remainder of 144 pin descriptors are unused
-		emptypin,emptypin,emptypin,emptypin,
 		emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,
 		emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,
 		emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,
@@ -204,4 +206,4 @@ package Pintypes is
 		emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,
 		emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin);
 
-end package Pintypes; --PIN_Cramps_4x68_dpll_irq
+end package Pintypes; --PIN_Cramps_3x24_dpll_irq

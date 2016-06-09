@@ -6,7 +6,7 @@ set_global_assignment -name VHDL_FILE ../../hm2/config/DE0_Nano/hostmot3_cfg.vhd
 
 # change the names of the 2 files below to recompile a new bitfile --->
 # Dev kit board specific:
-set_global_assignment -name SYSTEMVERILOG_FILE ../../hm2/config/DE0_Nano/de0nano_4_68.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../hm2/config/DE0_Nano/de0nano_3_24.sv
 
 # I/O Daughterboard adaptor specific:
-set_global_assignment -name VHDL_FILE ../../hm2/config/PIN_Cramps_4x68_dpll_irq.vhd -library pin
+set_global_assignment -name VHDL_FILE ../../hm2/config/PIN_Cramps_3x24_dpll_irq.vhd -library pin
