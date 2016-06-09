@@ -334,7 +334,7 @@ generate for(ig=0;ig<NumGPIO;ig=ig+1) begin : iosigloop
 end
 endgenerate
 
-assign LED[7:6] = hm2_leds_sig[1:0];
+assign LED[7:6] = ~hm2_leds_sig[1:0];
 
 gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 (
