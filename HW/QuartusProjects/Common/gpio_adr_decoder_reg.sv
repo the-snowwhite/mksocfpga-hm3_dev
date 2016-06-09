@@ -32,12 +32,13 @@ parameter BusWidth			= 32;
 parameter GPIOWidth			= 36;
 parameter MuxGPIOIOWidth	= 36;
 parameter NumIOReg			= 6;
-//parameter MuxLedWidth 		= 2;
+//parameter MuxLedWidth 	= 2;
 parameter NumGPIO 			= 2;
 
 // local param
-parameter RdInShift			= 2;
-parameter CsInShift			= 1;
+parameter ReadInShift		= 2;
+parameter WriteInShift		= 2;
+parameter CsInShift			= 2;
 parameter PortNumWidth		= 8;
 parameter NumPinsPrIOReg	= 4;
 parameter Mux_regPrIOReg	= 6;
@@ -47,9 +48,9 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 	wire [GPIOWidth-1:0] io_read_data[NumGPIO-1:0];
 
 	reg reset_in_r;
-	reg [CsInShift:0] chip_sel_r;
-	reg write_reg_r;
-	reg [RdInShift:0] read_reg_r;
+	reg [5:0] chip_sel_r;
+	reg [ReadInShift:0] read_reg_r;
+	reg [WriteInShift:0] write_reg_r;
 //	reg [MuxLedWidth-1:0]		leds_sig_r[NumGPIO-1:0];
 	reg [AddrWidth-1:0]			busaddress_r;
 	reg [BusWidth-1:0]			busdata_in_r;
@@ -74,7 +75,8 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 
 	wire valid_address;
 	wire write_address_valid;
-	wire read_address = read_reg_r[RdInShift];
+	wire read_address = read_reg_r[ReadInShift];
+	wire write_address = write_reg_r[WriteInShift];
 	wire mux_address_valid;
 
 //	assign reset_in = ~reset_reg_N;
@@ -83,26 +85,27 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 		if(reset_in) begin
 			reset_in_r			<= 0;
 			chip_sel_r			<= 0;
-			write_reg_r			<= 0;
 			read_reg_r			<= 0;
+			write_reg_r			<= 0;
 //			leds_sig_r			<= '{NumGPIO{~0}};
 			busaddress_r		<= 0;
 			busdata_in_r		<= 0;
 			iodatafromhm3_r	<= '{NumGPIO{~0}};
 			busdata_fromhm2_r	<= 0;
 		end else begin
-			reset_in_r					<= reset_in;
-			read_reg_r[CsInShift:1]	<= read_reg_r[CsInShift-1:0];
-			chip_sel_r[0]				<= chip_sel;
-			write_reg_r					<= write_reg;
-			read_reg_r[RdInShift:1]	<= read_reg_r[RdInShift-1:0];
-			read_reg_r[0]				<= read_reg;
-//			leds_sig_r					<= leds_sig;
-			busaddress_r				<= {busaddress,{2'b0}};
-			busdata_in_r				<= busdata_in;
-			iodatafromhm3_r			<= iodatafromhm3;
-			busdata_fromhm2_r			<= busdata_fromhm2;
-			local_address_r			<= (busaddress_r - 'h1000);
+			reset_in_r							<= reset_in;
+			chip_sel_r[CsInShift:1]			<= chip_sel_r[CsInShift-1:0];
+			chip_sel_r[0]						<= chip_sel;
+			read_reg_r[ReadInShift:1]		<= read_reg_r[ReadInShift-1:0];
+			read_reg_r[0]						<= read_reg;
+			write_reg_r[WriteInShift:1]	<= write_reg_r[WriteInShift-1:0];
+			write_reg_r[0]						<= write_reg;
+//			leds_sig_r							<= leds_sig;
+			busaddress_r						<= {{busaddress[AddrWidth-1:2]},{2'b0}};
+			busdata_in_r						<= busdata_in;
+			iodatafromhm3_r					<= iodatafromhm3;
+			busdata_fromhm2_r					<= busdata_fromhm2;
+			local_address_r					<= (busaddress_r - 'h1000);
 		end
 	end
 
@@ -149,10 +152,10 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 	end
 	endgenerate
 
-	assign valid_address = 	((busaddress_r >= 'h1100) && (busaddress_r < 'h1200) &&
+	assign valid_address = 	((busaddress_r >= 'h1100) && (busaddress_r < 'h1200) ||
 									(busaddress_r >= 'h1300) && busaddress_r < 'h1400) ? 1'b1 : 1'b0;
 
-	assign write_address_valid = (valid_address && write_reg_r) ? 1'b1 : 1'b0;
+	assign write_address_valid = ((valid_address == 1'b1) && (write_address == 1'b1)) ? 1'b1 : 1'b0;
 
 //	assign mux_address_valid = ((busaddress_r >= 'h1120) && (busaddress_r < 'h1200) && (chip_sel_r[5] == 1'b1)) ? 1'b1 : 1'b0;
 	assign mux_address_valid = ((busaddress_r >= 'h1120) && (busaddress_r < 'h1200) && (read_address == 1'b1)) ? 1'b1 : 1'b0;
@@ -162,15 +165,16 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 		for(pl=0;pl<Mux_regPrIOReg;pl=pl+1) begin : initpnumloop
 			always @(posedge reset_in_r or posedge write_address_valid)begin
 				if (reset_in_r)begin
-					if(pl == 0) ddr_reg[l] <= 0;
-					if(pl == 0) odrain_reg[l] <= 0;
+					if(pl == 0) begin ddr_reg[l] <= 0; odrain_reg[l] <= 0; end
 					mux_reg[l][pl] <= (((l*24) + (pl*4)) + (((l*24)+((pl*4)+1)) << PortNumWidth) +
 					(((l*24)+((pl*4)+2)) << (PortNumWidth * 2)) + (((l*24)+((pl*4)+3)) << (PortNumWidth * 3)));
 				end
 				else if (write_address_valid) begin
-					if (local_address_r == (12'h100+(l*4))) begin if(pl == 0) ddr_reg[l] <= busdata_in_r; end
+					if(pl == 0) begin
+						if (local_address_r == (12'h100+(l*4))) begin ddr_reg[l] <= busdata_in_r; end
+						if (local_address_r == (12'h300+(l*4))) begin odrain_reg[l] <= busdata_in_r; end
+					end
 					if (local_address_r == (12'h120+(l*4))) begin mux_reg[l][pl] <= busdata_in_r; end
-					if (local_address_r == (12'h300+(l*4))) begin if(pl == 0) odrain_reg[l] <= busdata_in_r; end
 				end
 			end
 		end
