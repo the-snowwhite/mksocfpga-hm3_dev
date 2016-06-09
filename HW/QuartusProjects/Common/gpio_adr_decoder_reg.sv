@@ -34,8 +34,10 @@ parameter MuxGPIOIOWidth	= 36;
 parameter NumIOReg			= 6;
 //parameter MuxLedWidth 		= 2;
 parameter NumGPIO 			= 2;
+
 // local param
-parameter InShift				= 2;
+parameter RdInShift			= 2;
+parameter CsInShift			= 1;
 parameter PortNumWidth		= 8;
 parameter NumPinsPrIOReg	= 4;
 parameter Mux_regPrIOReg	= 6;
@@ -45,9 +47,9 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 	wire [GPIOWidth-1:0] io_read_data[NumGPIO-1:0];
 
 	reg reset_in_r;
-	reg [5:0] chip_sel_r;
+	reg [CsInShift:0] chip_sel_r;
 	reg write_reg_r;
-	reg [InShift:0] read_reg_r;
+	reg [RdInShift:0] read_reg_r;
 //	reg [MuxLedWidth-1:0]		leds_sig_r[NumGPIO-1:0];
 	reg [AddrWidth-1:0]			busaddress_r;
 	reg [BusWidth-1:0]			busdata_in_r;
@@ -72,7 +74,7 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 
 	wire valid_address;
 	wire write_address_valid;
-	wire read_address = read_reg_r[InShift];
+	wire read_address = read_reg_r[RdInShift];
 	wire mux_address_valid;
 
 //	assign reset_in = ~reset_reg_N;
@@ -90,14 +92,10 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 			busdata_fromhm2_r	<= 0;
 		end else begin
 			reset_in_r					<= reset_in;
+			read_reg_r[CsInShift:1]	<= read_reg_r[CsInShift-1:0];
 			chip_sel_r[0]				<= chip_sel;
-			chip_sel_r[1]				<= chip_sel_r[0];
-			chip_sel_r[2]				<= chip_sel_r[1];
-			chip_sel_r[3]				<= chip_sel_r[2];
-			chip_sel_r[4]				<= chip_sel_r[3];
-			chip_sel_r[5]				<= chip_sel_r[4];
 			write_reg_r					<= write_reg;
-			read_reg_r[InShift:1]	<= read_reg_r[InShift-1:0];
+			read_reg_r[RdInShift:1]	<= read_reg_r[RdInShift-1:0];
 			read_reg_r[0]				<= read_reg;
 //			leds_sig_r					<= leds_sig;
 			busaddress_r				<= {busaddress,{2'b0}};
