@@ -149,7 +149,7 @@ parameter NumIOReg = 6;
 	wire [27:0] stm_hw_events;
 	wire 		  fpga_clk_50;
 	// connection of internal logics
-	assign LED[7:1] = fpga_led_internal;
+	assign LED[5:1] = fpga_led_internal;
 	assign fpga_clk_50 = FPGA_CLK2_50;
 	assign stm_hw_events    = {{15{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
 	// hm2
@@ -324,7 +324,7 @@ assign clkmed_sig = hm_clk_med;
 
 genvar ig;
 generate for(ig=0;ig<NumGPIO;ig=ig+1) begin : iosigloop
-	assign io_leds_sig[ig] = hm2_leds_sig[(ig*MuxLedWidth)+:MuxLedWidth];
+//	assign io_leds_sig[ig] = hm2_leds_sig[(ig*MuxLedWidth)+:MuxLedWidth];
 	assign io_bitsout_sig[ig] = hm2_bitsout_sig[(ig*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
 	assign io_bitsin_sig[ig] = hm2_bitsin_sig[(ig*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
 	if(ig == 0) assign GPIO_0 = GPIO[ig];
@@ -334,6 +334,8 @@ generate for(ig=0;ig<NumGPIO;ig=ig+1) begin : iosigloop
 end
 endgenerate
 
+assign LED[7:6] = hm2_leds_sig[1:0];
+
 gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 (
 	.CLOCK(clklow_sig) ,	// input  CLOCK_sig
@@ -342,7 +344,7 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.chip_sel(hm_chipsel[0]) ,	// input  data_ready_sig
 	.write_reg(hm_write) ,	// input  data_ready_sig
 	.read_reg(hm_read) ,	// input  data_ready_sig
-	.leds_sig(io_leds_sig) ,	// input  data_ready_sig
+//	.leds_sig(io_leds_sig) ,	// input  data_ready_sig
 	.busaddress(hm_address) ,	// input [AddrWidth-1:0] address_sig
 	.busdata_in(hm_datai) ,	// input [BusWidth-1:0] data_in_sig
 	.iodatafromhm3 ( io_bitsout_sig ),
@@ -357,7 +359,7 @@ defparam gpio_adr_decoder_reg_inst.BusWidth = BusWidth;
 defparam gpio_adr_decoder_reg_inst.GPIOWidth = GPIOWidth;
 defparam gpio_adr_decoder_reg_inst.MuxGPIOIOWidth = MuxGPIOIOWidth;
 defparam gpio_adr_decoder_reg_inst.NumIOReg = NumIOReg;
-defparam gpio_adr_decoder_reg_inst.MuxLedWidth = MuxLedWidth;
+//defparam gpio_adr_decoder_reg_inst.MuxLedWidth = MuxLedWidth;
 defparam gpio_adr_decoder_reg_inst.NumGPIO = NumGPIO;
 
 //

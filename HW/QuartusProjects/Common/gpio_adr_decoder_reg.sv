@@ -15,7 +15,7 @@ module gpio_adr_decoder_reg(
 	input													chip_sel,
 	input													write_reg,
 	input													read_reg,
-	input	[MuxLedWidth-1:0]							leds_sig[NumGPIO-1:0],
+//	input	[MuxLedWidth-1:0]							leds_sig[NumGPIO-1:0],
 	input	[AddrWidth-1:2]							busaddress,
 	input	[BusWidth-1:0]								busdata_in,
 	input	[MuxGPIOIOWidth-1:0]						iodatafromhm3[NumGPIO-1:0],
@@ -30,10 +30,10 @@ module gpio_adr_decoder_reg(
 parameter AddrWidth     	= 16;
 parameter BusWidth			= 32;
 parameter GPIOWidth			= 36;
-parameter MuxGPIOIOWidth	= 34;
+parameter MuxGPIOIOWidth	= 36;
 parameter NumIOReg			= 6;
-parameter MuxLedWidth 		= 2;
-parameter NumGPIO 			= 1;
+//parameter MuxLedWidth 		= 2;
+parameter NumGPIO 			= 2;
 // local param
 parameter InShift				= 2;
 parameter PortNumWidth		= 8;
@@ -48,7 +48,7 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 	reg [5:0] chip_sel_r;
 	reg write_reg_r;
 	reg [InShift:0] read_reg_r;
-	reg [MuxLedWidth-1:0]		leds_sig_r[NumGPIO-1:0];
+//	reg [MuxLedWidth-1:0]		leds_sig_r[NumGPIO-1:0];
 	reg [AddrWidth-1:0]			busaddress_r;
 	reg [BusWidth-1:0]			busdata_in_r;
 	reg [MuxGPIOIOWidth-1:0]	iodatafromhm3_r[NumGPIO-1:0];
@@ -83,7 +83,7 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 			chip_sel_r			<= 0;
 			write_reg_r			<= 0;
 			read_reg_r			<= 0;
-			leds_sig_r			<= '{NumGPIO{~0}};
+//			leds_sig_r			<= '{NumGPIO{~0}};
 			busaddress_r		<= 0;
 			busdata_in_r		<= 0;
 			iodatafromhm3_r	<= '{NumGPIO{~0}};
@@ -99,7 +99,7 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 			write_reg_r					<= write_reg;
 			read_reg_r[InShift:1]	<= read_reg_r[InShift-1:0];
 			read_reg_r[0]				<= read_reg;
-			leds_sig_r					<= leds_sig;
+//			leds_sig_r					<= leds_sig;
 			busaddress_r				<= {busaddress,{2'b0}};
 			busdata_in_r				<= busdata_in;
 			iodatafromhm3_r			<= iodatafromhm3;
@@ -146,8 +146,8 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 	genvar po;
 	generate for(po=0;po<NumGPIO;po=po+1) begin : pnloop
 		assign portnumsel[po][MuxGPIOIOWidth-1:0] = portselnum[(po*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
-		assign portnumsel[po][GPIOWidth-1] = 8'(((1+po)*GPIOWidth)-1);
-		assign portnumsel[po][GPIOWidth-2] = 8'(((1+po)+GPIOWidth)-2);
+//		assign portnumsel[po][GPIOWidth-1] = 8'(((1+po)*GPIOWidth)-1);
+//		assign portnumsel[po][GPIOWidth-2] = 8'(((1+po)+GPIOWidth)-2);
 	end
 	endgenerate
 
@@ -187,7 +187,8 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 			.portselnum(portnumsel[il]),
 			.oe(oe[il]) ,	// input  oe_sig
 			.od(od[il]) ,	// input  od_sig
-			.out_data({leds_sig_r[il],iodatafromhm3_r[il]}) ,	// input [IOIOWidth-1:0] out_data_sig
+//         .out_data({leds_sig_r[il],iodatafromhm3_r[il]}) ,  // input [IOIOWidth-1:0] out_data_sig
+         .out_data(iodatafromhm3_r[il]) ,  // input [IOIOWidth-1:0] out_data_sig
 			.gpioport(gpioport[il]) ,	// inout [IOIOWidth-1:0] gpioport_sig
 			.read_data(io_read_data[il]) 	// output [IOIOWidth-1:0] read_data_sig
 		);
