@@ -147,14 +147,14 @@ package Pintypes is
 		IOPortTag & x"00" & NullTag & NullPin,					--	I/O 31	GPIO_0 32	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,					--	I/O 32	GPIO_0 33	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,					--	I/O 33	GPIO_0 34	just GPIO
-		IOPortTag & x"00" & PWMTag & PWMAOutPin,				--	I/O 34	GPIO_0 35	Spindle DAC PWM
-		IOPortTag & x"01" & PWMTag & PWMAOutPin,				--	I/O 35	GPIO_0 36	Spindle DAC PWM
-		IOPortTag & x"02" & PWMTag & PWMAOutPin,				--	I/O 36	GPIO_1 01	Spindle DAC PWM
-		IOPortTag & x"03" & PWMTag & PWMAOutPin,				--	I/O 37	GPIO_1 02	Spindle DAC PWM
-		IOPortTag & x"04" & PWMTag & PWMAOutPin,				--	I/O 38	GPIO_1 03	Spindle DAC PWM
-		IOPortTag & x"05" & PWMTag & PWMAOutPin,				--	I/O 39	GPIO_1 04	Spindle DAC PWM
-		IOPortTag & x"00" & NullTag & NullPin,		 			--	I/O 40	GPIO_1 05	just GPIO
-		IOPortTag & x"00" & NullTag & NullPin,					--	I/O 41	GPIO_1 06 	just GPIO
+		IOPortTag & x"00" & NullTag & NullPin,		 			--	I/O 34	GPIO_0 35	just GPIO
+		IOPortTag & x"00" & NullTag & NullPin,					--	I/O 35	GPIO_0 36 	just GPIO
+		IOPortTag & x"00" & PWMTag & PWMAOutPin,				--	I/O 36	GPIO_1 01	Spindle DAC PWM
+		IOPortTag & x"01" & PWMTag & PWMAOutPin,				--	I/O 37	GPIO_1 02	Spindle DAC PWM
+		IOPortTag & x"02" & PWMTag & PWMAOutPin,				--	I/O 38	GPIO_1 03	Spindle DAC PWM
+		IOPortTag & x"03" & PWMTag & PWMAOutPin,				--	I/O 39	GPIO_1 04	Spindle DAC PWM
+		IOPortTag & x"04" & PWMTag & PWMAOutPin,				--	I/O 40	GPIO_1 05	Spindle DAC PWM
+		IOPortTag & x"05" & PWMTag & PWMAOutPin,				--	I/O 41	GPIO_1 06	Spindle DAC PWM
 		IOPortTag & x"00" & NullTag & NullPin,					--	I/O 42	GPIO_1 07	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,		 			--	I/O 43	GPIO_1 08 	just GPIO
 		IOPortTag & x"00" & NullTag & NullPin,					--	I/O 44	GPIO_1 09	just GPIO
