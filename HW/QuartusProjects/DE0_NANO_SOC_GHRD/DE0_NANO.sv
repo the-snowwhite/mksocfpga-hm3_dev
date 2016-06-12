@@ -162,6 +162,7 @@ parameter NumIOReg = 6;
 	wire [3:0]						hm_chipsel;
 	wire								hm_clk_med;
 	wire								hm_clk_high;
+	wire								adc_clk_40;
 	wire 								clklow_sig;
 	wire 								clkmed_sig;
 	wire 								clkhigh_sig;
@@ -291,11 +292,12 @@ parameter NumIOReg = 6;
 	.mk_io_hm2_chipsel            			(hm_chipsel),						//			.hm2_chipsel
 	.mk_io_hm2_int_in            				(int_sig),							//			.int_sig
 	.clk_100mhz_out_clk                    (hm_clk_med),						//			clk_100mhz_out.clk
-	.clk_200mhz_out_clk                    (hm_clk_high),						//			clk_100mhz_out.clk
-	.adc_io_convst									(ADC_CONVST),						//			adc.CONVST
-	.adc_io_sck										(ADC_SCK),							//			.SCK
-	.adc_io_sdi										(ADC_SDI),							//			.SDI
-	.adc_io_sdo										(ADC_SDO)							//			.SDO
+	.clk_200mhz_out_clk                    (hm_clk_high),						//			clk_200mhz_out.clk
+	.adc_clk_40mhz_clk                     (adc_clk_40)                  //             adc_clk_40mhz.clk
+//	.adc_io_convst									(ADC_CONVST),						//			adc.CONVST
+//	.adc_io_sck										(ADC_SCK),							//			.SCK
+//	.adc_io_sdi										(ADC_SDI),							//			.SDI
+//	.adc_io_sdo										(ADC_SDO)							//			.SDO
 //      .axi_str_data                      (out_data[7:0]),               //               stream_port.data
 //      .axi_str_valid                     (out_data[8]),                 //                          .valid
 //      .axi_str_ready                     (ar_in_sig[1])                 //                          .ready
@@ -351,7 +353,13 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.busdata_fromhm2 ( hm_datao ),
 	.gpioport( GPIO ),
 	.iodatatohm3 ( io_bitsin_sig ),
-	.busdata_out ( busdata_out )
+	.busdata_out ( busdata_out ),
+// ADC
+	.adc_clk(adc_clk_40),	// input  adc_clk_sig
+	.ADC_CONVST_o(ADC_CONVST),	// output  ADC_CONVST_o_sig
+	.ADC_SCK_o(ADC_SCK),	// output  ADC_SCK_o_sig
+	.ADC_SDI_o(ADC_SDI),	// output  ADC_SDI_o_sig
+	.ADC_SDO_i(ADC_SDO)	// input  ADC_SDO_i_sig
 );
 
 defparam gpio_adr_decoder_reg_inst.AddrWidth = AddrWidth;

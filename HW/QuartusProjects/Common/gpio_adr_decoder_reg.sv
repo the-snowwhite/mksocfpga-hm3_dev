@@ -24,7 +24,15 @@ module gpio_adr_decoder_reg(
 	inout	[GPIOWidth-1:0]							gpioport[NumGPIO-1:0],
 //
 	output reg [MuxGPIOIOWidth-1:0]				iodatatohm3[NumGPIO-1:0],
-	output reg [BusWidth-1:0]						busdata_out
+	output reg [BusWidth-1:0]						busdata_out,
+
+// adc interface
+
+	input   adc_clk, // max 40mhz
+	output  ADC_CONVST_o,
+	output  ADC_SCK_o,
+	output  ADC_SDI_o,
+	input   ADC_SDO_i
 );
 
 parameter AddrWidth     	= 16;
@@ -36,9 +44,10 @@ parameter NumIOReg			= 6;
 parameter NumGPIO 			= 2;
 
 // local param
+parameter AdcOutShift		= 1;
 parameter ReadInShift		= 2;
 parameter WriteInShift		= 2;
-parameter CsInShift			= 2;
+parameter CsInShift			= 4;
 parameter PortNumWidth		= 8;
 parameter NumPinsPrIOReg	= 4;
 parameter Mux_regPrIOReg	= 6;
@@ -48,9 +57,9 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 	wire [GPIOWidth-1:0] io_read_data[NumGPIO-1:0];
 
 	reg reset_in_r;
-	reg [5:0] chip_sel_r;
-	reg [ReadInShift:0] read_reg_r;
-	reg [WriteInShift:0] write_reg_r;
+	reg [5:0] 						chip_sel_r;
+	reg [ReadInShift:0]			read_reg_r;
+	reg [WriteInShift:0]			write_reg_r;
 //	reg [MuxLedWidth-1:0]		leds_sig_r[NumGPIO-1:0];
 	reg [AddrWidth-1:0]			busaddress_r;
 	reg [BusWidth-1:0]			busdata_in_r;
@@ -62,24 +71,54 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 	reg [BusWidth-1:0]			ddr_reg[NumIOReg-1:0];
 	reg [BusWidth-1:0]			odrain_reg[NumIOReg-1:0];
 	reg [BusWidth-1:0]			mux_reg[NumIOReg-1:0][Mux_regPrIOReg-1:0];
-	reg [PortNumWidth-1:0] 	portselnum[TotalNumregs-1:0];
+	reg [PortNumWidth-1:0]		portselnum[TotalNumregs-1:0];
 
 
-	wire [PortNumWidth-3:0] mux_reg_index;
-	wire [1:0] reg_muxindex;
+	wire [PortNumWidth-3:0]		mux_reg_index;
+	wire [1:0] 						reg_muxindex;
 
-	wire [GPIOWidth-1:0]	oe[NumGPIO-1:0];
-	wire [GPIOWidth-1:0]	od[NumGPIO-1:0];
+	wire [GPIOWidth-1:0]			oe[NumGPIO-1:0];
+	wire [GPIOWidth-1:0]			od[NumGPIO-1:0];
 
-	wire [PortNumWidth-1:0] portnumsel[NumGPIO-1:0][GPIOWidth-1:0];
+	wire [PortNumWidth-1:0]		portnumsel[NumGPIO-1:0][GPIOWidth-1:0];
 
 	wire valid_address;
 	wire write_address_valid;
-	wire read_address = read_reg_r[ReadInShift];
-	wire write_address = write_reg_r[WriteInShift];
+	wire read_address 			= read_reg_r[ReadInShift];
+	wire read_adc_address 		= read_reg_r[0];
+	wire read_adc_out		 		= read_reg_r[AdcOutShift];
+	wire write_address 			= write_reg_r[WriteInShift];
+	wire adc_cs 					= chip_sel_r[CsInShift];
 	wire mux_address_valid;
 
-//	assign reset_in = ~reset_reg_N;
+// ADC module:
+	wire adc_address_valid = ( (busaddress_r == 'h0010) || (busaddress_r == 'h0014)) ? 1'b1 : 1'b0;
+//	wire adc_address_valid = ( busaddress_r <= 'h0000) ? 1'b1 : 1'b0;
+	wire [31:0]adc_data_out;
+//	wire adc_chipsel = (adc_address_valid && adc_cs) ? 1'b1 : 1'b0;
+	wire adc_read = (adc_address_valid && read_adc_address) ?  1'b1 : 1'b0;
+	wire adc_write = (adc_address_valid && write_address) ?  1'b1 : 1'b0;
+
+
+adc_ltc2308_fifo adc_ltc2308_fifo_inst
+(
+	.clock(CLOCK) ,	// input  clock_sig
+	.reset_n(reset_reg_N) ,	// input  reset_n_sig
+	.addr(busaddress_r[2]) ,	// input  addr_sig
+	.read(adc_read) ,	// input  read_sig
+	.reg_outdata(read_adc_out) ,	// input  read_sig
+	.write(adc_write) ,	// input  write_sig
+	.readdataout(adc_data_out) ,	// output [31:0] readdataout_sig
+	.writedatain(busdata_in_r) ,	// input [31:0] writedatain_sig
+//ADC
+	.adc_clk(adc_clk) ,	// input  adc_clk_sig
+	.ADC_CONVST_o(ADC_CONVST_o) ,	// output  ADC_CONVST_o_sig
+	.ADC_SCK_o(ADC_SCK_o) ,	// output  ADC_SCK_o_sig
+	.ADC_SDI_o(ADC_SDI_o) ,	// output  ADC_SDI_o_sig
+	.ADC_SDO_i(ADC_SDO_i) 	// input  ADC_SDO_i_sig
+);
+
+// I/O stuff:
 
 	always @(posedge reg_clk or posedge reset_in) begin
 		if(reset_in) begin
@@ -212,6 +251,9 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 		end
 		else if (mux_address_valid) begin
 			busdata_out <= mux_reg[mux_reg_index][reg_muxindex];
+		end
+		else if (adc_address_valid) begin
+			busdata_out <= adc_data_out;
 		end
 		else begin
 //			busdata_out <= busdata_fromhm2_r;
