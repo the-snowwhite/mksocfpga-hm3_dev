@@ -5,9 +5,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include "hwlib.h"
+//#include "hwlib.h"
 #include "socal/socal.h"
-#include "socal/hps.h"
+//#include "socal/hps.h"
 
 #define HW_REGS_BASE ( ALT_STM_OFST )
 #define HW_REGS_SPAN ( 65536 )

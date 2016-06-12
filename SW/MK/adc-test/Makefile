@@ -1,12 +1,13 @@
 #
 TARGET = adctest
 
+#LINARO_CROSS_I=/home/mib/Development/Rev_2-beta/gcc-linaro-5.2-2015.11-1-x86_64_arm-linux-gnueabihf/arm-linux-gnueabihf/libc/arm-linux-gnueabihf/usr
 SOCEDS_DEST_ROOT = /home/mib/altera/15.1/embedded
-HWLIBS_ROOT = /home/mib/altera/15.1/embedded/ip/altera/hps/altera_hps/hwlib/
-CROSS_COMPILE :=/home/mib/Development/Projects/mksocimg-4//gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux/bin/arm-linux-gnueabihf-
+HWLIBS_ROOT = /home/mib/altera/15.1/embedded/ip/altera/hps/altera_hps/hwlib
+CROSS_COMPILE := /home/mib/Development/Projects/gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux/bin/arm-linux-gnueabihf-
 ALT_DEVICE_FAMILY ?= soc_cv_av
 
-CFLAGS := -g $(OFLAG) -Wall -Werror -std=c99 $(MULTILIBFLAGS) -I$(HWLIBS_ROOT)/include -I$(HWLIBS_ROOT)/include/$(ALT_DEVICE_FAMILY) -D$(ALT_DEVICE_FAMILY)
+CFLAGS := -g $(OFLAG) -Wall -Werror -std=c99 $(MULTILIBFLAGS) -I$(LINARO_CROSS_I)/include -I$(HWLIBS_ROOT)/include -I$(HWLIBS_ROOT)/include/$(ALT_DEVICE_FAMILY) -D$(ALT_DEVICE_FAMILY)
 ALL_HWLIBS_SRC = $(wildcard $(HWLIBS_ROOT)/src/hwmgr/*.c) $(wildcard $(HWLIBS_ROOT)/src/hwmgr/$(ALT_DEVICE_FAMILY)/*.c $(wildcard $(HWLIBS_ROOT)/src/utils/*.c))
 
 LDFLAGS =  -g -Wall
