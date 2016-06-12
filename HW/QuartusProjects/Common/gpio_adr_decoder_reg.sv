@@ -15,7 +15,6 @@ module gpio_adr_decoder_reg(
 	input													chip_sel,
 	input													write_reg,
 	input													read_reg,
-//	input	[MuxLedWidth-1:0]							leds_sig[NumGPIO-1:0],
 	input	[AddrWidth-1:2]							busaddress,
 	input	[BusWidth-1:0]								busdata_in,
 	input	[MuxGPIOIOWidth-1:0]						iodatafromhm3[NumGPIO-1:0],
@@ -40,7 +39,6 @@ parameter BusWidth			= 32;
 parameter GPIOWidth			= 36;
 parameter MuxGPIOIOWidth	= 36;
 parameter NumIOReg			= 6;
-//parameter MuxLedWidth 	= 2;
 parameter NumGPIO 			= 2;
 
 // local param
@@ -60,7 +58,6 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 	reg [5:0] 						chip_sel_r;
 	reg [ReadInShift:0]			read_reg_r;
 	reg [WriteInShift:0]			write_reg_r;
-//	reg [MuxLedWidth-1:0]		leds_sig_r[NumGPIO-1:0];
 	reg [AddrWidth-1:0]			busaddress_r;
 	reg [BusWidth-1:0]			busdata_in_r;
 	reg [MuxGPIOIOWidth-1:0]	iodatafromhm3_r[NumGPIO-1:0];
@@ -93,9 +90,7 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 
 // ADC module:
 	wire adc_address_valid = ( (busaddress_r == 'h0010) || (busaddress_r == 'h0014)) ? 1'b1 : 1'b0;
-//	wire adc_address_valid = ( busaddress_r <= 'h0000) ? 1'b1 : 1'b0;
 	wire [31:0]adc_data_out;
-//	wire adc_chipsel = (adc_address_valid && adc_cs) ? 1'b1 : 1'b0;
 	wire adc_read = (adc_address_valid && read_adc_address) ?  1'b1 : 1'b0;
 	wire adc_write = (adc_address_valid && write_address) ?  1'b1 : 1'b0;
 
@@ -126,7 +121,6 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 			chip_sel_r			<= 0;
 			read_reg_r			<= 0;
 			write_reg_r			<= 0;
-//			leds_sig_r			<= '{NumGPIO{~0}};
 			busaddress_r		<= 0;
 			busdata_in_r		<= 0;
 			iodatafromhm3_r	<= '{NumGPIO{~0}};
@@ -139,7 +133,6 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 			read_reg_r[0]						<= read_reg;
 			write_reg_r[WriteInShift:1]	<= write_reg_r[WriteInShift-1:0];
 			write_reg_r[0]						<= write_reg;
-//			leds_sig_r							<= leds_sig;
 			busaddress_r						<= {{busaddress[AddrWidth-1:2]},{2'b0}};
 			busdata_in_r						<= busdata_in;
 			iodatafromhm3_r					<= iodatafromhm3;
@@ -186,8 +179,6 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 	genvar po;
 	generate for(po=0;po<NumGPIO;po=po+1) begin : pnloop
 		assign portnumsel[po][MuxGPIOIOWidth-1:0] = portselnum[(po*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
-//		assign portnumsel[po][GPIOWidth-1] = 8'(((1+po)*GPIOWidth)-1);
-//		assign portnumsel[po][GPIOWidth-2] = 8'(((1+po)+GPIOWidth)-2);
 	end
 	endgenerate
 
@@ -196,7 +187,6 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 
 	assign write_address_valid = ((valid_address == 1'b1) && (write_address == 1'b1)) ? 1'b1 : 1'b0;
 
-//	assign mux_address_valid = ((busaddress_r >= 'h1120) && (busaddress_r < 'h1200) && (chip_sel_r[5] == 1'b1)) ? 1'b1 : 1'b0;
 	assign mux_address_valid = ((busaddress_r >= 'h1120) && (busaddress_r < 'h1200) && (read_address == 1'b1)) ? 1'b1 : 1'b0;
 
 	genvar l,pl;
@@ -228,7 +218,6 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 			.portselnum(portnumsel[il]),
 			.oe(oe[il]) ,	// input  oe_sig
 			.od(od[il]) ,	// input  od_sig
-//         .out_data({leds_sig_r[il],iodatafromhm3_r[il]}) ,  // input [IOIOWidth-1:0] out_data_sig
          .out_data(iodatafromhm3_r[il]) ,  // input [IOIOWidth-1:0] out_data_sig
 			.gpioport(gpioport[il]) ,	// inout [IOIOWidth-1:0] gpioport_sig
 			.read_data(io_read_data[il]) 	// output [IOIOWidth-1:0] read_data_sig
@@ -256,21 +245,9 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 			busdata_out <= adc_data_out;
 		end
 		else begin
-//			busdata_out <= busdata_fromhm2_r;
 			busdata_out <= busdata_fromhm2;
 		end
 	end
 
-/*
-	always @(posedge reset_in or posedge reg_clk )begin
-		if (reset_in )begin
-//				busdata_out <= ~ 'bz;
-			busdata_out <= 0;
-		end
-		else if (CLOCK) begin
-			busdata_out <= busdata_fromhm2;
-		end
-	end
-*/
 endmodule
 
