@@ -89,7 +89,7 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 	wire mux_address_valid;
 
 // ADC module:
-	wire adc_address_valid = ( (busaddress_r == 'h0010) || (busaddress_r == 'h0014)) ? 1'b1 : 1'b0;
+	wire adc_address_valid = ( (busaddress_r == 'h0300) || (busaddress_r == 'h0304)) ? 1'b1 : 1'b0;
 	wire [31:0]adc_data_out;
 	wire adc_read = (adc_address_valid && read_adc_address) ?  1'b1 : 1'b0;
 	wire adc_write = (adc_address_valid && write_address) ?  1'b1 : 1'b0;

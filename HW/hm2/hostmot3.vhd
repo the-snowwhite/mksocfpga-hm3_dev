@@ -303,6 +303,7 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			LEDS				=>	leds
 		);
 
+GenMakeHm2Dpllmods: if HM2DPLLs >0  generate
 	MakeHm2Dpllmods : entity work.MakeHm2Dpllmods
 	generic map (
 		ThePinDesc => ThePinDesc,
@@ -346,7 +347,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			RateSources		=>  RateSources,
 			rates				=>  rates
 		);
+end generate;
 
+GenMakeStepgens: if STEPGENs >0  generate
 	MakeStepgens : entity work.MakeStepgens
 	generic map (
 		ThePinDesc => ThePinDesc,
@@ -390,7 +393,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			RateSources		=>  RateSources,
 			rates				=>  rates
 		);
+end generate;
 
+GenMakeQCounters: if QCounters >0  generate
 	MakeQCounters : entity work.MakeQCounters
 	generic map (
 		ThePinDesc => ThePinDesc,
@@ -434,7 +439,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			RateSources		=>  RateSources,
 			rates				=>  rates
 		);
+end generate;
 
+GenMakeMuxedQCounters: if MuxedQCounters >0  generate
 	MakeMuxedQCounters : entity work.MakeMuxedQCounters
 	generic map (
 		ThePinDesc => ThePinDesc,
@@ -478,7 +485,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			RateSources		=>  RateSources,
 			rates				=>  rates
 		);
+end generate;
 
+GenMakePWMgens: if PWMGens >0  generate
 	MakePWMgens : entity work.MakePWMgens
 	generic map (
 		ThePinDesc => ThePinDesc,
@@ -522,7 +531,9 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			RateSources		=>  RateSources,
 			rates				=>  rates
 		);
+end generate;
 
+GenMakeTPPWMGens: if TPPWMGens >0  generate
 	MakeTPPWMGens : entity work.MakeTPPWMGens
 	generic map (
 		ThePinDesc => ThePinDesc,
@@ -566,6 +577,8 @@ constant UseStepgenProbe: boolean := PinExists(ThePinDesc,StepGenTag,StepGenProb
 			RateSources		=>  RateSources,
 			rates				=>  rates
 		);
+end generate;
+
 --
 -- 	makespimod:  if SPIs >0  generate
 -- 	signal LoadSPIBitCount: std_logic_vector(SPIs -1 downto 0);

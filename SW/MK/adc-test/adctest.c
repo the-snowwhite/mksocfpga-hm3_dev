@@ -15,6 +15,8 @@
 
 //#define MAX_ADDR 65533 (higher creates no output error)
 #define MAX_ADDR 1020
+#define ADC_BASE 16
+
 void usage(void);
 
 void usage(void)
@@ -75,6 +77,26 @@ int main ( int argc, char *argv[] )
 
 	switch (argv[1][1])
 	{
+		case 's':
+			printf("Sample: ");
+			index = ADC_BASE + 4;
+			if(argv[2][0] == '0' && argv[2][1] == 'x') {
+				printf("\n\t\tHex data value input found ");
+				inval = (uint32_t) strtol(argv[2], NULL, 16);
+			}
+			else {
+				printf("\n\t\tDecimal data value input found ");
+				inval = (uint32_t) strtol(argv[2], NULL, 10);
+			}
+			*((uint32_t *)(h2p_lw_axi_mem_addr + index)) = inval;
+			index = ADC_BASE;
+			*((uint32_t *)(h2p_lw_axi_mem_addr + index)) = 0x0100;
+			*((uint32_t *)(h2p_lw_axi_mem_addr + index)) = 0x0101;
+/*
+			value = *((uint32_t *)(h2p_lw_axi_mem_addr + index));
+			printf("Address %u \tvalue = 0x%08X \tdecimal = %u \n", index, value, value);*/
+			break;
+
 		case 'r':
 			printf("Read: ");
 			value = *((uint32_t *)(h2p_lw_axi_mem_addr + index));

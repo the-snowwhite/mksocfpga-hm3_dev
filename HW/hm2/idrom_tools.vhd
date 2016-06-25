@@ -145,7 +145,7 @@ begin
     end if;
     return "???";
 end function;
- 
+
 function TagToName(tag : std_logic_vector(7 downto 0)) return string is
 begin
     if(tag = NullTag)	    then return "None"; end if;
@@ -167,6 +167,7 @@ begin
     if(tag = MuxedQCountMIMTag) then return "MuxedQCountMIM"; end if;
     if(tag = TPPWMTag)	    then return "TPPWM"; end if;
     if(tag = LEDTag)	    then return "LED"; end if;
+    if(tag = NANOADCTag)	    then return "NANOADC"; end if;
     if(tag = SSerialTag)    then return "SSerial"; end if;
     return "unknown";
 end;
