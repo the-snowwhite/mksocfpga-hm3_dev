@@ -130,14 +130,14 @@ module DE0_NANO(
 //=======================================================
 // DE0-Nano Dev kit and I/O adaptors specific info
 import boardtype::*;
-parameter NumIOReg = 6;
+parameter NumIOAddrReg = 6;
 /*
 	parameter AddrWidth  = 16;
 	parameter IOWidth		= 34;
 	parameter LIOWidth	= 6;
 	parameter IOPorts		= 2;
 	parameter GPIOWidth	= 36;
-	parameter NumIOReg	= 6;
+	parameter NumIOAddrReg	= 6;
 */
 	wire  hps_fpga_reset_n;
 	wire [1:0] fpga_debounced_buttons;
@@ -366,7 +366,7 @@ defparam gpio_adr_decoder_reg_inst.AddrWidth = AddrWidth;
 defparam gpio_adr_decoder_reg_inst.BusWidth = BusWidth;
 defparam gpio_adr_decoder_reg_inst.GPIOWidth = GPIOWidth;
 defparam gpio_adr_decoder_reg_inst.MuxGPIOIOWidth = MuxGPIOIOWidth;
-defparam gpio_adr_decoder_reg_inst.NumIOReg = NumIOReg;
+defparam gpio_adr_decoder_reg_inst.NumIOAddrReg = NumIOAddrReg;
 //defparam gpio_adr_decoder_reg_inst.MuxLedWidth = MuxLedWidth;
 defparam gpio_adr_decoder_reg_inst.NumGPIO = NumGPIO;
 

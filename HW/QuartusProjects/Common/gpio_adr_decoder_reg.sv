@@ -38,7 +38,7 @@ parameter AddrWidth     	= 16;
 parameter BusWidth			= 32;
 parameter GPIOWidth			= 36;
 parameter MuxGPIOIOWidth	= 36;
-parameter NumIOReg			= 6;
+parameter NumIOAddrReg		= 6;
 parameter NumGPIO 			= 2;
 
 // local param
@@ -47,9 +47,9 @@ parameter ReadInShift		= 2;
 parameter WriteInShift		= 2;
 parameter CsInShift			= 4;
 parameter PortNumWidth		= 8;
-parameter NumPinsPrIOReg	= 4;
+parameter NumPinsPrIOAddr	= 4;
 parameter Mux_regPrIOReg	= 6;
-parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
+parameter TotalNumregs 		= Mux_regPrIOReg * NumIOAddrReg * NumPinsPrIOAddr;
 
 	wire reset_in = ~reset_reg_N;
 	wire [GPIOWidth-1:0] io_read_data[NumGPIO-1:0];
@@ -63,16 +63,17 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 	reg [MuxGPIOIOWidth-1:0]	iodatafromhm3_r[NumGPIO-1:0];
 	reg [BusWidth-1:0]			busdata_fromhm2_r;
 
-	reg [AddrWidth-4:0]			local_address_r;
+	reg [AddrWidth-3:0]			local_address_r;
 
-	reg [BusWidth-1:0]			ddr_reg[NumIOReg-1:0];
-	reg [BusWidth-1:0]			odrain_reg[NumIOReg-1:0];
-	reg [BusWidth-1:0]			mux_reg[NumIOReg-1:0][Mux_regPrIOReg-1:0];
+	reg [BusWidth-1:0]			ddr_reg[NumIOAddrReg-1:0];
+	reg [BusWidth-1:0]			odrain_reg[NumIOAddrReg-1:0];
+	reg [BusWidth-1:0]			mux_reg[NumIOAddrReg-1:0][Mux_regPrIOReg-1:0];
 	reg [PortNumWidth-1:0]		portselnum[TotalNumregs-1:0];
 
 
-	wire [PortNumWidth-3:0]		mux_reg_index;
-	wire [1:0] 						reg_muxindex;
+	wire [PortNumWidth-1:0]		mux_reg_index;
+	wire [4:0] 						mux_reg_addr;
+	wire [1:0] 						mux_reg_byte;
 
 	wire [GPIOWidth-1:0]			oe[NumGPIO-1:0];
 	wire [GPIOWidth-1:0]			od[NumGPIO-1:0];
@@ -87,6 +88,7 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOReg * NumPinsPrIOReg;
 	wire write_address 			= write_reg_r[WriteInShift];
 	wire adc_cs 					= chip_sel_r[CsInShift];
 	wire mux_address_valid;
+	wire io_address_valid;
 
 // ADC module:
 	wire adc_address_valid = ( (busaddress_r == 'h0300) || (busaddress_r == 'h0304)) ? 1'b1 : 1'b0;
@@ -137,40 +139,40 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 			busdata_in_r						<= busdata_in;
 			iodatafromhm3_r					<= iodatafromhm3;
 			busdata_fromhm2_r					<= busdata_fromhm2;
-			local_address_r					<= (busaddress_r - 'h1000);
+			local_address_r					<= busaddress_r[AddrWidth-1:2];
 		end
 	end
 
 	generate begin
 		if (NumGPIO >= 1) begin
-			assign oe[0] = {2'b11,ddr_reg[1][9:0],ddr_reg[0][23:0]};
-			assign od[0] = {2'b00,odrain_reg[1][9:0],odrain_reg[0][23:0]};
+			assign oe[0] = {ddr_reg[1][11:0],ddr_reg[0][23:0]};
+			assign od[0] = {odrain_reg[1][11:0],odrain_reg[0][23:0]};
 		end
 		if (NumGPIO >= 2) begin
-			assign oe[1] = {2'b11,ddr_reg[2][19:0],ddr_reg[1][23:10]};
-			assign od[1] = {2'b00,odrain_reg[2][19:0],odrain_reg[1][23:10]};
+			assign oe[1] = {ddr_reg[2][23:0],ddr_reg[1][23:12]};
+			assign od[1] = {odrain_reg[2][23:0],odrain_reg[1][23:12]};
 		end
 		if (NumGPIO >= 3) begin
-			assign oe[2] = {2'b11,ddr_reg[4][5:0],ddr_reg[3][23:0],ddr_reg[2][23:20]};
-			assign od[2] = {2'b00,odrain_reg[4][5:0],odrain_reg[3][23:0],odrain_reg[2][23:20]};
+			assign oe[2] = {ddr_reg[4][11:0],ddr_reg[3][23:0]};
+			assign od[2] = {odrain_reg[4][11:0],odrain_reg[3][23:0]};
 		end
 		if (NumGPIO == 4) begin
-			assign oe[3] = {2'b11,ddr_reg[5][15:0],ddr_reg[4][23:6]};
-			assign od[3] = {2'b00,odrain_reg[5][15:0],odrain_reg[4][23:6]};
+			assign oe[3] = {ddr_reg[5][23:0],ddr_reg[4][23:12]};
+			assign od[3] = {odrain_reg[5][23:0],odrain_reg[4][23:12]};
 		end
 	end
 	endgenerate
 
 
 	genvar ni,ps;
-	generate for(ni=0;ni<NumIOReg;ni=ni+1) begin : niinitloop
+	generate for(ni=0;ni<NumIOAddrReg;ni=ni+1) begin : niinitloop
 		for(ps=0;ps<Mux_regPrIOReg;ps=ps+1) begin : psinitloop
 			always @(posedge reg_clk) begin
 				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+0] <= mux_reg[ni][ps][0+:PortNumWidth];
 				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+1] <= mux_reg[ni][ps][PortNumWidth+:PortNumWidth];
 				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+2] <= mux_reg[ni][ps][(PortNumWidth*2)+:PortNumWidth];
 				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+3] <= mux_reg[ni][ps][(PortNumWidth*3)+:PortNumWidth];
-		end
+			end
 		end
 	end
 	endgenerate
@@ -187,23 +189,21 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 
 	assign write_address_valid = ((valid_address == 1'b1) && (write_address == 1'b1)) ? 1'b1 : 1'b0;
 
-	assign mux_address_valid = ((busaddress_r >= 'h1120) && (busaddress_r < 'h1200) && (read_address == 1'b1)) ? 1'b1 : 1'b0;
-
 	genvar l,pl;
-	generate for(l=0;l<NumIOReg;l=l+1) begin : reg_initloop
-		for(pl=0;pl<Mux_regPrIOReg;pl=pl+1) begin : initpnumloop
+	generate for(l=0;l<NumIOAddrReg;l=l+1) begin : reg_initloop
+		for(pl=0;pl<NumPinsPrIOAddr;pl=pl+1) begin : initpnumloop
 			always @(posedge reset_in_r or posedge write_address_valid)begin
 				if (reset_in_r)begin
 					if(pl == 0) begin ddr_reg[l] <= 0; odrain_reg[l] <= 0; end
-					mux_reg[l][pl] <= (((l*24) + (pl*4)) + (((l*24)+((pl*4)+1)) << PortNumWidth) +
-					(((l*24)+((pl*4)+2)) << (PortNumWidth * 2)) + (((l*24)+((pl*4)+3)) << (PortNumWidth * 3)));
+					mux_reg[l][pl] <= (((l*16) + (pl*4)) + (((l*16)+((pl*4)+1)) << PortNumWidth) +
+					(((l*16)+((pl*4)+2)) << (PortNumWidth * 2)) + (((l*16)+((pl*4)+3)) << (PortNumWidth * 3)));
 				end
 				else if (write_address_valid) begin
 					if(pl == 0) begin
-						if (local_address_r == (12'h100+(l*4))) begin ddr_reg[l] <= busdata_in_r; end
-						if (local_address_r == (12'h300+(l*4))) begin odrain_reg[l] <= busdata_in_r; end
+						if (local_address_r == (14'h040+(l))) begin ddr_reg[l] <= busdata_in_r; end
+						if (local_address_r == (14'h0C0+(l))) begin odrain_reg[l] <= busdata_in_r; end
 					end
-					if (local_address_r == (12'h120+(l*4))) begin mux_reg[l][pl] <= busdata_in_r; end
+					if (local_address_r == (14'h048+(l))) begin mux_reg[l][pl] <= busdata_in_r; end
 				end
 			end
 		end
@@ -215,6 +215,7 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 	generate for(il=0;il<NumGPIO;il=il+1) begin : gpiooutloop
 		bidir_io #(.IOWidth(GPIOWidth),.PortNumWidth(PortNumWidth)) bidir_io_inst
 		(
+//			.reg_clk,
 			.portselnum(portnumsel[il]),
 			.oe(oe[il]) ,	// input  oe_sig
 			.od(od[il]) ,	// input  od_sig
@@ -227,22 +228,32 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 	end
 	endgenerate
 
-	assign reg_muxindex 	= local_address_r - 12'h120;
-	assign mux_reg_index		= ((reg_muxindex < 6)  ? 0 : (reg_muxindex < 12) ? 1 :
-									(reg_muxindex < 18) ? 2 : (reg_muxindex < 24) ? 3 :
-									(reg_muxindex < 30) ? 4 : 5);
+	assign mux_reg_index 	= local_address_r - 14'h448;
+	assign mux_reg_addr		= (mux_reg_index[6:2]);
+	assign mux_reg_byte		= (mux_reg_index[1:0]);
 
+	assign io_address_valid = ((busaddress_r >= 'h1000) && (busaddress_r < 'h1020) && (read_address == 1'b1)) ? 1'b1 : 1'b0;
+	assign mux_address_valid = ((busaddress_r >= 'h1120) && (busaddress_r < 'h1200) && (read_address == 1'b1)) ? 1'b1 : 1'b0;
 
-	always @(posedge reset_in_r or posedge mux_address_valid or posedge read_address)begin
+	always @(posedge reset_in_r or posedge adc_address_valid or posedge io_address_valid
+	or posedge mux_address_valid or posedge read_address)begin
 		if (reset_in_r)begin
 //			busdata_out <= ~ 'bz;
 			busdata_out <= 32'b0;
 		end
-		else if (mux_address_valid) begin
-			busdata_out <= mux_reg[mux_reg_index][reg_muxindex];
-		end
 		else if (adc_address_valid) begin
 			busdata_out <= adc_data_out;
+		end
+		else if (io_address_valid) begin
+			if((busaddress_r >= 'h1000) && (busaddress_r < 'h1004)) 
+				busdata_out <= {8'b0,io_read_data[0][23:0]};
+			if((busaddress_r >= 'h1004) && (busaddress_r < 'h1008)) 
+				busdata_out <= {8'b0,io_read_data[1][11:0],io_read_data[0][35:24]};
+			if((busaddress_r >= 'h1008) && (busaddress_r < 'h100c)) 
+				busdata_out <= {8'b0,io_read_data[1][35:12]};
+		end
+		else if (mux_address_valid) begin
+			busdata_out <= mux_reg[mux_reg_addr][mux_reg_byte];
 		end
 		else begin
 			busdata_out <= busdata_fromhm2;
