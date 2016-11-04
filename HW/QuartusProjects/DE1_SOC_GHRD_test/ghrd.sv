@@ -224,6 +224,7 @@ wire  hps_fpga_reset_n;
 // hm2
   wire [15:0] 	hm_address;
   wire [31:0] 	hm_datao;
+  wire [31:0] 	busdata_out;
   wire [31:0] 	hm_datai;
   wire       	hm_read;
   wire 			hm_write;
@@ -346,7 +347,7 @@ soc_system u0 (
      .hps_0_f2h_stm_hw_events_stm_hwevents  (stm_hw_events ),  //        hps_0_f2h_stm_hw_events.stm_hwevents
      .hps_0_f2h_warm_reset_req_reset_n      (~hps_warm_reset ),      //       hps_0_f2h_warm_reset_req.reset_n
 			// Mesa HM2
-     .mk_io_hm2_datain                  		(hm_datao),             			//				.hm2_datain
+     .mk_io_hm2_datain                  		(busdata_out),             			//				.hm2_datain
      .mk_io_hm2_dataout                 	  	(hm_datai),                		//				hm2reg.hm2_dataout
      .mk_io_hm2_address                 	  	(hm_address),          				//				.hm2_address
      .mk_io_hm2_write                   		(hm_write),           				//				.hm2_write
@@ -356,55 +357,6 @@ soc_system u0 (
      .clk_100mhz_out_clk                    	(hm_clk_med),                    //				clk_100mhz_out.clk
      .clk_200mhz_out_clk                    	(hm_clk_high),            			//				clk_100mhz_out.clk
     );
-
-// // Debounce logic to clean out glitches within 1ms
-// debounce debounce_inst (
-//   .clk                                  (fpga_clk_50),
-//   .reset_n                              (hps_fpga_reset_n),
-//   .data_in                              (fpga_button_pio),
-//   .data_out                             (fpga_debounced_buttons)
-// );
-//   defparam debounce_inst.WIDTH = 4;
-//   defparam debounce_inst.POLARITY = "LOW";
-//   defparam debounce_inst.TIMEOUT = 50000;               // at 50Mhz this is a debounce time of 1ms
-//   defparam debounce_inst.TIMEOUT_WIDTH = 16;            // ceil(log2(TIMEOUT))
-//
-// // Source/Probe megawizard instance
-// hps_reset hps_reset_inst (
-//   .source_clk (fpga_clk_50),
-//   .source     (hps_reset_req)
-// );
-//
-// altera_edge_detector pulse_cold_reset (
-//   .clk       (fpga_clk_50),
-//   .rst_n     (hps_fpga_reset_n),
-//   .signal_in (hps_reset_req[0]),
-//   .pulse_out (hps_cold_reset)
-// );
-//   defparam pulse_cold_reset.PULSE_EXT = 6;
-//   defparam pulse_cold_reset.EDGE_TYPE = 1;
-//   defparam pulse_cold_reset.IGNORE_RST_WHILE_BUSY = 1;
-//
-// altera_edge_detector pulse_warm_reset (
-//   .clk       (fpga_clk_50),
-//   .rst_n     (hps_fpga_reset_n),
-//   .signal_in (hps_reset_req[1]),
-//   .pulse_out (hps_warm_reset)
-// );
-//   defparam pulse_warm_reset.PULSE_EXT = 2;
-//   defparam pulse_warm_reset.EDGE_TYPE = 1;
-//   defparam pulse_warm_reset.IGNORE_RST_WHILE_BUSY = 1;
-//
-// altera_edge_detector pulse_debug_reset (
-//   .clk       (fpga_clk_50),
-//   .rst_n     (hps_fpga_reset_n),
-//   .signal_in (hps_reset_req[2]),
-//   .pulse_out (hps_debug_reset)
-// );
-//   defparam pulse_debug_reset.PULSE_EXT = 32;
-//   defparam pulse_debug_reset.EDGE_TYPE = 1;
-//   defparam pulse_debug_reset.IGNORE_RST_WHILE_BUSY = 1;
-
 
 
 top_io_modules top_io_modules_inst
@@ -448,7 +400,7 @@ parameter IOPORTS = 2;
 wire [IOWIDTH-1:0] iobits_sig;
 assign GPIO_0[IOWIDTH-1:0] = iobits_sig;*/
 
-//wire [LIOWidth-1:0] liobits_sig;
+wire [LIOWidth-1:0] liobits_sig;
 //assign GPIO_1[LIOWidth-1:0] = liobits_sig;
 
 assign LEDR[7:6] = ~hm2_leds_sig[1:0];
@@ -467,7 +419,7 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.busdata_fromhm2 ( hm_datao ),
 	.gpioport( GPIO ),
 	.iodatatohm3 ( io_bitsin_sig ),
-	.busdata_out ( busdata_out ),
+	.busdata_to_cpu ( busdata_out ),
 // ADC
 	.adc_clk(adc_clk_40),	// input  adc_clk_sig
 	.ADC_CONVST_o(ADC_CONVST),	// output  ADC_CONVST_o_sig
