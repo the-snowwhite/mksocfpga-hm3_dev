@@ -353,7 +353,7 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.busdata_fromhm2 ( hm_datao ),
 	.gpioport( GPIO ),
 	.iodatatohm3 ( io_bitsin_sig ),
-	.busdata_out ( busdata_out ),
+	.busdata_to_cpu ( busdata_out ),
 // ADC
 	.adc_clk(adc_clk_40),	// input  adc_clk_sig
 	.ADC_CONVST_o(ADC_CONVST),	// output  ADC_CONVST_o_sig

@@ -247,13 +247,13 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 //			always @(posedge reset_in_r or posedge io_write_valid or posedge ddr_write_valid or posedge od_write_valid or posedge write_address)begin
 
 			always @( posedge reset_in_r or posedge write_address) begin
-				if (reset_in_r) begin 
-					io_reg[0] <= 0; ddr_reg[0] <= 0; od_reg[0] <= 0; 
-					io_reg[1] <= 0; ddr_reg[1] <= 0; od_reg[1] <= 0; 
-					io_reg[2] <= 0; ddr_reg[2] <= 0; od_reg[2] <= 0; 
-					io_reg[3] <= 0; ddr_reg[3] <= 0; od_reg[3] <= 0; 
-					io_reg[4] <= 0; ddr_reg[4] <= 0; od_reg[4] <= 0; 
-					io_reg[5] <= 0; ddr_reg[5] <= 0; od_reg[5] <= 0; 
+				if (reset_in_r) begin
+					io_reg[0] <= 0; ddr_reg[0] <= 0; od_reg[0] <= 0;
+					io_reg[1] <= 0; ddr_reg[1] <= 0; od_reg[1] <= 0;
+					io_reg[2] <= 0; ddr_reg[2] <= 0; od_reg[2] <= 0;
+					io_reg[3] <= 0; ddr_reg[3] <= 0; od_reg[3] <= 0;
+					io_reg[4] <= 0; ddr_reg[4] <= 0; od_reg[4] <= 0;
+					io_reg[5] <= 0; ddr_reg[5] <= 0; od_reg[5] <= 0;
 				end
 //					if(pl == 0) begin io_reg[l] <= 0; ddr_reg[l] <= 0; od_reg[l] <= 0; end
 //					mux_reg[l][pl] <= (((l*16) + (pl*4)) + (((l*16)+((pl*4)+1)) << PortNumWidth) +
