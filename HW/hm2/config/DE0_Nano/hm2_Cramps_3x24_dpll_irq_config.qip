@@ -9,4 +9,4 @@ set_global_assignment -name VHDL_FILE ../../hm2/config/DE0_Nano/hostmot3_cfg.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE ../../hm2/config/DE0_Nano/de0nano_3_24.sv
 
 # I/O Daughterboard adaptor specific:
-set_global_assignment -name VHDL_FILE ../../hm2/config/PIN_Cramps_3x24_dpll_irq.vhd -library pin
+set_global_assignment -name VHDL_FILE ../../hm2/config/PIN_Cramps_gpio0_3x24_dpll_irq.vhd -library pin
