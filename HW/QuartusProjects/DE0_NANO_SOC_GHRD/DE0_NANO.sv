@@ -58,8 +58,7 @@ module DE0_NANO(
       input              FPGA_CLK3_50,
 
       ///////// GPIO /////////
-      inout       [35:0] GPIO_0,
-      inout       [35:0] GPIO_1,
+      inout       [35:0] GPIO[1:0],
 
 `ifdef ENABLE_HPS
       ///////// HPS /////////
@@ -175,8 +174,6 @@ parameter NumIOAddrReg = 6;
 	wire [MuxLedWidth-1:0]		io_leds_sig[NumGPIO-1:0];
 	wire [MuxGPIOIOWidth-1:0] 	io_bitsout_sig[NumGPIO-1:0];
 	wire [MuxGPIOIOWidth-1:0] 	io_bitsin_sig[NumGPIO-1:0];
-
-	wire [GPIOWidth-1:0]			GPIO[NumGPIO-1:0];
 
 	//irq:
 	wire int_sig;
@@ -329,10 +326,6 @@ generate for(ig=0;ig<NumGPIO;ig=ig+1) begin : iosigloop
 //	assign io_leds_sig[ig] = hm2_leds_sig[(ig*MuxLedWidth)+:MuxLedWidth];
 	assign io_bitsout_sig[ig] = hm2_bitsout_sig[(ig*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
 	assign io_bitsin_sig[ig] = hm2_bitsin_sig[(ig*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
-	if(ig == 0) assign GPIO_0 = GPIO[ig];
-	if(ig == 1) assign GPIO_1 = GPIO[ig];
-//	if(ig == 2) assign GPIO_2 = GPIO[ig];
-//	if(ig == 3) assign GPIO_3 = GPIO[ig];
 end
 endgenerate
 
@@ -372,7 +365,6 @@ defparam gpio_adr_decoder_reg_inst.NumGPIO = NumGPIO;
 
 //
 // 	wire [LIOWidth-1:0] liobits_sig;
-// //assign GPIO_1[LIOWidth-1:0] = liobits_sig;
 // assign ARDUINO_IO[LIOWidth-1:0] = liobits_sig;
 
 //HostMot3 #(.IOWidth(IOWidth),.IOPorts(IOPorts)) HostMot3_inst
@@ -395,7 +387,6 @@ HostMot3_cfg HostMot3_inst
 //	.liobits(liobits_sig) ,	// inout [lIOWidth-1:0] 			--liobits_sig
 //	.rates(rates_sig) ,	// output [4:0] rates_sig
 	.leds(hm2_leds_sig) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
-//	.leds(GPIO_0[35:34]) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
 );
 
 // defparam HostMot3_inst.ThePinDesc = PinDesc;

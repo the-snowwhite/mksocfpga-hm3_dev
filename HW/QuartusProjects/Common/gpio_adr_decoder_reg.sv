@@ -76,7 +76,7 @@ parameter Mux_regPrIOReg	= 6;
 parameter TotalNumregs 		= Mux_regPrIOReg * NumIOAddrReg * NumPinsPrIOAddr;
 
 	wire reset_in = ~reset_reg_N;
-	wire [GPIOWidth-1:0] io_read_valid_data[NumGPIO-1:0];
+	wire [GPIOWidth-1:0] gpio_input_data[NumGPIO-1:0];
 
 	reg reset_in_r;
 	reg [ReadInShift:0]			read_reg_r;
@@ -102,21 +102,21 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOAddrReg * NumPinsPrIOAddr;
 	wire [4:0] 						mux_reg_addr;
 	wire [1:0] 						mux_reg_byte;
 
-	wire [GPIOWidth-1:0]			oe[NumGPIO-1:0];
+	wire [GPIOWidth-1:0]			out_ena[NumGPIO-1:0];
 	wire [GPIOWidth-1:0]			od[NumGPIO-1:0];
 
 	wire [PortNumWidth-1:0]		portnumsel[NumGPIO-1:0][GPIOWidth-1:0];
 
 	wire read_address 			= read_reg_r[ReadInShift];
-	wire read_adc_address 		= read_reg_r[0];
+	wire read_adc_address 		= read_reg_r[1];
 	wire read_adc_out		 		= read_reg_r[AdcOutShift];
 	reg write_address;
 
-	wire adc_address_valid = ( (busaddress_r == 'h0300) || (busaddress_r == 'h0304)) ? 1'b1 : 1'b0;
-	wire io_address_valid = ((busaddress_r >= 'h1000) && (busaddress_r < 'h1020)) ? 1'b1 : 1'b0;
-	wire ddr_address_valid = ((busaddress_r >= 'h1100) && (busaddress_r < 'h1120)) ? 1'b1 : 1'b0;
-	wire mux_address_valid = ((busaddress_r >= 'h1120) && (busaddress_r < 'h1200)) ? 1'b1 : 1'b0;
-	wire od_address_valid = ((busaddress_r >= 'h1300) && (busaddress_r < 'h1320)) ? 1'b1 : 1'b0;
+	wire adc_address_valid = ( (busaddress_r == 16'h0300) || (busaddress_r == 16'h0304)) ? 1'b1 : 1'b0;
+	wire io_address_valid = ((busaddress_r >= 16'h1000) && (busaddress_r < 16'h1020)) ? 1'b1 : 1'b0;
+	wire ddr_address_valid = ((busaddress_r >= 16'h1100) && (busaddress_r < 16'h1120)) ? 1'b1 : 1'b0;
+	wire mux_address_valid = ((busaddress_r >= 16'h1120) && (busaddress_r < 16'h1200)) ? 1'b1 : 1'b0;
+	wire od_address_valid = ((busaddress_r >= 16'h1300) && (busaddress_r < 16'h1320)) ? 1'b1 : 1'b0;
 
 	wire adc_read_valid = (adc_address_valid && read_adc_address) ?  1'b1 : 1'b0;
 	wire io_read_valid = (io_address_valid && read_address) ?  1'b1 : 1'b0;
@@ -182,29 +182,29 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 	generate
 		if (NumGPIO >= 1) begin
 			assign io_reg_gpio[0] = {io_reg[1][11:0],io_reg[0][23:0]};
-			assign oe[0] = {ddr_reg[1][11:0],ddr_reg[0][23:0]};
+			assign out_ena[0] = {ddr_reg[1][11:0],ddr_reg[0][23:0]};
 			assign od[0] = {od_reg[1][11:0],od_reg[0][23:0]};
 		end
 		if (NumGPIO >= 2) begin
 			assign io_reg_gpio[1] = {io_reg[2][23:0],io_reg[1][23:12]};
-			assign oe[1] = {ddr_reg[2][23:0],ddr_reg[1][23:12]};
+			assign out_ena[1] = {ddr_reg[2][23:0],ddr_reg[1][23:12]};
 			assign od[1] = {od_reg[2][23:0],od_reg[1][23:12]};
 		end
 		if (NumGPIO >= 3) begin
 			assign io_reg_gpio[2] = {io_reg[4][11:0],io_reg[3][23:0]};
-			assign oe[2] = {ddr_reg[4][11:0],ddr_reg[3][23:0]};
+			assign out_ena[2] = {ddr_reg[4][11:0],ddr_reg[3][23:0]};
 			assign od[2] = {od_reg[4][11:0],od_reg[3][23:0]};
 		end
 		if (NumGPIO == 4) begin
 			assign io_reg_gpio[3] = {io_reg[5][23:0],io_reg[4][23:12]};
-			assign oe[3] = {ddr_reg[5][23:0],ddr_reg[4][23:12]};
+			assign out_ena[3] = {ddr_reg[5][23:0],ddr_reg[4][23:12]};
 			assign od[3] = {od_reg[5][23:0],od_reg[4][23:12]};
 		end
 
 //		for(numgio=0;numio<NumGPIO;numgio++)begin : gioloop
 ////			for(numio=0;numio<GPIOWidth;numio++)begin : gportloop
-////				assign gpioport[numgio][numio] = oe[numgio][numio] ? io_reg_gpio[numgio][numio] : 1'bz;
-//			assign gpioport[numgio] = oe[numgio] ? io_reg_gpio[numgio] : '{NumGPIO{1'bz}};
+////				assign gpioport[numgio][numio] = out_ena[numgio][numio] ? io_reg_gpio[numgio][numio] : 1'bz;
+//			assign gpioport[numgio] = out_ena[numgio] ? io_reg_gpio[numgio] : '{NumGPIO{1'bz}};
 //			assign io_data_in[numgio] = gpioport[numgio];
 ////			end
 //		end
@@ -271,18 +271,18 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 			end
 //		end
 
-	genvar ili;
+	genvar bloop;
 	generate
-		for(ili=0;ili<NumGPIO;ili=ili+1) begin : gpiooutloop
+		for(bloop=0;bloop<NumGPIO;bloop=bloop+1) begin : gpiooutloop
 			bidir_io #(.IOWidth(GPIOWidth),.PortNumWidth(PortNumWidth)) bidir_io_inst
 			(
 				.clk(reg_clk),
 //				.portselnum(portnumsel[il]),
-				.oe(oe[ili]) ,	// input  oe_sig
+				.out_ena(out_ena[bloop]) ,	// input  out_ena_sig
 //				.od(od[il]) ,	// input  od_sig
-				.out_data(io_reg_gpio[ili]) ,  // input [IOIOWidth-1:0] out_data_sig
-				.gpioport(gpioport[ili]) ,	// inout [IOIOWidth-1:0] gpioport_sig
-				.read_data(io_read_valid_data[ili]) 	// output [IOIOWidth-1:0] read_data_sig
+				.out_data(io_reg_gpio[bloop]) ,  // input [IOIOWidth-1:0] out_data_sig
+				.gpioport(gpioport[bloop]) ,	// inout [IOIOWidth-1:0] gpioport_sig
+				.gpio_in_data(gpio_input_data[bloop]) 	// output [IOIOWidth-1:0] read_data_sig
 			);
 //			defparam bidir_io_inst[il].IOWidth = GPIOWidth;
 //			defparam bidir_io_inst[il].PortNumWidth = PortNumWidth;
@@ -303,18 +303,9 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 			busdata_to_cpu <= adc_data_out;
 		end
 		else if (io_read_valid) begin
-			if((busaddress_r >= 'h1000) && (busaddress_r < 'h1004))
-//				busdata_to_cpu <= {8'b0,io_read_valid_data[0][23:0]};
-				busdata_to_cpu <= local_address_r;
-
-//				busdata_to_cpu <= {8'b0,gpioport[0][23:0]};
-			if((busaddress_r >= 'h1004) && (busaddress_r < 'h1008))
-//				busdata_to_cpu <= {8'b0,io_read_valid_data[1][11:0],io_read_valid_data[0][35:24]};
-				busdata_to_cpu <= busaddress_r;
-//				busdata_to_cpu <= {8'b0,gpioport[1][11:0],gpioport[0][35:24]};
-			if((busaddress_r >= 'h1008) && (busaddress_r < 'h100c))
-				busdata_to_cpu <= {8'b0,io_read_valid_data[1][35:12]};
-//				busdata_to_cpu <= {8'b0,gpioport[1][35:12]};
+			if(busaddress_r == 'h1000) busdata_to_cpu <= {8'b0,gpio_input_data[0][23:0]};
+			if(busaddress_r == 'h1004) busdata_to_cpu <= {8'b0,gpio_input_data[1][11:0],gpio_input_data[0][35:24]};
+			if(busaddress_r == 'h1008) busdata_to_cpu <= {8'b0,gpio_input_data[1][35:12]};
 		end
 		else if (ddr_read_valid) begin busdata_to_cpu <= ddr_reg[local_address_r[2:0]]; end
 //		else if (mux_read_valid) begin busdata_to_cpu <= mux_reg[mux_reg_addr][mux_reg_byte]; end

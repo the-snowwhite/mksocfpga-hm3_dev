@@ -3,27 +3,29 @@ module bidir_io
 (
 //	input [PortNumWidth-1:0] portselnum [IOWidth-1:0],
 	input		clk,
-	input 	[IOWidth-1:0] oe,
+	input 	[IOWidth-1:0] out_ena,
 //	input 	[IOWidth-1:0] od,
 	input 	[IOWidth-1:0] out_data,
 	inout 	[IOWidth-1:0] gpioport,
-	output	[IOWidth-1:0] read_data
+	output	[IOWidth-1:0] gpio_in_data
 );
 
 reg  [IOWidth-1:0] io_data_in;
 reg  [IOWidth-1:0] out_data_reg;
 
-assign gpioport = oe ? out_data_reg : 36'bZ;
-assign read_data  = io_data_in;
+genvar loop;
+generate
+	for(loop=0;loop<IOWidth;loop=loop+1) begin : iogenloop
+		assign gpioport[loop]  = out_ena[loop] ? out_data_reg[loop] : 1'bZ;
+		assign gpio_in_data[loop]  = io_data_in[loop];
 
-// Always Construct
-
-always @ (posedge clk)
-begin
-    io_data_in <= gpioport;
-    out_data_reg <= out_data;
-end
-
+		always @ (posedge clk)
+		begin
+			io_data_in[loop] <= gpioport[loop];
+			out_data_reg[loop] <= out_data[loop];
+		end
+	end
+endgenerate
 
 
 //	wire [IOWidth-1:0] od_data;
@@ -37,7 +39,7 @@ end
 //	genvar i;
 //	generate for(i = 0; i < IOWidth; i = i + 1) begin : ioloop
 //		assign od_data[i] = (od[i] ? ((out_data[i] == 1'b1) ? 1'b0 : 1'bz) :  out_data[i]);
-//		assign muxindata[i] = (oe[i] ? od_data[i] : 1'bz);
+//		assign muxindata[i] = (out_ena[i] ? od_data[i] : 1'bz);
 //		assign gpioport[i] = muxoutdata[i];
 //	end
 //	endgenerate
@@ -52,7 +54,7 @@ end
 //
 //	// Read in the current value of the bidir port, which comes either
 //	// from the input or from the previous assignment.
-//	assign read_data = gpioport;
+//	assign gpio_in_data = gpioport;
 //
 
 endmodule
