@@ -94,10 +94,11 @@ int main ( int argc, char *argv[] )
 				inval = (uint32_t) strtol(argv[3], NULL, 10);
 			}
 //			uint32_t inval = (uint32_t) atoi(argv[3]);
-			uint32_t oldval = *((uint32_t *)(h2p_lw_axi_mem_addr + index));
+//			uint32_t oldval = *((uint32_t *)(h2p_lw_axi_mem_addr + index));
 			*((uint32_t *)(h2p_lw_axi_mem_addr + index)) = inval;
-			value = *((uint32_t *)(h2p_lw_axi_mem_addr + index));
-			printf("Address %u \tformer val = 0x%08X \t wrote: --> 0x%08X \tdecimal = %u \t read: = 0x%08X \tdecimal = %u \n", index, oldval, inval, inval, value, value);
+//			value = *((uint32_t *)(h2p_lw_axi_mem_addr + index));
+//			printf("Address %u \tformer val = 0x%08X \t wrote: --> 0x%08X \tdecimal = %u \t read: = 0x%08X \tdecimal = %u \n", index, oldval, inval, inval, value, value);
+			printf("Wrote: --> 0x%08X \tdecimal = %u\t to Address: %u \n", inval, inval, index);
 			break;
 
 		case 'h':
