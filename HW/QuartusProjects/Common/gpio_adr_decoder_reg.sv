@@ -113,22 +113,22 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOAddrReg * NumPinsPrIOAddr;
 	reg write_address;
 
 	wire adc_address_valid = ( (busaddress_r == 16'h0300) || (busaddress_r == 16'h0304)) ? 1'b1 : 1'b0;
-	wire io_address_valid = ((busaddress_r >= 16'h1000) && (busaddress_r < 16'h1020)) ? 1'b1 : 1'b0;
-	wire ddr_address_valid = ((busaddress_r >= 16'h1100) && (busaddress_r < 16'h1120)) ? 1'b1 : 1'b0;
-	wire mux_address_valid = ((busaddress_r >= 16'h1120) && (busaddress_r < 16'h1200)) ? 1'b1 : 1'b0;
-	wire od_address_valid = ((busaddress_r >= 16'h1300) && (busaddress_r < 16'h1320)) ? 1'b1 : 1'b0;
+//	wire io_address_valid = ((busaddress_r >= 16'h1000) && (busaddress_r < 16'h1020)) ? 1'b1 : 1'b0;
+//	wire ddr_address_valid = ((busaddress_r >= 16'h1100) && (busaddress_r < 16'h1120)) ? 1'b1 : 1'b0;
+//	wire mux_address_valid = ((busaddress_r >= 16'h1120) && (busaddress_r < 16'h1200)) ? 1'b1 : 1'b0;
+//	wire od_address_valid = ((busaddress_r >= 16'h1300) && (busaddress_r < 16'h1320)) ? 1'b1 : 1'b0;
 
 	wire adc_read_valid = (adc_address_valid && read_adc_address) ?  1'b1 : 1'b0;
-	wire io_read_valid = (io_address_valid && read_address) ?  1'b1 : 1'b0;
-	wire ddr_read_valid = (ddr_address_valid && read_address) ?  1'b1 : 1'b0;
-	wire mux_read_valid = (mux_address_valid && read_address) ?  1'b1 : 1'b0;
-	wire od_read_valid = (od_address_valid && read_address) ?  1'b1 : 1'b0;
+//	wire io_read_valid = (io_address_valid && read_address) ?  1'b1 : 1'b0;
+//	wire ddr_read_valid = (ddr_address_valid && read_address) ?  1'b1 : 1'b0;
+//	wire mux_read_valid = (mux_address_valid && read_address) ?  1'b1 : 1'b0;
+//	wire od_read_valid = (od_address_valid && read_address) ?  1'b1 : 1'b0;
 
 	wire adc_write_valid = (adc_address_valid && write_address) ?  1'b1 : 1'b0;
-	wire io_write_valid = (io_address_valid && write_address) ?  1'b1 : 1'b0;
-	wire ddr_write_valid = (ddr_address_valid && write_address) ?  1'b1 : 1'b0;
-	wire mux_write_valid = (mux_address_valid && write_address) ?  1'b1 : 1'b0;
-	wire od_write_valid = (od_address_valid && write_address) ?  1'b1 : 1'b0;
+//	wire io_write_valid = (io_address_valid && write_address) ?  1'b1 : 1'b0;
+//	wire ddr_write_valid = (ddr_address_valid && write_address) ?  1'b1 : 1'b0;
+//	wire mux_write_valid = (mux_address_valid && write_address) ?  1'b1 : 1'b0;
+//	wire od_write_valid = (od_address_valid && write_address) ?  1'b1 : 1'b0;
 
 // ADC module:
 	wire [31:0]adc_data_out;
@@ -260,13 +260,28 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 //					(((l*16)+((pl*4)+2)) << (PortNumWidth * 2)) + (((l*16)+((pl*4)+3)) << (PortNumWidth * 3)));
 //				end
 				else if ( write_address ) begin
-					if (io_write_valid) begin io_reg[local_address_r[2:0]][IoRegWidth-1:0] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (ddr_write_valid) begin ddr_reg[local_address_r[2:0]][IoRegWidth-1:0] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (od_write_valid) begin od_reg[local_address_r[2:0]][IoRegWidth-1:0] <= busdata_in_r[IoRegWidth-1:0]; end
+					if (busaddress_r == 16'h1000) begin io_reg[0] <= busdata_in_r[IoRegWidth-1:0]; end
+//					else if (busaddress_r == 16'h1004) begin io_reg[1] <= busdata_in_r[IoRegWidth-1:0]; end
+//					else if (busaddress_r == 16'h1008) begin io_reg[2] <= busdata_in_r[IoRegWidth-1:0]; end
+//					else if (busaddress_r == 16'h100c) begin io_reg[3] <= busdata_in_r[IoRegWidth-1:0]; end
+//					else if (busaddress_r == 16'h1010) begin io_reg[4] <= busdata_in_r[IoRegWidth-1:0]; end
+//					else if (busaddress_r == 16'h1014) begin io_reg[5] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h1100) begin ddr_reg[0] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h1104) begin ddr_reg[1] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h1108) begin ddr_reg[2] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h110c) begin ddr_reg[3] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h1110) begin ddr_reg[4] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h1114) begin ddr_reg[5] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h1300) begin od_reg[0] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h1304) begin od_reg[1] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h1308) begin od_reg[2] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h130c) begin od_reg[3] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h1310) begin od_reg[4] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == 16'h1314) begin od_reg[5] <= busdata_in_r[IoRegWidth-1:0]; end
+//					else if (ddr_write_valid) begin ddr_reg[local_address_r[2:0]][IoRegWidth-1:0] <= busdata_in_r[IoRegWidth-1:0]; end
+//					else if (od_write_valid) begin od_reg[local_address_r[2:0]][IoRegWidth-1:0] <= busdata_in_r[IoRegWidth-1:0]; end
 //						else if (mux_address_valid) begin mux_reg[mux_reg_addr][mux_reg_byte] <= busdata_in_r; end
-//					else begin
-//					iodatatohm3 <= busdata_in_r;
-//					end
+//					else begin iodatatohm3 <= busdata_in_r; end
 				end
 			end
 //		end
@@ -280,7 +295,7 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 //				.portselnum(portnumsel[il]),
 				.out_ena(out_ena[bloop]) ,	// input  out_ena_sig
 //				.od(od[il]) ,	// input  od_sig
-				.out_data(io_reg_gpio[bloop]) ,  // input [IOIOWidth-1:0] out_data_sig
+				.out_data(iodatafromhm3[bloop]) ,  // input [IOIOWidth-1:0] out_data_sig
 				.gpioport(gpioport[bloop]) ,	// inout [IOIOWidth-1:0] gpioport_sig
 				.gpio_in_data(gpio_input_data[bloop]) 	// output [IOIOWidth-1:0] read_data_sig
 			);
@@ -292,26 +307,34 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 
 	// Read:
 
-	always @(posedge reset_in_r or posedge adc_read_valid or posedge io_read_valid or posedge ddr_read_valid
-//	or posedge mux_read_valid or posedge od_read_valid or posedge read_address)begin
-	or posedge od_read_valid or posedge read_address)begin
+	always @(posedge reset_in_r or posedge read_address)begin
 		if (reset_in_r)begin
 //			busdata_to_cpu <= ~ 'bz;
 			busdata_to_cpu <= 32'b0;
 		end
-		else if (adc_read_valid) begin
-			busdata_to_cpu <= adc_data_out;
-		end
-		else if (io_read_valid) begin
-			if(busaddress_r == 'h1000) busdata_to_cpu <= {8'b0,gpio_input_data[0][23:0]};
-			if(busaddress_r == 'h1004) busdata_to_cpu <= {8'b0,gpio_input_data[1][11:0],gpio_input_data[0][35:24]};
-			if(busaddress_r == 'h1008) busdata_to_cpu <= {8'b0,gpio_input_data[1][35:12]};
-		end
-		else if (ddr_read_valid) begin busdata_to_cpu <= ddr_reg[local_address_r[2:0]]; end
+		else if (read_address) begin
+//			if (adc_address_valid) begin busdata_to_cpu <= adc_data_out;	end
+			if ((busaddress_r == 'h0300) || (busaddress_r == 'h0304)) begin busdata_to_cpu <= adc_data_out;	end
+			else if(busaddress_r == 'h1000) begin busdata_to_cpu <= {8'b0,gpio_input_data[0][23:0]}; end
+			else if(busaddress_r == 'h1004) begin busdata_to_cpu <= {8'b0,gpio_input_data[1][11:0],gpio_input_data[0][35:24]}; end
+			else if(busaddress_r == 'h1008) begin busdata_to_cpu <= {8'b0,gpio_input_data[1][35:12]}; end
+//			else if(busaddress_r == 'h100c) begin busdata_to_cpu <= {8'b0,gpio_input_data[2][23:0]}; end
+//			else if(busaddress_r == 'h1010) begin busdata_to_cpu <= {8'b0,gpio_input_data[3][11:0],gpio_input_data[2][35:24]}; end
+//			else if(busaddress_r == 'h1014) begin busdata_to_cpu <= {8'b0,gpio_input_data[3][35:12]}; end
+			else if (busaddress_r == 'h1100) begin busdata_to_cpu <= ddr_reg[0]; end
+			else if (busaddress_r == 'h1104) begin busdata_to_cpu <= ddr_reg[1]; end
+			else if (busaddress_r == 'h1108) begin busdata_to_cpu <= ddr_reg[2]; end
+			else if (busaddress_r == 'h110c) begin busdata_to_cpu <= ddr_reg[3]; end
+			else if (busaddress_r == 'h1110) begin busdata_to_cpu <= ddr_reg[4]; end
+			else if (busaddress_r == 'h1114) begin busdata_to_cpu <= ddr_reg[5]; end
 //		else if (mux_read_valid) begin busdata_to_cpu <= mux_reg[mux_reg_addr][mux_reg_byte]; end
-		else if (od_read_valid) begin busdata_to_cpu <=  od_reg[local_address_r[2:0]]; end
-		else begin
-			busdata_to_cpu <= busdata_fromhm2;
+			else if (busaddress_r == 'h1300) begin busdata_to_cpu <= od_reg[0]; end
+			else if (busaddress_r == 'h1304) begin busdata_to_cpu <= od_reg[0]; end
+			else if (busaddress_r == 'h1308) begin busdata_to_cpu <= od_reg[0]; end
+			else if (busaddress_r == 'h130c) begin busdata_to_cpu <= od_reg[0]; end
+			else if (busaddress_r == 'h1310) begin busdata_to_cpu <= od_reg[0]; end
+			else if (busaddress_r == 'h1314) begin busdata_to_cpu <= od_reg[0]; end
+			else begin busdata_to_cpu <= busdata_fromhm2; end
 		end
 	end
 
