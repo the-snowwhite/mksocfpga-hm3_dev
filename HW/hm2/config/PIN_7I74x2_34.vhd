@@ -69,7 +69,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 use work.IDROMConst.all;
 
-package PIN_7I74x2_34 is
+package Pintypes is
 	constant ModuleID : ModuleIDType :=( 
 		(WatchDogTag,	x"00",	ClockLowTag,	x"01",	WatchDogTimeAddr&PadT,		WatchDogNumRegs,		x"00",	WatchDogMPBitMask),
 		(IOPortTag,		x"00",	ClockLowTag,	x"02",	PortAddr&PadT,					IOPortNumRegs,			x"00",	IOPortMPBitMask),
@@ -163,4 +163,4 @@ package PIN_7I74x2_34 is
 		emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,
 		emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin,emptypin);
 
-end package PIN_7I74x2_34;
+end package Pintypes; --PIN_7I74x2_34;

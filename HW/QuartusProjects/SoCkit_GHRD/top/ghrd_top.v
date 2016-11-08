@@ -306,7 +306,7 @@ module ghrd_top (
 	output                         [16:0]       hsmc_tx_p
  `endif
 
-`ifdef htg 
+`ifdef htg
 	inout                         [35:0]       GPIO0,
 	inout                         [35:0]       GPIO1,
 	input                                      hsmc_rx_n8,
@@ -320,7 +320,7 @@ module ghrd_top (
 	output                                     hsmc_scl
 
 `endif
- 
+
  	//////////////////// QSPI Flash I/F 	///////////////////
 //   inout   wire  [3:0] fpga_epqc_data,     // Flash Data
 //   output  wire  fpga_epqc_dclk,           // Data Clock
@@ -461,12 +461,12 @@ module ghrd_top (
   wire 			clklow_sig;
   wire 			clkhigh_sig;
 
-  
+
 //  assign GPIO_1[] = ;
 
  //  assign GPIO_0[] = ;
 
-  
+
 // Mesa code ------------------------------------------------------//
 
 assign clklow_sig = clk_bot1;
@@ -484,8 +484,8 @@ wire [LIOWidth-1:0] liobits_sig;
 assign GPIO1[LIOWidth-1:0] = liobits_sig;
 
 
-//HostMot2 #(.IOWidth(IOWidth),.IOPorts(IOPorts)) HostMot2_inst
-HostMot2 HostMot2_inst
+//HostMot3 #(.IOWidth(IOWidth),.IOPorts(IOPorts)) HostMot3_inst
+HostMot3 HostMot3_inst
 (
 	.ibus(hm_datai) ,	// input [buswidth-1:0] ibus_sig
 	.obus(hm_datao) ,	// output [buswidth-1:0] obus_sig

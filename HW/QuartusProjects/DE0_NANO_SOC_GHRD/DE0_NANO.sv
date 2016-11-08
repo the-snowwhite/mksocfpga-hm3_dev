@@ -58,8 +58,7 @@ module DE0_NANO(
       input              FPGA_CLK3_50,
 
       ///////// GPIO /////////
-      inout       [35:0] GPIO_0,
-      inout       [35:0] GPIO_1,
+      inout       [35:0] GPIO[1:0],
 
 `ifdef ENABLE_HPS
       ///////// HPS /////////
@@ -124,63 +123,61 @@ module DE0_NANO(
       input       [3:0]  SW
 );
 
-`define GPIO_STRAIGHT
 
 //=======================================================
 //  REG/WIRE declarations
 //=======================================================
+// DE0-Nano Dev kit and I/O adaptors specific info
+import boardtype::*;
+parameter NumIOAddrReg = 6;
+/*
+	parameter AddrWidth  = 16;
+	parameter IOWidth		= 34;
+	parameter LIOWidth	= 6;
+	parameter IOPorts		= 2;
+	parameter GPIOWidth	= 36;
+	parameter NumIOAddrReg	= 6;
+*/
+	wire  hps_fpga_reset_n;
+	wire [1:0] fpga_debounced_buttons;
+	wire [6:0]  fpga_led_internal;
+//	wire [2:0]  hps_reset_req;
+	wire        hps_cold_reset;
+	wire        hps_warm_reset;
+	wire        hps_debug_reset;
+	wire [27:0] stm_hw_events;
+	wire 		  fpga_clk_50;
+	// connection of internal logics
+	assign LED[5:1] = fpga_led_internal;
+	assign fpga_clk_50 = FPGA_CLK2_50;
+	assign stm_hw_events    = {{15{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
+	// hm2
+	wire [AddrWidth-3:0]			hm_address;
+	wire [31:0] 					hm_datao;
+	wire [31:0] 					hm_datai;
+	wire [31:0] 					busdata_out;
+	wire       						hm_read;
+	wire 								hm_write;
+	wire [3:0]						hm_chipsel;
+	wire								hm_clk_med;
+	wire								hm_clk_high;
+	wire								adc_clk_40;
+	wire 								clklow_sig;
+	wire 								clkmed_sig;
+	wire 								clkhigh_sig;
 
-  parameter AddrWidth = 16;
-  parameter IOWidth = 34;
-  parameter LIOWidth = 6;
-  parameter IOPorts = 2;
+// Mesa I/O Signals:
+	wire [LEDCount-1:0]			hm2_leds_sig;
+	wire [IOWidth-1:0] 			hm2_bitsout_sig;
+	wire [IOWidth-1:0] 			hm2_bitsin_sig;
 
-  wire  hps_fpga_reset_n;
-  wire [1:0] fpga_debounced_buttons;
-  wire [6:0]  fpga_led_internal;
-  wire [2:0]  hps_reset_req;
-  wire        hps_cold_reset;
-  wire        hps_warm_reset;
-  wire        hps_debug_reset;
-  wire [27:0] stm_hw_events;
-  wire 		  fpga_clk_50;
-// connection of internal logics
-  assign LED[7:1] = fpga_led_internal;
-  assign fpga_clk_50 = FPGA_CLK2_50;
-  assign stm_hw_events    = {{15{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
-// hm2
-  wire [AddrWidth-3:0] 	hm_address;
-  wire [31:0] 	hm_datao;
-  wire [31:0] 	hm_datai;
-  wire       	hm_read;
-  wire 			hm_write;
-  wire [3:0]	hm_chipsel;
-  wire			hm_clk_med;
-  wire			hm_clk_high;
-  wire 			clklow_sig;
-  wire 			clkhigh_sig;
+	wire [MuxLedWidth-1:0]		io_leds_sig[NumGPIO-1:0];
+	wire [MuxGPIOIOWidth-1:0] 	io_bitsout_sig[NumGPIO-1:0];
+	wire [MuxGPIOIOWidth-1:0] 	io_bitsin_sig[NumGPIO-1:0];
 
-  wire [1:0]	hm2_leds_sig;
-
-  wire [IOWidth-1:0] hm2_iobits_sig;
-  wire [LIOWidth-1:0] hm2_liobits_sig;
-
-// GPIO mux
-
-  gpio_mux gpio_mux_inst
-(
-	.GPIO(GPIO_0) ,					// inout [GPIOWidth-1:0] GPIO_sig
-	.hm2_iobits(hm2_iobits_sig) ,	// inout [IOWidth-1:0] hm2_iobits_sig
-	.hm2_leds(hm2_leds_sig) 		// inout [1:0] hm2_leds_sig
-);
-
-defparam gpio_mux_inst.GPIOWidth = 36;
-defparam gpio_mux_inst.IOWidth = IOWidth;
-
-//irq:
-  wire int_sig;
-
-  assign ARDUINO_IO[15] = int_sig;
+	//irq:
+	wire int_sig;
+	assign ARDUINO_IO[15] = int_sig;
 
 //  wire [8:0] 	out_oe;
 //  wire [8:0]	out_data;
@@ -197,11 +194,11 @@ defparam gpio_mux_inst.IOWidth = IOWidth;
 //  assign out_oe = 9'b1;
 //  assign ar_out_oe = 2'b0;
 
-soc_system u0 (
+ soc_system u0 (
 	//Clock&Reset
 	.clk_clk                               (FPGA_CLK1_50 ),                               //                            clk.clk
 	.reset_reset_n                         (hps_fpga_reset_n ),                         //                          reset.reset_n
-	//HPS ddr3
+//HPS ddr3
 	.memory_mem_a                          ( HPS_DDR3_ADDR),                       //                memory.mem_a
 	.memory_mem_ba                         ( HPS_DDR3_BA),                         //                .mem_ba
 	.memory_mem_ck                         ( HPS_DDR3_CK_P),                       //                .mem_ck
@@ -218,7 +215,7 @@ soc_system u0 (
 	.memory_mem_odt                        ( HPS_DDR3_ODT),                        //                .mem_odt
 	.memory_mem_dm                         ( HPS_DDR3_DM),                         //                .mem_dm
 	.memory_oct_rzqin                      ( HPS_DDR3_RZQ),                        //                .oct_rzqin
-	//HPS ethernet
+//HPS ethernet
 	.hps_0_hps_io_hps_io_emac1_inst_TX_CLK ( HPS_ENET_GTX_CLK),       //                             hps_0_hps_io.hps_io_emac1_inst_TX_CLK
 	.hps_0_hps_io_hps_io_emac1_inst_TXD0   ( HPS_ENET_TX_DATA[0] ),   //                             .hps_io_emac1_inst_TXD0
 	.hps_0_hps_io_hps_io_emac1_inst_TXD1   ( HPS_ENET_TX_DATA[1] ),   //                             .hps_io_emac1_inst_TXD1
@@ -233,14 +230,14 @@ soc_system u0 (
 	.hps_0_hps_io_hps_io_emac1_inst_RXD1   ( HPS_ENET_RX_DATA[1] ),   //                             .hps_io_emac1_inst_RXD1
 	.hps_0_hps_io_hps_io_emac1_inst_RXD2   ( HPS_ENET_RX_DATA[2] ),   //                             .hps_io_emac1_inst_RXD2
 	.hps_0_hps_io_hps_io_emac1_inst_RXD3   ( HPS_ENET_RX_DATA[3] ),   //                             .hps_io_emac1_inst_RXD3
-	//HPS SD card
+//HPS SD card
 	.hps_0_hps_io_hps_io_sdio_inst_CMD     ( HPS_SD_CMD    ),           //                               .hps_io_sdio_inst_CMD
 	.hps_0_hps_io_hps_io_sdio_inst_D0      ( HPS_SD_DATA[0]     ),      //                               .hps_io_sdio_inst_D0
 	.hps_0_hps_io_hps_io_sdio_inst_D1      ( HPS_SD_DATA[1]     ),      //                               .hps_io_sdio_inst_D1
 	.hps_0_hps_io_hps_io_sdio_inst_CLK     ( HPS_SD_CLK   ),            //                               .hps_io_sdio_inst_CLK
 	.hps_0_hps_io_hps_io_sdio_inst_D2      ( HPS_SD_DATA[2]     ),      //                               .hps_io_sdio_inst_D2
 	.hps_0_hps_io_hps_io_sdio_inst_D3      ( HPS_SD_DATA[3]     ),      //                               .hps_io_sdio_inst_D3
-	//HPS USB
+//HPS USB
 	.hps_0_hps_io_hps_io_usb1_inst_D0      ( HPS_USB_DATA[0]    ),      //                               .hps_io_usb1_inst_D0
 	.hps_0_hps_io_hps_io_usb1_inst_D1      ( HPS_USB_DATA[1]    ),      //                               .hps_io_usb1_inst_D1
 	.hps_0_hps_io_hps_io_usb1_inst_D2      ( HPS_USB_DATA[2]    ),      //                               .hps_io_usb1_inst_D2
@@ -253,111 +250,70 @@ soc_system u0 (
 	.hps_0_hps_io_hps_io_usb1_inst_STP     ( HPS_USB_STP    ),          //                               .hps_io_usb1_inst_STP
 	.hps_0_hps_io_hps_io_usb1_inst_DIR     ( HPS_USB_DIR    ),          //                               .hps_io_usb1_inst_DIR
 	.hps_0_hps_io_hps_io_usb1_inst_NXT     ( HPS_USB_NXT    ),          //                               .hps_io_usb1_inst_NXT
-	//HPS SPI
+//HPS SPI
 	.hps_0_hps_io_hps_io_spim1_inst_CLK    ( HPS_SPIM_CLK  ),           //                               .hps_io_spim1_inst_CLK
 	.hps_0_hps_io_hps_io_spim1_inst_MOSI   ( HPS_SPIM_MOSI ),           //                               .hps_io_spim1_inst_MOSI
 	.hps_0_hps_io_hps_io_spim1_inst_MISO   ( HPS_SPIM_MISO ),           //                               .hps_io_spim1_inst_MISO
 	.hps_0_hps_io_hps_io_spim1_inst_SS0    ( HPS_SPIM_SS   ),             //                               .hps_io_spim1_inst_SS0
-	//HPS UART
+//HPS UART
 	.hps_0_hps_io_hps_io_uart0_inst_RX     ( HPS_UART_RX   ),          //                               .hps_io_uart0_inst_RX
 	.hps_0_hps_io_hps_io_uart0_inst_TX     ( HPS_UART_TX   ),          //                               .hps_io_uart0_inst_TX
-	//HPS I2C1
+//HPS I2C1
 	.hps_0_hps_io_hps_io_i2c0_inst_SDA     ( HPS_I2C0_SDAT  ),        //                               .hps_io_i2c0_inst_SDA
 	.hps_0_hps_io_hps_io_i2c0_inst_SCL     ( HPS_I2C0_SCLK  ),        //                               .hps_io_i2c0_inst_SCL
-	//HPS I2C2
+//HPS I2C2
 	.hps_0_hps_io_hps_io_i2c1_inst_SDA     ( HPS_I2C1_SDAT  ),        //                               .hps_io_i2c1_inst_SDA
 	.hps_0_hps_io_hps_io_i2c1_inst_SCL     ( HPS_I2C1_SCLK  ),        //                               .hps_io_i2c1_inst_SCL
-	//GPIO
+//GPIO
 	.hps_0_hps_io_hps_io_gpio_inst_GPIO09  ( HPS_CONV_USB_N ),  //                               .hps_io_gpio_inst_GPIO09
 	.hps_0_hps_io_hps_io_gpio_inst_GPIO35  ( HPS_ENET_INT_N ),  //                               .hps_io_gpio_inst_GPIO35
 	.hps_0_hps_io_hps_io_gpio_inst_GPIO40  ( HPS_LTC_GPIO   ),  //                               .hps_io_gpio_inst_GPIO40
 	.hps_0_hps_io_hps_io_gpio_inst_GPIO53  ( HPS_LED   ),  //                               .hps_io_gpio_inst_GPIO53
 	.hps_0_hps_io_hps_io_gpio_inst_GPIO54  ( HPS_KEY   ),  //                               .hps_io_gpio_inst_GPIO54
 	.hps_0_hps_io_hps_io_gpio_inst_GPIO61  ( HPS_GSENSOR_INT ),  //                               .hps_io_gpio_inst_GPIO61
-	//FPGA Partion
+//FPGA Partion
 	.led_pio_export                        ( fpga_led_internal 	),    //    led_pio_external_connection.export
 	.dipsw_pio_export                      ( SW	),  //  dipsw_pio_external_connection.export
 	.button_pio_export                     ( fpga_debounced_buttons	), // button_pio_external_connection.export
 	.hps_0_h2f_reset_reset_n               ( hps_fpga_reset_n ),                //                hps_0_h2f_reset.reset_n
 	.hps_0_f2h_cold_reset_req_reset_n      (~hps_cold_reset ),      //       hps_0_f2h_cold_reset_req.reset_n
-	.hps_0_f2h_debug_reset_req_reset_n     (~hps_debug_reset ),     //      hps_0_f2h_debug_reset_req.reset_n
-	.hps_0_f2h_stm_hw_events_stm_hwevents  (stm_hw_events ),  //        hps_0_f2h_stm_hw_events.stm_hwevents
-	.hps_0_f2h_warm_reset_req_reset_n      (~hps_warm_reset ),      //       hps_0_f2h_warm_reset_req.reset_n
-	// hm2reg_io_0_conduit
-	.mk_io_hm2_datain                  		(hm_datao),                    //           .hm2_datain
-	.mk_io_hm2_dataout                 	  	(hm_datai),                    //            hm2reg.hm2_dataout
-	.mk_io_hm2_address                 	  	(hm_address),                  //           .hm2_address
-	.mk_io_hm2_write                   		(hm_write),                    //           .hm2_write
-	.mk_io_hm2_read                    		(hm_read),                     //           .hm2_read
-	.mk_io_hm2_chipsel            			(hm_chipsel),                  //           .hm2_chipsel
-	.mk_io_hm2_int_in						(int_sig),                     //           .hm2_int_in
-	.clk_100mhz_out_clk                    	(hm_clk_med),                  //            clk_100mhz_out.clk
-	.clk_200mhz_out_clk                    	(hm_clk_high),                 //            clk_100mhz_out.clk
-	.adc_io_convst                          (ADC_CONVST),                  //            adc.CONVST
-	.adc_io_sck								(ADC_SCK),                     //           .SCK
-	.adc_io_sdi								(ADC_SDI),                     //           .SDI
-	.adc_io_sdo								(ADC_SDO)                      //           .SDO
-//   .axi_str_data                      (out_data[7:0]),                   //            stream_port.data
-//   .axi_str_valid                     (out_data[8]),                     //           .valid
-//   .axi_str_ready                     (ar_in_sig[1])                     //           .ready
+    .hps_0_f2h_debug_reset_req_reset_n     (~hps_debug_reset ),     //      hps_0_f2h_debug_reset_req.reset_n
+    .hps_0_f2h_stm_hw_events_stm_hwevents  (stm_hw_events ),  //        hps_0_f2h_stm_hw_events.stm_hwevents
+    .hps_0_f2h_warm_reset_req_reset_n      (~hps_warm_reset ),      //       hps_0_f2h_warm_reset_req.reset_n
+// hm2reg_io_0_conduit
+	.mk_io_hm2_datain                  		(busdata_out),							//			.hm2_datain
+	.mk_io_hm2_dataout                 	  	(hm_datai),							//			.hm2reg.hm2_dataout
+	.mk_io_hm2_address                 	  	(hm_address),	//			.hm2_address
+	.mk_io_hm2_write                   		(hm_write),							//			.hm2_write
+	.mk_io_hm2_read                    		(hm_read),							//			.hm2_read
+	.mk_io_hm2_chipsel            			(hm_chipsel),						//			.hm2_chipsel
+	.mk_io_hm2_int_in            				(int_sig),							//			.int_sig
+	.clk_100mhz_out_clk                    (hm_clk_med),						//			clk_100mhz_out.clk
+	.clk_200mhz_out_clk                    (hm_clk_high),						//			clk_200mhz_out.clk
+	.adc_clk_40mhz_clk                     (adc_clk_40)                  //             adc_clk_40mhz.clk
+//	.adc_io_convst									(ADC_CONVST),						//			adc.CONVST
+//	.adc_io_sck										(ADC_SCK),							//			.SCK
+//	.adc_io_sdi										(ADC_SDI),							//			.SDI
+//	.adc_io_sdo										(ADC_SDO)							//			.SDO
+//      .axi_str_data                      (out_data[7:0]),               //               stream_port.data
+//      .axi_str_valid                     (out_data[8]),                 //                          .valid
+//      .axi_str_ready                     (ar_in_sig[1])                 //                          .ready
  );
 
-// Debounce logic to clean out glitches within 1ms
-debounce debounce_inst (
-  .clk                                  (fpga_clk_50),
-  .reset_n                              (hps_fpga_reset_n),
-  .data_in                              (KEY),
-  .data_out                             (fpga_debounced_buttons)
-);
-  defparam debounce_inst.WIDTH = 2;
-  defparam debounce_inst.POLARITY = "LOW";
-  defparam debounce_inst.TIMEOUT = 50000;               // at 50Mhz this is a debounce time of 1ms
-  defparam debounce_inst.TIMEOUT_WIDTH = 16;            // ceil(log2(TIMEOUT))
-
-// Source/Probe megawizard instance
-hps_reset hps_reset_inst (
-  .source_clk (fpga_clk_50),
-  .source     (hps_reset_req)
-);
-
-altera_edge_detector pulse_cold_reset (
-  .clk       (fpga_clk_50),
-  .rst_n     (hps_fpga_reset_n),
-  .signal_in (hps_reset_req[0]),
-  .pulse_out (hps_cold_reset)
-);
-  defparam pulse_cold_reset.PULSE_EXT = 6;
-  defparam pulse_cold_reset.EDGE_TYPE = 1;
-  defparam pulse_cold_reset.IGNORE_RST_WHILE_BUSY = 1;
-
-altera_edge_detector pulse_warm_reset (
-  .clk       (fpga_clk_50),
-  .rst_n     (hps_fpga_reset_n),
-  .signal_in (hps_reset_req[1]),
-  .pulse_out (hps_warm_reset)
-);
-  defparam pulse_warm_reset.PULSE_EXT = 2;
-  defparam pulse_warm_reset.EDGE_TYPE = 1;
-  defparam pulse_warm_reset.IGNORE_RST_WHILE_BUSY = 1;
-
-altera_edge_detector pulse_debug_reset (
-  .clk       (fpga_clk_50),
-  .rst_n     (hps_fpga_reset_n),
-  .signal_in (hps_reset_req[2]),
-  .pulse_out (hps_debug_reset)
-);
-  defparam pulse_debug_reset.PULSE_EXT = 32;
-  defparam pulse_debug_reset.EDGE_TYPE = 1;
-  defparam pulse_debug_reset.IGNORE_RST_WHILE_BUSY = 1;
-
-led_blinker led_blinker_inst
+top_io_modules top_io_modules_inst
 (
-	.fpga_clk_50(fpga_clk_50) ,	// input  fpga_clk_50_sig
-	.hps_fpga_reset_n(hps_fpga_reset_n) ,	// input  hps_fpga_reset_n_sig
+	.clk(clklow_sig) ,	// input  clk_sig
+	.reset_n(hps_fpga_reset_n) ,	// input  reset_n_sig
+	.button_in(KEY) ,	// input [KEY_WIDTH-1:0] button_in_sig
+	.button_out(fpga_debounced_buttons) ,	// output [KEY_WIDTH-1:0] button_out_sig
+	.hps_cold_reset(hps_cold_reset) ,	// output  hps_cold_reset_sig
+	.hps_warm_reset(hps_warm_reset) ,	// output  hps_warm_reset_sig
+	.hps_debug_reset(hps_debug_reset) ,	// output  hps_debug_reset_sig
 	.LED(LED[0]) 	// output  LED_sig
 );
 
-defparam led_blinker_inst.COUNT_MAX = 24999999;
+defparam top_io_modules_inst.KEY_WIDTH = 2;
+
 
 // Mesa code ------------------------------------------------------//
 
@@ -365,12 +321,57 @@ assign clklow_sig = fpga_clk_50;
 assign clkhigh_sig = hm_clk_high;
 assign clkmed_sig = hm_clk_med;
 
-assign ARDUINO_IO[LIOWidth-1:0] = hm2_liobits_sig;
+genvar ig;
+generate for(ig=0;ig<NumGPIO;ig=ig+1) begin : iosigloop
+//	assign io_leds_sig[ig] = hm2_leds_sig[(ig*MuxLedWidth)+:MuxLedWidth];
+	assign io_bitsout_sig[ig] = hm2_bitsout_sig[(ig*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
+	assign io_bitsin_sig[ig] = hm2_bitsin_sig[(ig*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
+end
+endgenerate
 
-HostMot2 HostMot2_inst
+assign LED[7:6] = ~hm2_leds_sig[1:0];
+
+gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 (
-	.ibus(hm_datai) ,	// input [buswidth-1:0] ibus_sig
-	.obus(hm_datao) ,	// output [buswidth-1:0] obus_sig
+	.CLOCK(clklow_sig) ,	// input  CLOCK_sig
+	.reg_clk(clkhigh_sig) ,	// input  CLOCK_sig
+	.reset_reg_N(hps_fpga_reset_n) ,	// input  reset_reg_N_sig
+	.chip_sel(hm_chipsel[0]) ,	// input  data_ready_sig
+	.write_reg(hm_write) ,	// input  data_ready_sig
+	.read_reg(hm_read) ,	// input  data_ready_sig
+//	.leds_sig(io_leds_sig) ,	// input  data_ready_sig
+	.busaddress(hm_address) ,	// input [AddrWidth-1:0] address_sig
+	.busdata_in(hm_datai) ,	// input [BusWidth-1:0] data_in_sig
+	.iodatafromhm3 ( io_bitsout_sig ),
+	.busdata_fromhm2 ( hm_datao ),
+	.gpioport( GPIO ),
+	.iodatatohm3 ( io_bitsin_sig ),
+	.busdata_to_cpu ( busdata_out ),
+// ADC
+	.adc_clk(adc_clk_40),	// input  adc_clk_sig
+	.ADC_CONVST_o(ADC_CONVST),	// output  ADC_CONVST_o_sig
+	.ADC_SCK_o(ADC_SCK),	// output  ADC_SCK_o_sig
+	.ADC_SDI_o(ADC_SDI),	// output  ADC_SDI_o_sig
+	.ADC_SDO_i(ADC_SDO)	// input  ADC_SDO_i_sig
+);
+
+defparam gpio_adr_decoder_reg_inst.AddrWidth = AddrWidth;
+defparam gpio_adr_decoder_reg_inst.BusWidth = BusWidth;
+defparam gpio_adr_decoder_reg_inst.GPIOWidth = GPIOWidth;
+defparam gpio_adr_decoder_reg_inst.MuxGPIOIOWidth = MuxGPIOIOWidth;
+defparam gpio_adr_decoder_reg_inst.NumIOAddrReg = NumIOAddrReg;
+//defparam gpio_adr_decoder_reg_inst.MuxLedWidth = MuxLedWidth;
+defparam gpio_adr_decoder_reg_inst.NumGPIO = NumGPIO;
+
+//
+// 	wire [LIOWidth-1:0] liobits_sig;
+// assign ARDUINO_IO[LIOWidth-1:0] = liobits_sig;
+
+//HostMot3 #(.IOWidth(IOWidth),.IOPorts(IOPorts)) HostMot3_inst
+HostMot3_cfg HostMot3_inst
+(
+	.ibustop(hm_datai) ,	// input [buswidth-1:0] ibus_sig
+	.obustop(hm_datao) ,	// output [buswidth-1:0] obus_sig
 	.addr(hm_address) ,	// input [addrwidth-1:2] addr_sig	-- addr => A(AddrWidth-1 downto 2),
 	.readstb(hm_read ) ,	// input  readstb_sig
 	.writestb(hm_write) ,	// input  writestb_sig
@@ -381,40 +382,40 @@ HostMot2 HostMot2_inst
 	.intirq(int_sig) ,	// output  int_sig							--int => LINT, ---> PCI ?
 //	.dreq(dreq_sig) ,	// output  dreq_sig
 //	.demandmode(demandmode_sig) ,	// output  demandmode_sig
-	.iobits(hm2_iobits_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
-	.liobits(hm2_liobits_sig) ,	// inout [lIOWidth-1:0] 			--liobits_sig
+	.iobitsouttop(hm2_bitsout_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
+	.iobitsintop(hm2_bitsin_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
+//	.liobits(liobits_sig) ,	// inout [lIOWidth-1:0] 			--liobits_sig
 //	.rates(rates_sig) ,	// output [4:0] rates_sig
 	.leds(hm2_leds_sig) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
 );
-/*
-defparam HostMot2_inst.ThePinDesc = PinDesc;
-defparam HostMot2_inst.TheModuleID =  "ModuleID";
-defparam HostMot2_inst.IDROMType = 3;
-defparam HostMot2_inst.SepClocks = "true";
-defparam HostMot2_inst.OneWS = "true";
-defparam HostMot2_inst.UseIRQLogic = "true";
-defparam HostMot2_inst.PWMRefWidth = 13;
-defparam HostMot2_inst.UseWatchDog = "true";
-defparam HostMot2_inst.OffsetToModules = 64;
-defparam HostMot2_inst.OffsetToPinDesc = 448;
-defparam HostMot2_inst.ClockHigh = "ClockHigh25";
-defparam HostMot2_inst.ClockMed = "ClockMed25";
-defparam HostMot2_inst.ClockLow = "ClockLow25";
-defparam HostMot2_inst.BoardNameLow = BoardNameMESA;
-defparam HostMot2_inst.BoardNameHigh = "BoardName5i25";
-defparam HostMot2_inst.FPGASize = 9;
-defparam HostMot2_inst.FPGAPins = 144;
-defparam HostMot2_inst.IOPorts = 2;
-defparam HostMot2_inst.IOWidth = 34;
-defparam HostMot2_inst.LIOWidth = 6;
-defparam HostMot2_inst.PortWidth = 17;
-defparam HostMot2_inst.BusWidth = 32;
-defparam HostMot2_inst.AddrWidth = 16;
-defparam HostMot2_inst.InstStride0 = 4;
-defparam HostMot2_inst.InstStride1 = 64;
-defparam HostMot2_inst.RegStride0 = 256;
-defparam HostMot2_inst.RegStride1 = 256;
-defparam HostMot2_inst.LEDCount = 2;
-*/
+
+// defparam HostMot3_inst.ThePinDesc = PinDesc;
+// defparam HostMot3_inst.TheModuleID =  "ModuleID";
+// defparam HostMot3_inst.IDROMType = 3;
+defparam HostMot3_inst.SepClocks = SepClocks;
+defparam HostMot3_inst.OneWS = OneWS;
+// defparam HostMot3_inst.UseIRQLogic = "true";
+// defparam HostMot3_inst.PWMRefWidth = 13;
+// defparam HostMot3_inst.UseWatchDog = "true";
+// defparam HostMot3_inst.OffsetToModules = 64;
+// defparam HostMot3_inst.OffsetToPinDesc = 448;
+defparam HostMot3_inst.ClockHigh = ClockHigh;
+defparam HostMot3_inst.ClockMed = ClockMed;
+defparam HostMot3_inst.ClockLow = ClockLow;
+defparam HostMot3_inst.BoardNameLow = BoardNameLow;
+defparam HostMot3_inst.BoardNameHigh = BoardNameHigh;
+defparam HostMot3_inst.FPGASize = FPGASize;
+defparam HostMot3_inst.FPGAPins = FPGAPins;
+defparam HostMot3_inst.IOPorts = IOPorts;
+defparam HostMot3_inst.IOWidth = IOWidth;
+defparam HostMot3_inst.PortWidth = PortWidth;
+defparam HostMot3_inst.LIOWidth = LIOWidth;
+defparam HostMot3_inst.LEDCount = LEDCount;
+defparam HostMot3_inst.BusWidth = BusWidth;
+defparam HostMot3_inst.AddrWidth = AddrWidth;
+// defparam HostMot3_inst.InstStride0 = 4;
+// defparam HostMot3_inst.InstStride1 = 64;
+// defparam HostMot3_inst.RegStride0 = 256;
+// defparam HostMot3_inst.RegStride1 = 256;
 
 endmodule

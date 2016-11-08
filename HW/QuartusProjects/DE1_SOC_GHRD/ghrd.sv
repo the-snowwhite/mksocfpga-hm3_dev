@@ -202,9 +202,12 @@ module ghrd(
 //=======================================================
 //  REG/WIRE declarations
 //=======================================================
-  wire  hps_fpga_reset_n;
+import boardtype::*;
+parameter NumIOAddrReg = 6;
+
+wire  hps_fpga_reset_n;
   wire [3:0] fpga_debounced_buttons;
-  wire [9:0]  fpga_led_internal;
+  wire [6:0]  fpga_led_internal;
   wire [2:0]  hps_reset_req;
   wire        hps_cold_reset;
   wire        hps_warm_reset;
@@ -215,7 +218,7 @@ module ghrd(
   assign fpga_clk_50 = CLOCK2_50;
 
 // connection of internal logics
-  assign LED = fpga_led_internal;
+  assign LEDR[5:1] = fpga_led_internal;
   assign stm_hw_events    = {{4{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
 
 // hm2
@@ -231,6 +234,19 @@ module ghrd(
   wire 			clkmed_sig;
   wire 			clkhigh_sig;
 
+// Mesa I/O Signals:
+	wire [LEDCount-1:0]			hm2_leds_sig;
+	wire [IOWidth-1:0] 			hm2_bitsout_sig;
+	wire [IOWidth-1:0] 			hm2_bitsin_sig;
+
+	wire [MuxLedWidth-1:0]		io_leds_sig[NumGPIO-1:0];
+	wire [MuxGPIOIOWidth-1:0] 	io_bitsout_sig[NumGPIO-1:0];
+	wire [MuxGPIOIOWidth-1:0] 	io_bitsin_sig[NumGPIO-1:0];
+
+	wire [GPIOWidth-1:0]			GPIO[NumGPIO-1:0];
+
+	//irq:
+	wire int_sig;
 
 //=======================================================
 //  Structural coding
@@ -330,72 +346,82 @@ soc_system u0 (
      .hps_0_f2h_stm_hw_events_stm_hwevents  (stm_hw_events ),  //        hps_0_f2h_stm_hw_events.stm_hwevents
      .hps_0_f2h_warm_reset_req_reset_n      (~hps_warm_reset ),      //       hps_0_f2h_warm_reset_req.reset_n
 			// Mesa HM2
-     .mk_io_hm2_datain                  		(hm_datao),                     //                          .hm2_datain
-     .mk_io_hm2_dataout                 	  	(hm_datai),                    //                    hm2reg.hm2_dataout
-     .mk_io_hm2_address                 	  	(hm_address),                    //                          .hm2_address
-//     .mk_io_hm2_addrout                 	  	(hm_addri),                    //                          .hm2_address
-//     .mk_io_hm2_addrin                 	  		(hm_addro),                    //                          .hm2_address
-     .mk_io_hm2_write                   		(hm_write),                       //                          .hm2_write
-     .mk_io_hm2_read                    		(hm_read),                       //                          .hm2_read
-     .mk_io_hm2_chipsel            				(hm_chipsel),                    //                          .hm2_chipsel
-//     .mk_io_hm2_we                 				(hm_chipsel),                    //                          .hm2_chipsel
-     .clk_100mhz_out_clk                    	(hm_clk_med),                    //            clk_100mhz_out.clk
-     .clk_200mhz_out_clk                    	(hm_clk_high),                    //            clk_100mhz_out.clk
+     .mk_io_hm2_datain                  		(hm_datao),             			//				.hm2_datain
+     .mk_io_hm2_dataout                 	  	(hm_datai),                		//				hm2reg.hm2_dataout
+     .mk_io_hm2_address                 	  	(hm_address),          				//				.hm2_address
+     .mk_io_hm2_write                   		(hm_write),           				//				.hm2_write
+     .mk_io_hm2_read                    		(hm_read),                       //				.hm2_read
+     .mk_io_hm2_chipsel            				(hm_chipsel),                    // 			.hm2_chipsel
+     .mk_io_hm2_int_in            				(int_sig),								//				.int_sig
+     .clk_100mhz_out_clk                    	(hm_clk_med),                    //				clk_100mhz_out.clk
+     .clk_200mhz_out_clk                    	(hm_clk_high),            			//				clk_100mhz_out.clk
     );
 
-// Debounce logic to clean out glitches within 1ms
-debounce debounce_inst (
-  .clk                                  (fpga_clk_50),
-  .reset_n                              (hps_fpga_reset_n),
-  .data_in                              (fpga_button_pio),
-  .data_out                             (fpga_debounced_buttons)
-);
-  defparam debounce_inst.WIDTH = 4;
-  defparam debounce_inst.POLARITY = "LOW";
-  defparam debounce_inst.TIMEOUT = 50000;               // at 50Mhz this is a debounce time of 1ms
-  defparam debounce_inst.TIMEOUT_WIDTH = 16;            // ceil(log2(TIMEOUT))
+// // Debounce logic to clean out glitches within 1ms
+// debounce debounce_inst (
+//   .clk                                  (fpga_clk_50),
+//   .reset_n                              (hps_fpga_reset_n),
+//   .data_in                              (fpga_button_pio),
+//   .data_out                             (fpga_debounced_buttons)
+// );
+//   defparam debounce_inst.WIDTH = 4;
+//   defparam debounce_inst.POLARITY = "LOW";
+//   defparam debounce_inst.TIMEOUT = 50000;               // at 50Mhz this is a debounce time of 1ms
+//   defparam debounce_inst.TIMEOUT_WIDTH = 16;            // ceil(log2(TIMEOUT))
+//
+// // Source/Probe megawizard instance
+// hps_reset hps_reset_inst (
+//   .source_clk (fpga_clk_50),
+//   .source     (hps_reset_req)
+// );
+//
+// altera_edge_detector pulse_cold_reset (
+//   .clk       (fpga_clk_50),
+//   .rst_n     (hps_fpga_reset_n),
+//   .signal_in (hps_reset_req[0]),
+//   .pulse_out (hps_cold_reset)
+// );
+//   defparam pulse_cold_reset.PULSE_EXT = 6;
+//   defparam pulse_cold_reset.EDGE_TYPE = 1;
+//   defparam pulse_cold_reset.IGNORE_RST_WHILE_BUSY = 1;
+//
+// altera_edge_detector pulse_warm_reset (
+//   .clk       (fpga_clk_50),
+//   .rst_n     (hps_fpga_reset_n),
+//   .signal_in (hps_reset_req[1]),
+//   .pulse_out (hps_warm_reset)
+// );
+//   defparam pulse_warm_reset.PULSE_EXT = 2;
+//   defparam pulse_warm_reset.EDGE_TYPE = 1;
+//   defparam pulse_warm_reset.IGNORE_RST_WHILE_BUSY = 1;
+//
+// altera_edge_detector pulse_debug_reset (
+//   .clk       (fpga_clk_50),
+//   .rst_n     (hps_fpga_reset_n),
+//   .signal_in (hps_reset_req[2]),
+//   .pulse_out (hps_debug_reset)
+// );
+//   defparam pulse_debug_reset.PULSE_EXT = 32;
+//   defparam pulse_debug_reset.EDGE_TYPE = 1;
+//   defparam pulse_debug_reset.IGNORE_RST_WHILE_BUSY = 1;
 
-// Source/Probe megawizard instance
-hps_reset hps_reset_inst (
-  .source_clk (fpga_clk_50),
-  .source     (hps_reset_req)
+
+
+top_io_modules top_io_modules_inst
+(
+	.clk(clklow_sig) ,	// input  clk_sig
+	.reset_n(hps_fpga_reset_n) ,	// input  reset_n_sig
+	.button_in(KEY) ,	// input [KEY_WIDTH-1:0] button_in_sig
+	.button_out(fpga_debounced_buttons) ,	// output [KEY_WIDTH-1:0] button_out_sig
+	.hps_cold_reset(hps_cold_reset) ,	// output  hps_cold_reset_sig
+	.hps_warm_reset(hps_warm_reset) ,	// output  hps_warm_reset_sig
+	.hps_debug_reset(hps_debug_reset) ,	// output  hps_debug_reset_sig
+	.LED(LEDR[0]) 	// output  LED_sig
 );
 
-altera_edge_detector pulse_cold_reset (
-  .clk       (fpga_clk_50),
-  .rst_n     (hps_fpga_reset_n),
-  .signal_in (hps_reset_req[0]),
-  .pulse_out (hps_cold_reset)
-);
-  defparam pulse_cold_reset.PULSE_EXT = 6;
-  defparam pulse_cold_reset.EDGE_TYPE = 1;
-  defparam pulse_cold_reset.IGNORE_RST_WHILE_BUSY = 1;
-
-altera_edge_detector pulse_warm_reset (
-  .clk       (fpga_clk_50),
-  .rst_n     (hps_fpga_reset_n),
-  .signal_in (hps_reset_req[1]),
-  .pulse_out (hps_warm_reset)
-);
-  defparam pulse_warm_reset.PULSE_EXT = 2;
-  defparam pulse_warm_reset.EDGE_TYPE = 1;
-  defparam pulse_warm_reset.IGNORE_RST_WHILE_BUSY = 1;
-
-altera_edge_detector pulse_debug_reset (
-  .clk       (fpga_clk_50),
-  .rst_n     (hps_fpga_reset_n),
-  .signal_in (hps_reset_req[2]),
-  .pulse_out (hps_debug_reset)
-);
-  defparam pulse_debug_reset.PULSE_EXT = 32;
-  defparam pulse_debug_reset.EDGE_TYPE = 1;
-  defparam pulse_debug_reset.IGNORE_RST_WHILE_BUSY = 1;
-
+defparam top_io_modules_inst.KEY_WIDTH = 2;
 
 // Mesa code ------------------------------------------------------//
-
-//use work.PIN_DRINGx2_34.all;
-//import PIN_DRINGx2_34::*;
 
 
 assign clklow_sig = fpga_clk_50;
@@ -403,23 +429,66 @@ assign clkhigh_sig = hm_clk_high;
 assign clkmed_sig = hm_clk_med;
 
 //import work::*;
-
+genvar ig;
+generate for(ig=0;ig<NumGPIO;ig=ig+1) begin : iosigloop
+//	assign io_leds_sig[ig] = hm2_leds_sig[(ig*MuxLedWidth)+:MuxLedWidth];
+	assign io_bitsout_sig[ig] = hm2_bitsout_sig[(ig*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
+	assign io_bitsin_sig[ig] = hm2_bitsin_sig[(ig*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
+	if(ig == 0) assign GPIO_0 = GPIO[ig];
+	if(ig == 1) assign GPIO_1 = GPIO[ig];
+//	if(ig == 2) assign GPIO_2 = GPIO[ig];
+//	if(ig == 3) assign GPIO_3 = GPIO[ig];
+end
+endgenerate
+/*
 parameter IOWIDTH = 34;
 parameter LIOWidth = 6;
 parameter IOPORTS = 2;
 
 wire [IOWIDTH-1:0] iobits_sig;
-assign GPIO_0[IOWIDTH-1:0] = iobits_sig;
+assign GPIO_0[IOWIDTH-1:0] = iobits_sig;*/
 
 //wire [LIOWidth-1:0] liobits_sig;
 //assign GPIO_1[LIOWidth-1:0] = liobits_sig;
 
+assign LEDR[7:6] = ~hm2_leds_sig[1:0];
 
-//HostMot2 #(.IOWidth(IOWIDTH),.IOPorts(IOPORTS)) HostMot2_inst
-HostMot2 HostMot2_inst
+gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 (
-	.ibus(hm_datai) ,	// input [buswidth-1:0] ibus_sig
-	.obus(hm_datao) ,	// output [buswidth-1:0] obus_sig
+	.CLOCK(clklow_sig) ,	// input  CLOCK_sig
+	.reg_clk(clkhigh_sig) ,	// input  CLOCK_sig
+	.reset_reg_N(hps_fpga_reset_n) ,	// input  reset_reg_N_sig
+	.chip_sel(hm_chipsel[0]) ,	// input  data_ready_sig
+	.write_reg(hm_write) ,	// input  data_ready_sig
+	.read_reg(hm_read) ,	// input  data_ready_sig
+	.busaddress(hm_address) ,	// input [AddrWidth-1:0] address_sig
+	.busdata_in(hm_datai) ,	// input [BusWidth-1:0] data_in_sig
+	.iodatafromhm3 ( io_bitsout_sig ),
+	.busdata_fromhm2 ( hm_datao ),
+	.gpioport( GPIO ),
+	.iodatatohm3 ( io_bitsin_sig ),
+	.busdata_out ( busdata_out ),
+// ADC
+	.adc_clk(adc_clk_40),	// input  adc_clk_sig
+	.ADC_CONVST_o(ADC_CONVST),	// output  ADC_CONVST_o_sig
+	.ADC_SCK_o(ADC_SCK),	// output  ADC_SCK_o_sig
+	.ADC_SDI_o(ADC_SDI),	// output  ADC_SDI_o_sig
+	.ADC_SDO_i(ADC_SDO)	// input  ADC_SDO_i_sig
+);
+
+defparam gpio_adr_decoder_reg_inst.AddrWidth = AddrWidth;
+defparam gpio_adr_decoder_reg_inst.BusWidth = BusWidth;
+defparam gpio_adr_decoder_reg_inst.GPIOWidth = GPIOWidth;
+defparam gpio_adr_decoder_reg_inst.MuxGPIOIOWidth = MuxGPIOIOWidth;
+defparam gpio_adr_decoder_reg_inst.NumIOAddrReg = NumIOAddrReg;
+//defparam gpio_adr_decoder_reg_inst.MuxLedWidth = MuxLedWidth;
+defparam gpio_adr_decoder_reg_inst.NumGPIO = NumGPIO;
+
+
+HostMot3_cfg HostMot3_inst
+(
+	.ibustop(hm_datai) ,	// input [buswidth-1:0] ibus_sig
+	.obustop(hm_datao) ,	// output [buswidth-1:0] obus_sig
 	.addr(hm_address) ,	// input [addrwidth-1:2] addr_sig	-- addr => A(AddrWidth-1 downto 2),
 	.readstb(hm_read ) ,	// input  readstb_sig
 	.writestb(hm_write) ,	// input  writestb_sig
@@ -427,42 +496,45 @@ HostMot2 HostMot2_inst
 	.clklow(clklow_sig) ,	// input  clklow_sig  				-- PCI clock --> all
 	.clkmed(clkmed_sig) ,	// input  clkmed_sig  				-- Processor clock --> sserialwa, twiddle
 	.clkhigh(clkhigh_sig) ,	// input  clkhigh_sig				-- High speed clock --> most
-//	.int(int_sig) ,	// output  int_sig							--int => LINT, ---> PCI ?
+	.intirq(int_sig) ,	// output  int_sig							--int => LINT, ---> PCI ?
 //	.dreq(dreq_sig) ,	// output  dreq_sig
 //	.demandmode(demandmode_sig) ,	// output  demandmode_sig
-	.iobits(iobits_sig) ,	// inout [iowidth-1:0] 				--iobits => IOBITS,-- external I/O bits
-//	.liobits(liobits_sig) ,	// inout [liowidth-1:0] 			--liobits_sig
+	.iobitsouttop(hm2_bitsout_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
+	.iobitsintop(hm2_bitsin_sig) ,	// inout [IOWidth-1:0] 				--iobits => IOBITS,-- external I/O bits
+//	.liobits(liobits_sig) ,	// inout [lIOWidth-1:0] 			--liobits_sig
 //	.rates(rates_sig) ,	// output [4:0] rates_sig
-	.leds(GPIO_0[35:34]) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
+	.leds(hm2_leds_sig) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
+//	.leds(GPIO_0[35:34]) 	// output [ledcount-1:0] leds_sig		--leds => LEDS
 );
-//defparam HostMot2_inst.ThePinDesc = PinDesc;
-//defparam HostMot2_inst.TheModuleID =  "ModuleID";
-defparam HostMot2_inst.IDROMType = 3;
-defparam HostMot2_inst.SepClocks = "true";
-defparam HostMot2_inst.OneWS = "true";
-defparam HostMot2_inst.UseIRQLogic = "false";
-defparam HostMot2_inst.PWMRefWidth = 13;
-defparam HostMot2_inst.UseWatchDog = "true";
-defparam HostMot2_inst.OffsetToModules = 64;
-defparam HostMot2_inst.OffsetToPinDesc = 448;
-//defparam HostMot2_inst.ClockHigh = "ClockHigh25";
-//defparam HostMot2_inst.ClockMed = "ClockMed25";
-//defparam HostMot2_inst.ClockLow = "ClockMed20";
-//defparam HostMot2_inst.BoardNameLow = BoardNameMESA;
-//defparam HostMot2_inst.BoardNameHigh = "BoardName5i25";
-defparam HostMot2_inst.FPGASize = 9;
-defparam HostMot2_inst.FPGAPins = 144;
-defparam HostMot2_inst.IOPorts = 2;
-defparam HostMot2_inst.IOWidth = 34;
-defparam HostMot2_inst.LIOWidth = 6;
-defparam HostMot2_inst.PortWidth = 17;
-defparam HostMot2_inst.BusWidth = 32;
-defparam HostMot2_inst.AddrWidth = 16;
-defparam HostMot2_inst.InstStride0 = 4;
-defparam HostMot2_inst.InstStride1 = 64;
-defparam HostMot2_inst.RegStride0 = 256;
-defparam HostMot2_inst.RegStride1 = 256;
-defparam HostMot2_inst.LEDCount = 2;
+
+// defparam HostMot3_inst.ThePinDesc = PinDesc;
+// defparam HostMot3_inst.TheModuleID =  "ModuleID";
+// defparam HostMot3_inst.IDROMType = 3;
+defparam HostMot3_inst.SepClocks = SepClocks;
+defparam HostMot3_inst.OneWS = OneWS;
+// defparam HostMot3_inst.UseIRQLogic = "true";
+// defparam HostMot3_inst.PWMRefWidth = 13;
+// defparam HostMot3_inst.UseWatchDog = "true";
+// defparam HostMot3_inst.OffsetToModules = 64;
+// defparam HostMot3_inst.OffsetToPinDesc = 448;
+defparam HostMot3_inst.ClockHigh = ClockHigh;
+defparam HostMot3_inst.ClockMed = ClockMed;
+defparam HostMot3_inst.ClockLow = ClockLow;
+defparam HostMot3_inst.BoardNameLow = BoardNameLow;
+defparam HostMot3_inst.BoardNameHigh = BoardNameHigh;
+defparam HostMot3_inst.FPGASize = FPGASize;
+defparam HostMot3_inst.FPGAPins = FPGAPins;
+defparam HostMot3_inst.IOPorts = IOPorts;
+defparam HostMot3_inst.IOWidth = IOWidth;
+defparam HostMot3_inst.PortWidth = PortWidth;
+defparam HostMot3_inst.LIOWidth = LIOWidth;
+defparam HostMot3_inst.LEDCount = LEDCount;
+defparam HostMot3_inst.BusWidth = BusWidth;
+defparam HostMot3_inst.AddrWidth = AddrWidth;
+// defparam HostMot3_inst.InstStride0 = 4;
+// defparam HostMot3_inst.InstStride1 = 64;
+// defparam HostMot3_inst.RegStride0 = 256;
+// defparam HostMot3_inst.RegStride1 = 256;
 
 
 
