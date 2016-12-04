@@ -78,7 +78,8 @@ begin
 	if (slave_read_status)
 		readdataout <= {4'b0, measure_fifo_num, 9'b0, measure_fifo_ch, 3'b0, measure_fifo_done};
 	else if (slave_read_data)
-		readdataout <= {13'b0, fifo_ch_q, 4'b0, fifo_q};
+//		readdataout <= {13'b0, fifo_ch_q, 4'b0, fifo_q};
+		readdataout <= {20'b0, fifo_q};
 end
 
 reg pre_slave_read_data;
