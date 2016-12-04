@@ -1,8 +1,8 @@
 #
 TARGET = mksocmemio
 
-SOCEDS_DEST_ROOT = /home/mib/altera/15.1/embedded
-HWLIBS_ROOT = /home/mib/altera/15.1/embedded/ip/altera/hps/altera_hps/hwlib/
+SOCEDS_DEST_ROOT = /home/mib/intelFPGA/16.1/embedded
+HWLIBS_ROOT = /home/mib/intelFPGA/16.1/embedded/ip/altera/hps/altera_hps/hwlib/
 CROSS_COMPILE := ~/bin/gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux/bin/arm-linux-gnueabihf-
 ALT_DEVICE_FAMILY ?= soc_cv_av
 
