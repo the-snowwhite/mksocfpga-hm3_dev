@@ -4,7 +4,7 @@ module bidir_io
 //	input [PortNumWidth-1:0] portselnum [IOWidth-1:0],
 	input		clk,
 	input 	[IOWidth-1:0] out_ena,
-//	input 	[IOWidth-1:0] od,
+	input 	[IOWidth-1:0] od,
 	input 	[IOWidth-1:0] out_data,
 	inout 	[IOWidth-1:0] gpioport,
 	output	[IOWidth-1:0] gpio_in_data
@@ -16,7 +16,8 @@ reg  [IOWidth-1:0] out_data_reg;
 genvar loop;
 generate
 	for(loop=0;loop<IOWidth;loop=loop+1) begin : iogenloop
-		assign gpioport[loop]  = out_ena[loop] ? out_data_reg[loop] : 1'bZ;
+		assign od_data[loop] = (od[loop] ? ((out_data[loop] == 1'b1) ? 1'b0 : 1'bz) : out_data[loop]);
+		assign gpioport[loop]  = out_ena[loop] ? od_data[loop] : 1'bZ;
 		assign gpio_in_data[loop]  = io_data_in[loop];
 
 		always @ (posedge clk)
@@ -28,7 +29,7 @@ generate
 endgenerate
 
 
-//	wire [IOWidth-1:0] od_data;
+	wire [IOWidth-1:0] od_data;
 //	wire [IOWidth-1:0] muxindata;
 //	wire [IOWidth-1:0] muxdata [IOWidth-1:0];
 //	reg  [IOWidth-1:0] muxoutdata;
