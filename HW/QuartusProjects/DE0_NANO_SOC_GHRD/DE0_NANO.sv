@@ -8,7 +8,7 @@
 //   in synthesis for all Terasic Development Boards and Altera Development
 //   Kits made by Terasic.  Other use of this code, including the selling
 //   ,duplication, or modification of any portion is strictly prohibited.
-//
+//BusWidth
 // Disclaimer:
 //
 //   This VHDL/Verilog or C/C++ source code is intended as a design reference

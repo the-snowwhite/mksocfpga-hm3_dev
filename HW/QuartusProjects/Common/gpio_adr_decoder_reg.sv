@@ -19,6 +19,13 @@
 //   	0x1114	DDR for I/O port  128..144
 //   	'1' bit in DDR register makes corresponding GPIO bit an output
 //
+//   	0x1120	Portnums for I/O port  0..3
+//   	0x1124	Portnums for I/O port  4..7
+//   	0x1128	Portnums for I/O port  8..11
+//   	0x112C	Portnums for I/O port  12..15
+//   	0x1130	Portnums for I/O port  16..19
+//   	0x1134	Portnums for I/O port  20..23
+//
 //		0x1300	OpenDrainSelect for I/O port  0..23
 //		0x1304	OpenDrainSelect for I/O port  24..47
 //		0x1308	OpenDrainSelect for I/O port  48..71
@@ -92,9 +99,9 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOAddrReg * NumPinsPrIOAddr;
 	reg [IoRegWidth-1:0]			od_reg[NumIOAddrReg-1:0];
 	reg [IoRegWidth-1:0]			ddr_reg[NumIOAddrReg-1:0];
 
-//	reg [BusWidth-1:0]			mux_reg[NumIOAddrReg-1:0][Mux_regPrIOReg-1:0];
+	reg [BusWidth-1:0]			mux_reg[NumIOAddrReg-1:0][Mux_regPrIOReg-1:0];
 
-//	reg [PortNumWidth-1:0]		portselnum[TotalNumregs-1:0];
+	reg [PortNumWidth-1:0]		portselnum[TotalNumregs-1:0];
 
 
 	wire [GPIOWidth-1:0]			io_reg_gpio[NumGPIO-1:0];
@@ -114,20 +121,20 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOAddrReg * NumPinsPrIOAddr;
 
 	wire adc_address_valid = ( (busaddress_r == 16'h0300) || (busaddress_r == 16'h0304)) ? 1'b1 : 1'b0;
 //	wire io_address_valid = ((busaddress_r >= 16'h1000) && (busaddress_r < 16'h1020)) ? 1'b1 : 1'b0;
-//	wire ddr_address_valid = ((busaddress_r >= 16'h1100) && (busaddress_r < 16'h1120)) ? 1'b1 : 1'b0;
-//	wire mux_address_valid = ((busaddress_r >= 16'h1120) && (busaddress_r < 16'h1200)) ? 1'b1 : 1'b0;
-//	wire od_address_valid = ((busaddress_r >= 16'h1300) && (busaddress_r < 16'h1320)) ? 1'b1 : 1'b0;
+	wire ddr_address_valid = ((busaddress_r >= 16'h1100) && (busaddress_r < 16'h1120)) ? 1'b1 : 1'b0;
+	wire mux_address_valid = ((busaddress_r >= 16'h1120) && (busaddress_r < 16'h1200)) ? 1'b1 : 1'b0;
+	wire od_address_valid = ((busaddress_r >= 16'h1300) && (busaddress_r < 16'h1320)) ? 1'b1 : 1'b0;
 
 	wire adc_read_valid = (adc_address_valid && read_adc_address) ?  1'b1 : 1'b0;
 //	wire io_read_valid = (io_address_valid && read_address) ?  1'b1 : 1'b0;
 //	wire ddr_read_valid = (ddr_address_valid && read_address) ?  1'b1 : 1'b0;
-//	wire mux_read_valid = (mux_address_valid && read_address) ?  1'b1 : 1'b0;
+	wire mux_read_valid = (mux_address_valid && read_address) ?  1'b1 : 1'b0;
 //	wire od_read_valid = (od_address_valid && read_address) ?  1'b1 : 1'b0;
 
 	wire adc_write_valid = (adc_address_valid && write_address) ?  1'b1 : 1'b0;
 //	wire io_write_valid = (io_address_valid && write_address) ?  1'b1 : 1'b0;
 //	wire ddr_write_valid = (ddr_address_valid && write_address) ?  1'b1 : 1'b0;
-//	wire mux_write_valid = (mux_address_valid && write_address) ?  1'b1 : 1'b0;
+	wire mux_write_valid = (mux_address_valid && write_address) ?  1'b1 : 1'b0;
 //	wire od_write_valid = (od_address_valid && write_address) ?  1'b1 : 1'b0;
 
 // ADC module:
@@ -202,99 +209,91 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 		end
 
 //		for(numgio=0;numio<NumGPIO;numgio++)begin : gioloop
-////			for(numio=0;numio<GPIOWidth;numio++)begin : gportloop
-////				assign gpioport[numgio][numio] = out_ena[numgio][numio] ? io_reg_gpio[numgio][numio] : 1'bz;
+//			for(numio=0;numio<GPIOWidth;numio++)begin : gportloop
+//				assign gpioport[numgio][numio] = out_ena[numgio][numio] ? io_reg_gpio[numgio][numio] : 1'bz;
 //			assign gpioport[numgio] = out_ena[numgio] ? io_reg_gpio[numgio] : '{NumGPIO{1'bz}};
 //			assign io_data_in[numgio] = gpioport[numgio];
-////			end
+//			end
 //		end
 	endgenerate
 
-//	genvar ni,ps;
-//	generate for(ni=0;ni<NumIOAddrReg;ni=ni+1) begin : niinitloop
-//		for(ps=0;ps<Mux_regPrIOReg;ps=ps+1) begin : psinitloop
-//			always @(posedge reg_clk) begin
-//				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+0] <= mux_reg[ni][ps][0+:PortNumWidth];
-//				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+1] <= mux_reg[ni][ps][PortNumWidth+:PortNumWidth];
-//				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+2] <= mux_reg[ni][ps][(PortNumWidth*2)+:PortNumWidth];
-//				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+3] <= mux_reg[ni][ps][(PortNumWidth*3)+:PortNumWidth];
-//			end
-//		end
-//	end
-//	endgenerate
-//
+	genvar ni,ps;
+	generate for(ni=0;ni<NumIOAddrReg;ni=ni+1) begin : niinitloop
+		for(ps=0;ps<Mux_regPrIOReg;ps=ps+1) begin : psinitloop
+			always @(posedge reg_clk) begin
+				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+0] <= mux_reg[ni][ps][0+:PortNumWidth];
+				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+1] <= mux_reg[ni][ps][PortNumWidth+:PortNumWidth];
+				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+2] <= mux_reg[ni][ps][(PortNumWidth*2)+:PortNumWidth];
+				portselnum[(ps*4)+((Mux_regPrIOReg*4)*ni)+3] <= mux_reg[ni][ps][(PortNumWidth*3)+:PortNumWidth];
+			end
+		end
+	end
+	endgenerate
 
-//	genvar po;
-//	generate for(po=0;po<NumGPIO;po=po+1) begin : pnloop
-//		assign portnumsel[po][MuxGPIOIOWidth-1:0] = portselnum[(po*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
-//	end
-//	endgenerate
-//
+
+	genvar po;
+	generate for(po=0;po<NumGPIO;po=po+1) begin : pnloop
+		assign portnumsel[po][MuxGPIOIOWidth-1:0] = portselnum[(po*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
+	end
+	endgenerate
+
 //	assign valid_address = 	((local_address_r >= 'h400) && (local_address_r < 'h480) ||
 //									(local_address_r >= 'h4C0) && local_address_r < 'h500) ? 1'b1 : 1'b0;
 
 //	assign write_address_valid = ((valid_address == 1'b1) && (write_address == 1'b1)) ? 1'b1 : 1'b0;
 
-//	assign mux_reg_index 	= local_address_r - 16'h0448;
-//	assign mux_reg_addr		= (mux_reg_index[6:2]);
-//	assign mux_reg_byte		= (mux_reg_index[1:0]);
+	assign mux_reg_index 	= busaddress_r - 16'h1120;
+	assign mux_reg_addr		= (mux_reg_index[6:2]);
+	assign mux_reg_byte		= (mux_reg_index[1:0]);
 
 	// Writes:
 //	genvar il, pl, ili;
-//	generate
-//		for(il=0;il<NumIOAddrReg;il=il+1) begin : reg_initloop
-//		for(pl=0;pl<NumPinsPrIOAddr;pl=pl+1) begin : initpnumloop
-//			always @(posedge reset_in_r or posedge io_write_valid or posedge ddr_write_valid or posedge od_write_valid or posedge write_address)begin
-
+	genvar il;
+	generate
+		for(il=0;il<NumIOAddrReg;il=il+1) begin : reg_initloop
 			always @( posedge reset_in_r or posedge write_address) begin
 				if (reset_in_r) begin
-					io_reg[0] <= 0; ddr_reg[0] <= 0; od_reg[0] <= 0;
-					io_reg[1] <= 0; ddr_reg[1] <= 0; od_reg[1] <= 0;
-					io_reg[2] <= 0; ddr_reg[2] <= 0; od_reg[2] <= 0;
-					io_reg[3] <= 0; ddr_reg[3] <= 0; od_reg[3] <= 0;
-					io_reg[4] <= 0; ddr_reg[4] <= 0; od_reg[4] <= 0;
-					io_reg[5] <= 0; ddr_reg[5] <= 0; od_reg[5] <= 0;
+					io_reg[il] <= 0; ddr_reg[il] <= 0; od_reg[il] <= 0;
 				end
-//					if(pl == 0) begin io_reg[l] <= 0; ddr_reg[l] <= 0; od_reg[l] <= 0; end
-//					mux_reg[l][pl] <= (((l*16) + (pl*4)) + (((l*16)+((pl*4)+1)) << PortNumWidth) +
-//					(((l*16)+((pl*4)+2)) << (PortNumWidth * 2)) + (((l*16)+((pl*4)+3)) << (PortNumWidth * 3)));
-//				end
 				else if ( write_address ) begin
-					if (busaddress_r == 16'h1000) begin io_reg[0] <= busdata_in_r[IoRegWidth-1:0]; end
-//					else if (busaddress_r == 16'h1004) begin io_reg[1] <= busdata_in_r[IoRegWidth-1:0]; end
-//					else if (busaddress_r == 16'h1008) begin io_reg[2] <= busdata_in_r[IoRegWidth-1:0]; end
-//					else if (busaddress_r == 16'h100c) begin io_reg[3] <= busdata_in_r[IoRegWidth-1:0]; end
-//					else if (busaddress_r == 16'h1010) begin io_reg[4] <= busdata_in_r[IoRegWidth-1:0]; end
-//					else if (busaddress_r == 16'h1014) begin io_reg[5] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h1100) begin ddr_reg[0] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h1104) begin ddr_reg[1] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h1108) begin ddr_reg[2] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h110c) begin ddr_reg[3] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h1110) begin ddr_reg[4] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h1114) begin ddr_reg[5] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h1300) begin od_reg[0] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h1304) begin od_reg[1] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h1308) begin od_reg[2] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h130c) begin od_reg[3] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h1310) begin od_reg[4] <= busdata_in_r[IoRegWidth-1:0]; end
-					else if (busaddress_r == 16'h1314) begin od_reg[5] <= busdata_in_r[IoRegWidth-1:0]; end
-//					else if (ddr_write_valid) begin ddr_reg[local_address_r[2:0]][IoRegWidth-1:0] <= busdata_in_r[IoRegWidth-1:0]; end
-//					else if (od_write_valid) begin od_reg[local_address_r[2:0]][IoRegWidth-1:0] <= busdata_in_r[IoRegWidth-1:0]; end
-//						else if (mux_address_valid) begin mux_reg[mux_reg_addr][mux_reg_byte] <= busdata_in_r; end
-//					else begin iodatatohm3 <= busdata_in_r; end
+					if (busaddress_r == (16'h1000 + (il*4))) begin io_reg[il] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == (16'h1100 + (il*4))) begin ddr_reg[il] <= busdata_in_r[IoRegWidth-1:0]; end
+					else if (busaddress_r == (16'h1300 + (il*4))) begin od_reg[il] <= busdata_in_r[IoRegWidth-1:0]; end
+//						else if (ddr_write_valid) begin ddr_reg[local_address_r[2:0]][IoRegWidth-1:0] <= busdata_in_r[IoRegWidth-1:0]; end
+//						else if (od_write_valid) begin od_reg[local_address_r[2:0]][IoRegWidth-1:0] <= busdata_in_r[IoRegWidth-1:0]; end
 				end
 			end
-//		end
+		end
+	endgenerate
 
+	genvar mi, mo;
+	generate
+		for(mo=0;mo<NumIOAddrReg;mo=mo+1) begin : muxreg_oloop
+			for(mi=0;mi<Mux_regPrIOReg;mi=mi+1) begin : muxreg_iloop
+				always @( posedge reset_in_r or posedge write_address) begin
+					if (reset_in_r) begin
+						mux_reg[mo][mi] <= (((mo*24) + (mi*4)) + (((mo*24)+((mi*4)+1)) << PortNumWidth) +
+						(((mo*24)+((mi*4)+2)) << (PortNumWidth * 2)) + (((mo*24)+((mi*4)+3)) << (PortNumWidth * 3)));
+					end
+					else if ( write_address ) begin
+						if (busaddress_r == (16'h1120 + (mo*24) + (mi*4))) begin
+							mux_reg[mo][mi] <= busdata_in_r;
+						end
+					end
+				end
+			end
+		end
+	endgenerate
+	
 	genvar bloop;
 	generate
 		for(bloop=0;bloop<NumGPIO;bloop=bloop+1) begin : gpiooutloop
 			bidir_io #(.IOWidth(GPIOWidth),.PortNumWidth(PortNumWidth)) bidir_io_inst
 			(
 				.clk(reg_clk),
-//				.portselnum(portnumsel[il]),
+				.portselnum(portnumsel[bloop]),
 				.out_ena(out_ena[bloop]) ,	// input  out_ena_sig
-//				.od(od[il]) ,	// input  od_sig
+				.od(od[bloop]) ,	// input  od_sig
 				.out_data(iodatafromhm3[bloop]) ,  // input [IOIOWidth-1:0] out_data_sig
 				.gpioport(gpioport[bloop]) ,	// inout [IOIOWidth-1:0] gpioport_sig
 				.gpio_in_data(gpio_input_data[bloop]) 	// output [IOIOWidth-1:0] read_data_sig
@@ -307,6 +306,9 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 
 	// Read:
 
+	integer oo,om,oi;
+	generate
+	
 	always @(posedge reset_in_r or posedge read_address)begin
 		if (reset_in_r)begin
 //			busdata_to_cpu <= ~ 'bz;
@@ -321,22 +323,24 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 //			else if(busaddress_r == 'h100c) begin busdata_to_cpu <= {8'b0,gpio_input_data[2][23:0]}; end
 //			else if(busaddress_r == 'h1010) begin busdata_to_cpu <= {8'b0,gpio_input_data[3][11:0],gpio_input_data[2][35:24]}; end
 //			else if(busaddress_r == 'h1014) begin busdata_to_cpu <= {8'b0,gpio_input_data[3][35:12]}; end
-			else if (busaddress_r == 'h1100) begin busdata_to_cpu <= ddr_reg[0]; end
-			else if (busaddress_r == 'h1104) begin busdata_to_cpu <= ddr_reg[1]; end
-			else if (busaddress_r == 'h1108) begin busdata_to_cpu <= ddr_reg[2]; end
-			else if (busaddress_r == 'h110c) begin busdata_to_cpu <= ddr_reg[3]; end
-			else if (busaddress_r == 'h1110) begin busdata_to_cpu <= ddr_reg[4]; end
-			else if (busaddress_r == 'h1114) begin busdata_to_cpu <= ddr_reg[5]; end
-//		else if (mux_read_valid) begin busdata_to_cpu <= mux_reg[mux_reg_addr][mux_reg_byte]; end
-			else if (busaddress_r == 'h1300) begin busdata_to_cpu <= od_reg[0]; end
-			else if (busaddress_r == 'h1304) begin busdata_to_cpu <= od_reg[0]; end
-			else if (busaddress_r == 'h1308) begin busdata_to_cpu <= od_reg[0]; end
-			else if (busaddress_r == 'h130c) begin busdata_to_cpu <= od_reg[0]; end
-			else if (busaddress_r == 'h1310) begin busdata_to_cpu <= od_reg[0]; end
-			else if (busaddress_r == 'h1314) begin busdata_to_cpu <= od_reg[0]; end
+//			else if ((busaddress_r >= 16'h1100) && (busaddress_r < 16'h1200)) begin
+			else if (ddr_address_valid || od_address_valid) begin
+				for(oo=0;oo<NumIOAddrReg;oo=oo+1) begin : reggen_loop
+					if (busaddress_r == ('h1100 + (oo*4))) begin busdata_to_cpu <= ddr_reg[oo]; end
+					else if (busaddress_r == ('h1300 + (oo*4))) begin busdata_to_cpu <= od_reg[oo]; end
+				end
+			end
+			else if (mux_address_valid) begin
+				for(om=0;om<NumIOAddrReg;om=om+1) begin : mux_reggen_loop
+					for(oi=0;oi<Mux_regPrIOReg;oi=oi+1) begin : mux_reggen_loop
+						if (busaddress_r == ('h1120 + (om*24) + (oi*4))) begin busdata_to_cpu <= mux_reg[om][oi]; end
+					end
+				end
+			end
 			else begin busdata_to_cpu <= busdata_fromhm2; end
 		end
 	end
+	endgenerate
 
 endmodule
 
