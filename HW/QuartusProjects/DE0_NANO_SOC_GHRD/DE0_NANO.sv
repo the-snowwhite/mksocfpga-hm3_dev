@@ -291,13 +291,6 @@ parameter NumIOAddrReg = 6;
 	.clk_100mhz_out_clk                    (hm_clk_med),						//			clk_100mhz_out.clk
 	.clk_200mhz_out_clk                    (hm_clk_high),						//			clk_200mhz_out.clk
 	.adc_clk_40mhz_clk                     (adc_clk_40)                  //             adc_clk_40mhz.clk
-//	.adc_io_convst									(ADC_CONVST),						//			adc.CONVST
-//	.adc_io_sck										(ADC_SCK),							//			.SCK
-//	.adc_io_sdi										(ADC_SDI),							//			.SDI
-//	.adc_io_sdo										(ADC_SDO)							//			.SDO
-//      .axi_str_data                      (out_data[7:0]),               //               stream_port.data
-//      .axi_str_valid                     (out_data[8]),                 //                          .valid
-//      .axi_str_ready                     (ar_in_sig[1])                 //                          .ready
  );
 
 top_io_modules top_io_modules_inst
@@ -352,7 +345,10 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.ADC_CONVST_o(ADC_CONVST),	// output  ADC_CONVST_o_sig
 	.ADC_SCK_o(ADC_SCK),	// output  ADC_SCK_o_sig
 	.ADC_SDI_o(ADC_SDI),	// output  ADC_SDI_o_sig
-	.ADC_SDO_i(ADC_SDO)	// input  ADC_SDO_i_sig
+	.ADC_SDO_i(ADC_SDO),	// input  ADC_SDO_i_sig
+	.sense({ARDUINO_IO[9],ARDUINO_IO[10],ARDUINO_IO[11],ARDUINO_IO[12]}),
+	.charge(ARDUINO_IO[13]),
+	.buttons(fpga_debounced_buttons)
 );
 
 defparam gpio_adr_decoder_reg_inst.AddrWidth = AddrWidth;
@@ -362,6 +358,7 @@ defparam gpio_adr_decoder_reg_inst.MuxGPIOIOWidth = MuxGPIOIOWidth;
 defparam gpio_adr_decoder_reg_inst.NumIOAddrReg = NumIOAddrReg;
 //defparam gpio_adr_decoder_reg_inst.MuxLedWidth = MuxLedWidth;
 defparam gpio_adr_decoder_reg_inst.NumGPIO = NumGPIO;
+defparam gpio_adr_decoder_reg_inst.NumSense = 4;
 
 //
 // 	wire [LIOWidth-1:0] liobits_sig;

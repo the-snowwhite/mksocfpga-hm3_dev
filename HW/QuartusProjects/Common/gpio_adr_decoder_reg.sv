@@ -1,9 +1,12 @@
 /*
 //		adc addresses:
-//		0x0300 for start and status
-//		0x0304 for data
-*/
-/*
+//		0x0300	for start and status
+//		0x0304	for data
+
+//
+//		touch sensor address:
+//		0x0308	1 bit pr sensor
+//
 //		0x1000	I/O port  0..23
 //		0x1004  	I/O port 24..47
 //		0x1008	I/O port 48..71
@@ -58,11 +61,17 @@ module gpio_adr_decoder_reg(
 
 // adc interface
 
-	input   adc_clk, // max 40mhz
-	output  ADC_CONVST_o,
-	output  ADC_SCK_o,
-	output  ADC_SDI_o,
-	input   ADC_SDO_i
+	input													adc_clk, // max 40mhz
+	output												ADC_CONVST_o,
+	output												ADC_SCK_o,
+	output												ADC_SDI_o,
+	input													ADC_SDO_i,
+	
+//	Touch sensor:
+
+	input	[NumSense-1:0]								sense,
+	output												charge,
+	input	[1:0]											buttons
 );
 
 parameter AddrWidth     	= 16;
@@ -71,6 +80,8 @@ parameter GPIOWidth			= 36;
 parameter MuxGPIOIOWidth	= 36;
 parameter NumIOAddrReg		= 6;
 parameter NumGPIO 			= 2;
+
+parameter NumSense			= 4;
 
 // local param
 parameter IoRegWidth			= 24;
@@ -140,7 +151,11 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOAddrReg * NumPinsPrIOAddr;
 // ADC module:
 	wire [31:0]adc_data_out;
 
-
+// Touch sensor:
+	wire [NumSense-1:0]	sense_data_out;
+	wire sense_reset = ~reset_reg_N | ~buttons[1];
+//	wire sense_reset = ~reset_reg_N;
+	
 adc_ltc2308_fifo adc_ltc2308_fifo_inst
 (
 	.clock(CLOCK) ,	// input  clock_sig
@@ -208,13 +223,6 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 			assign od[3] = {od_reg[5][23:0],od_reg[4][23:12]};
 		end
 
-//		for(numgio=0;numio<NumGPIO;numgio++)begin : gioloop
-//			for(numio=0;numio<GPIOWidth;numio++)begin : gportloop
-//				assign gpioport[numgio][numio] = out_ena[numgio][numio] ? io_reg_gpio[numgio][numio] : 1'bz;
-//			assign gpioport[numgio] = out_ena[numgio] ? io_reg_gpio[numgio] : '{NumGPIO{1'bz}};
-//			assign io_data_in[numgio] = gpioport[numgio];
-//			end
-//		end
 	endgenerate
 
 	genvar ni,ps;
@@ -237,17 +245,12 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 	end
 	endgenerate
 
-//	assign valid_address = 	((local_address_r >= 'h400) && (local_address_r < 'h480) ||
-//									(local_address_r >= 'h4C0) && local_address_r < 'h500) ? 1'b1 : 1'b0;
-
-//	assign write_address_valid = ((valid_address == 1'b1) && (write_address == 1'b1)) ? 1'b1 : 1'b0;
 
 	assign mux_reg_index 	= busaddress_r - 16'h1120;
 	assign mux_reg_addr		= (mux_reg_index[6:2]);
 	assign mux_reg_byte		= (mux_reg_index[1:0]);
 
 	// Writes:
-//	genvar il, pl, ili;
 	genvar il;
 	generate
 		for(il=0;il<NumIOAddrReg;il=il+1) begin : reg_initloop
@@ -259,8 +262,6 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 					if (busaddress_r == (16'h1000 + (il*4))) begin io_reg[il] <= busdata_in_r[IoRegWidth-1:0]; end
 					else if (busaddress_r == (16'h1100 + (il*4))) begin ddr_reg[il] <= busdata_in_r[IoRegWidth-1:0]; end
 					else if (busaddress_r == (16'h1300 + (il*4))) begin od_reg[il] <= busdata_in_r[IoRegWidth-1:0]; end
-//						else if (ddr_write_valid) begin ddr_reg[local_address_r[2:0]][IoRegWidth-1:0] <= busdata_in_r[IoRegWidth-1:0]; end
-//						else if (od_write_valid) begin od_reg[local_address_r[2:0]][IoRegWidth-1:0] <= busdata_in_r[IoRegWidth-1:0]; end
 				end
 			end
 		end
@@ -317,6 +318,7 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 		else if (read_address) begin
 //			if (adc_address_valid) begin busdata_to_cpu <= adc_data_out;	end
 			if ((busaddress_r == 'h0300) || (busaddress_r == 'h0304)) begin busdata_to_cpu <= adc_data_out;	end
+			if (busaddress_r == 'h0308) begin busdata_to_cpu <= sense_data_out;	end
 			else if(busaddress_r == 'h1000) begin busdata_to_cpu <= {8'b0,gpio_input_data[0][23:0]}; end
 			else if(busaddress_r == 'h1004) begin busdata_to_cpu <= {8'b0,gpio_input_data[1][11:0],gpio_input_data[0][35:24]}; end
 			else if(busaddress_r == 'h1008) begin busdata_to_cpu <= {8'b0,gpio_input_data[1][35:12]}; end
@@ -342,5 +344,24 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 	end
 	endgenerate
 
+		capsense capsense_inst
+	(
+		.clk(reg_clk) ,	// input  clk_sig
+		.reset(sense_reset) ,	// input  reset_sig
+		.sense(sense) ,	// input [num-1:0] sense_sig
+		.charge(charge) ,	// output  charge_sig
+		.touched(sense_data_out) 	// output [num-1:0] touched_sig
+	);
+
+	defparam capsense_inst.num = NumSense;
+	// States
+	defparam capsense_inst.CHARGE = 1;
+	defparam capsense_inst.DISCHARGE = 2;
+	// freqwuency in Mhz  , times in us
+	defparam capsense_inst.clockfrequency = 200;
+	defparam capsense_inst.periodtime = 5;
+
+	
+	
 endmodule
 
