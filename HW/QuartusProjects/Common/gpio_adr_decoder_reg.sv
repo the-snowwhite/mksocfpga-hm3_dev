@@ -123,7 +123,8 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOAddrReg * NumPinsPrIOAddr;
 	wire [GPIOWidth-1:0]			out_ena[NumGPIO-1:0];
 	wire [GPIOWidth-1:0]			od[NumGPIO-1:0];
 
-	wire [PortNumWidth-1:0]		portnumsel[NumGPIO-1:0][GPIOWidth-1:0];
+//	wire [PortNumWidth-1:0]		portnumsel[NumGPIO-1:0][GPIOWidth-1:0];
+	wire [PortNumWidth-1:0]		portnumsel[(GPIOWidth * NumGPIO)-1:0];
 
 	wire read_address 			= read_reg_r[ReadInShift];
 	wire read_adc_address 		= read_reg_r[1];
@@ -238,13 +239,14 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 	end
 	endgenerate
 
-
+/*
 	genvar po;
 	generate for(po=0;po<NumGPIO;po=po+1) begin : pnloop
 		assign portnumsel[po][MuxGPIOIOWidth-1:0] = portselnum[(po*MuxGPIOIOWidth)+:MuxGPIOIOWidth];
 	end
 	endgenerate
-
+*/
+	assign portnumsel[(MuxGPIOIOWidth *NumGPIO)-1:0] = portselnum[(MuxGPIOIOWidth *NumGPIO)-1:0];
 
 	assign mux_reg_index 	= busaddress_r - 16'h1120;
 	assign mux_reg_addr		= (mux_reg_index[6:2]);
@@ -285,7 +287,7 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 			end
 		end
 	endgenerate
-	
+/*	
 	genvar bloop;
 	generate
 		for(bloop=0;bloop<NumGPIO;bloop=bloop+1) begin : gpiooutloop
@@ -303,6 +305,17 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 //			defparam bidir_io_inst[il].PortNumWidth = PortNumWidth;
 		end
 	endgenerate
+*/
+	bidir_io #(.IOWidth(GPIOWidth * NumGPIO),.PortNumWidth(PortNumWidth)) bidir_io_inst
+	(
+		.clk(reg_clk),
+		.portselnum(portnumsel),
+		.out_ena({out_ena[1],out_ena[0]}) ,	// input  out_ena_sig
+		.od({od[1],od[0]}) ,	// input  od_sig
+		.out_data({iodatafromhm3[1],iodatafromhm3[0]}) ,  // input [IOIOWidth-1:0] out_data_sig
+		.gpioport({gpioport[1],gpioport[0]}) ,	// inout [IOIOWidth-1:0] gpioport_sig
+		.gpio_in_data({gpio_input_data[1],gpio_input_data[0]}) 	// output [IOIOWidth-1:0] read_data_sig
+	);
 
 
 	// Read:
