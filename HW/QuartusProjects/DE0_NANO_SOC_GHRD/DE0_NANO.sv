@@ -37,9 +37,9 @@
 module DE0_NANO(
 
       ///////// ADC /////////
-      output             ADC_CONVST,
-      output             ADC_SCK,
-      output             ADC_SDI,
+      output           ADC_CONVST,
+      output           ADC_SCK,
+      output           ADC_SDI,
       input              ADC_SDO,
 
       ///////// ARDUINO /////////
@@ -152,22 +152,22 @@ parameter NumIOAddrReg = 6;
 	assign fpga_clk_50 = FPGA_CLK2_50;
 	assign stm_hw_events    = {{15{1'b0}}, SW, fpga_led_internal, fpga_debounced_buttons};
 	// hm2
-	wire [AddrWidth-3:0]			hm_address;
-	wire [31:0] 					hm_datao;
-	wire [31:0] 					hm_datai;
-	wire [31:0] 					busdata_out;
-	wire       						hm_read;
-	wire 								hm_write;
-	wire [3:0]						hm_chipsel;
-	wire								hm_clk_med;
-	wire								hm_clk_high;
-	wire								adc_clk_40;
-	wire 								clklow_sig;
-	wire 								clkmed_sig;
-	wire 								clkhigh_sig;
+	wire [AddrWidth-3:0]	hm_address;
+	wire [31:0] 					hm_datao;
+	wire [31:0] 					hm_datai;
+	wire [31:0] 					busdata_out;
+	wire       						hm_read;
+	wire 							hm_write;
+	wire [3:0]					hm_chipsel;
+	wire								hm_clk_med;
+	wire								hm_clk_high;
+	wire								adc_clk_40;
+	wire 							clklow_sig;
+	wire 							clkmed_sig;
+	wire 							clkhigh_sig;
 
 // Mesa I/O Signals:
-	wire [LEDCount-1:0]			hm2_leds_sig;
+	wire [LEDCount-1:0]		hm2_leds_sig;
 	wire [IOWidth-1:0] 			hm2_bitsout_sig;
 	wire [IOWidth-1:0] 			hm2_bitsin_sig;
 
@@ -194,7 +194,7 @@ parameter NumIOAddrReg = 6;
 //  assign out_oe = 9'b1;
 //  assign ar_out_oe = 2'b0;
 
- soc_system u0 (
+soc_system u0 (
 	//Clock&Reset
 	.clk_clk                               (FPGA_CLK1_50 ),                               //                            clk.clk
 	.reset_reset_n                         (hps_fpga_reset_n ),                         //                          reset.reset_n
@@ -277,21 +277,21 @@ parameter NumIOAddrReg = 6;
 	.button_pio_export                     ( fpga_debounced_buttons	), // button_pio_external_connection.export
 	.hps_0_h2f_reset_reset_n               ( hps_fpga_reset_n ),                //                hps_0_h2f_reset.reset_n
 	.hps_0_f2h_cold_reset_req_reset_n      (~hps_cold_reset ),      //       hps_0_f2h_cold_reset_req.reset_n
-    .hps_0_f2h_debug_reset_req_reset_n     (~hps_debug_reset ),     //      hps_0_f2h_debug_reset_req.reset_n
-    .hps_0_f2h_stm_hw_events_stm_hwevents  (stm_hw_events ),  //        hps_0_f2h_stm_hw_events.stm_hwevents
-    .hps_0_f2h_warm_reset_req_reset_n      (~hps_warm_reset ),      //       hps_0_f2h_warm_reset_req.reset_n
+	.hps_0_f2h_debug_reset_req_reset_n     (~hps_debug_reset ),     //      hps_0_f2h_debug_reset_req.reset_n
+	.hps_0_f2h_stm_hw_events_stm_hwevents  (stm_hw_events ),  //        hps_0_f2h_stm_hw_events.stm_hwevents
+	.hps_0_f2h_warm_reset_req_reset_n      (~hps_warm_reset ),      //       hps_0_f2h_warm_reset_req.reset_n
 // hm2reg_io_0_conduit
-	.mk_io_hm2_datain                  		(busdata_out),							//			.hm2_datain
-	.mk_io_hm2_dataout                 	  	(hm_datai),							//			.hm2reg.hm2_dataout
-	.mk_io_hm2_address                 	  	(hm_address),	//			.hm2_address
+	.mk_io_hm2_datain                  	(busdata_out),							//			.hm2_datain
+	.mk_io_hm2_dataout                   	(hm_datai),							//			.hm2reg.hm2_dataout
+	.mk_io_hm2_address                   	(hm_address),	//			.hm2_address
 	.mk_io_hm2_write                   		(hm_write),							//			.hm2_write
 	.mk_io_hm2_read                    		(hm_read),							//			.hm2_read
 	.mk_io_hm2_chipsel            			(hm_chipsel),						//			.hm2_chipsel
-	.mk_io_hm2_int_in            				(int_sig),							//			.int_sig
+	.mk_io_hm2_int_in            			(int_sig),							//			.int_sig
 	.clk_100mhz_out_clk                    (hm_clk_med),						//			clk_100mhz_out.clk
 	.clk_200mhz_out_clk                    (hm_clk_high),						//			clk_200mhz_out.clk
 	.adc_clk_40mhz_clk                     (adc_clk_40)                  //             adc_clk_40mhz.clk
- );
+);
 
 top_io_modules top_io_modules_inst
 (
@@ -346,6 +346,7 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.ADC_SCK_o(ADC_SCK),	// output  ADC_SCK_o_sig
 	.ADC_SDI_o(ADC_SDI),	// output  ADC_SDI_o_sig
 	.ADC_SDO_i(ADC_SDO),	// input  ADC_SDO_i_sig
+// CAP_Sensors
 	.sense({ARDUINO_IO[9],ARDUINO_IO[10],ARDUINO_IO[11],ARDUINO_IO[12]}),
 	.charge(ARDUINO_IO[13]),
 	.buttons(fpga_debounced_buttons)
