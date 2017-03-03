@@ -386,31 +386,10 @@ adc_fifo adc_fifo_inst
 		end
 	end
 	endgenerate
-/*
-		capsense capsense_inst
-	(
-		.clk(reg_clk) ,	// input  clk_sig
-		.reset(sense_reset) ,	// input  reset_sig
-		.sense(sense) ,	// input [num-1:0] sense_sig
-		.charge(charge) ,	// output  charge_sig
-		.touched(sense_data_out) 	// output [num-1:0] touched_sig
-	);
-
-	defparam capsense_inst.num = NumSense;
-	// States
-	defparam capsense_inst.CHARGE = 1;
-	defparam capsense_inst.DISCHARGE = 2;
-	// freqwuency in Mhz  , times in us
-	defparam capsense_inst.clockfrequency = 200;
-	defparam capsense_inst.periodtime = 5;
-*/
-
-// wire [11:0] calibval_0;
-// wire [13:0] counts_0;
 
 assign sense = gpio_input_data[1][5:1];
 
-		capsense2 capsense2_inst
+		capsense capsense_inst
 	(
 		.clk(reg_clk) ,	// input  clk_sig
 		.reset(sense_reset) ,	// input  reset_sig
@@ -422,15 +401,14 @@ assign sense = gpio_input_data[1][5:1];
 		.touched(touched) 	// output [num-1:0] touched_sig
 	);
 
-	defparam capsense2_inst.num = NumSense;
+	defparam capsense_inst.num = NumSense;
 	// States
-	defparam capsense2_inst.CHARGE = 1;
-	defparam capsense2_inst.DISCHARGE = 2;
+	defparam capsense_inst.CHARGE = 1;
+	defparam capsense_inst.DISCHARGE = 2;
 	// freqwuency in Mhz  , times in us
-	defparam capsense2_inst.clockfrequency = 200;
-	defparam capsense2_inst.periodtime = 5;
+	defparam capsense_inst.clockfrequency = 200;
+	defparam capsense_inst.periodtime = 5;
 
-	
-	
+
 endmodule
 

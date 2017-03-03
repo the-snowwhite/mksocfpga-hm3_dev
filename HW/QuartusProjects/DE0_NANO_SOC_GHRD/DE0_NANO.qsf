@@ -12,12 +12,10 @@ set_global_assignment -name PROJECT_CREATION_TIME_DATE "TUE DEC  2 09:28:38 2014
 
 #============================================================
 # common MESA Hostmot 2 Sources:
+set_global_assignment -name QIP_FILE ../../hm2/hm3_socfpga.qip
 
 # MESA board , pin and daughter card config options:
-
-#set_global_assignment -name QIP_FILE ../../hm2/config/DE0_Nano/hm2_i25_G540x2_34_dpll_irq_config.qip
-#set_global_assignment -name QIP_FILE ../../hm2/config/DE0_Nano/hm2_Testx2_34_dpll_irq_config.qip
-#set_global_assignment -name QIP_FILE ../../hm2/config/DE0_Nano/hm2_7I76_7I76_7I76_7I76_no_irq_config.qip
+set_global_assignment -name QIP_FILE ../../hm2/config/DE0_Nano/hm2_Cramps_3x24_dpll_irq_config.qip
 
 #============================================================
 
@@ -658,9 +656,7 @@ set_global_assignment -name CROSS_BOUNDARY_OPTIMIZATIONS ON -section_id Top_Stat
 
 
 
-set_global_assignment -name SYSTEMVERILOG_FILE ../Common/capsense2.sv
-set_global_assignment -name QIP_FILE ../../hm2/hm3_socfpga.qip
-set_global_assignment -name QIP_FILE ../../hm2/config/DE0_Nano/hm2_Cramps_3x24_dpll_irq_config.qip
+set_global_assignment -name SYSTEMVERILOG_FILE ../Common/capsense.sv
 set_global_assignment -name VERILOG_FILE "../../cv-ip/edge_detect/altera_edge_detector.v"
 set_global_assignment -name VERILOG_FILE "../../cv-ip/intr_capturer/intr_capturer.v"
 set_global_assignment -name VERILOG_FILE "../../cv-ip/debounce/debounce.v"

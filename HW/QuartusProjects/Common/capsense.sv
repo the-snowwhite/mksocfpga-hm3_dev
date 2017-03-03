@@ -10,6 +10,9 @@ module capsense
 (
 	input	clk, reset,
 	input [num-1:0] sense,
+	input [3:0] hysteresis [num-1:0],
+	output [11:0] calibval_0,
+	output [11:0] counts_0,
 	output reg charge,
 	output reg [num-1:0] touched
 );
@@ -25,13 +28,15 @@ module capsense
 	parameter period_count = (clockfrequency * periodtime);
 
 	reg [11:0] counter;
-	reg [6:0] avg_cnt;
+	reg [7:0] avg_cnt;
 	reg [7:0] run_cal;
 	reg [3:0] sense_reg[num];
 	reg pinval[num];
 	reg [15:0] avgsum[num];
 
-	reg [11:0] threshold[num];
+	reg [11:0] calibval[num];
+	reg [11:0] calibvalmin[num];
+	reg [11:0] calibvalmax[num];
 	reg [11:0] counts[num];
 	reg [11:0] c_counts[num];
 	reg [8:0] trigbar[num];
@@ -39,17 +44,24 @@ module capsense
 	// Declare state register
 	reg		[1:0]state;
 
-	wire [10:0] counts_slice[num];
+	wire [11:0] counts_slice[num];
 	wire [11:0] avgsum_slice[num];
+	wire [11:0] avgsum_slice_min[num];
+	wire [11:0] avgsum_slice_max[num];
 
 	wire [11:0] actual_count = period_count - counter;
+	
+	assign calibval_0 = calibval[0];
+	assign counts_0 = counts[0];
 	
 	genvar ii;
 	integer i1, i2, i3, i4, i5, i6, l1, l2, l3;
 	generate for(ii = 0; ii < num; ii = ii + 1) begin: GEN_LOOP
 		
-		assign counts_slice[ii] = counts[ii][11:1];
+		assign counts_slice[ii] = counts[ii][11:0];
 		assign avgsum_slice[ii] = avgsum[ii][15:4];
+		assign avgsum_slice_min[ii] = avgsum[ii][15:4] - 1;
+		assign avgsum_slice_max[ii] = avgsum[ii][15:4] + hysteresis[ii];
 	
 		always @(posedge clk) begin
 			sense_reg[ii][0] <= sense[ii];
@@ -67,7 +79,9 @@ module capsense
 			run_cal <= 8'hFF;
 			for(i1 = 0; i1 < num; i1 = i1 + 1) begin: iGEN_LOOP1
 				avgsum[i1] <= 0;
-				threshold[i1] <= ~0;
+				calibval[i1] <= ~0;
+				calibvalmin[i1] <= 0;
+				calibvalmax[i1] <= ~0;
 				touched[i1] <= 1'b0;
 				trigbar[i1] <= 9'h00;
 			end
@@ -78,12 +92,17 @@ module capsense
 					avg_cnt <= 16;
 					for(i2 = 0; i2 < num; i2 = i2 + 1) begin: iGEN_LOOP2
 						avgsum[i2] <= 0;
-						if (avgsum_slice[i2] > threshold[i2]) begin
+						if (avgsum_slice[i2] > calibvalmax[i2] || avgsum_slice[i2] < calibvalmin[i2]) begin
 							trigbar[i2] <= (trigbar[i2] << 1) | 9'h01;
-						end else if (avgsum_slice[i2] <= threshold[i2]) begin
-							trigbar[i2] <= trigbar[i2] >> 1;
+						end else if (avgsum_slice[i2] <= calibval[i2] && avgsum_slice[i2] >= calibvalmin[i2]) begin
+							trigbar[i2] <= trigbar[i2] >> 1;							
 						end
-						touched[i2] <= trigbar[i2][4];
+						if (touched[i2] == 1'b0) begin
+							touched[i2] <= trigbar[i2][6];
+						end
+						else begin
+							touched[i2] <= trigbar[i2][2];						
+						end
 					end
 				end
 				else begin
@@ -98,8 +117,10 @@ module capsense
 					avg_cnt <= 16;
 					for(i4 = 0; i4 < num; i4 = i4 + 1) begin: iGEN_LOOP4
 						avgsum[i4] <= 0;
-						if (avgsum_slice[i4] < threshold[i4]) begin
-							threshold[i4] <= avgsum_slice[i4] + 1;
+						if (avgsum_slice[i4] < calibval[i4]) begin
+							calibval[i4] <= avgsum_slice[i4];
+							calibvalmin[i4] <= avgsum_slice_min[i4];
+							calibvalmax[i4] <= avgsum_slice_max[i4];
 						end
 					end
 					run_cal <= run_cal - 8'h01;
@@ -113,7 +134,9 @@ module capsense
 			end
 			else begin
 				for(i6 = 0; i6 < num; i6 = i6 + 1) begin: iGEN_LOOP6
-					threshold[i6] <= ~0;
+					calibval[i6] <= ~0;
+					calibvalmin[i6] <= 0;
+					calibvalmax[i6] <= ~0;
 				end
 				run_cal <= 8'hFE;
 			end

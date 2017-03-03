@@ -39,8 +39,11 @@ set_global_assignment -name NUM_PARALLEL_PROCESSORS 8
 
 #============================================================
 # common MESA Hostmot 2 Sources:
+set_global_assignment -name QIP_FILE ../../hm2/hm3_socfpga.qip
 
 # MESA board , pin and daughter card config options:
+set_global_assignment -name QIP_FILE ../../hm2/config/DE0_Nano/hm2_Cramps_3x24_dpll_irq_config.qip
+
 #============================================================
 
 
@@ -988,13 +991,7 @@ set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
 set_global_assignment -name ENABLE_SIGNALTAP OFF
 
 
-
-
-
-
-set_global_assignment -name SYSTEMVERILOG_FILE ../Common/capsense2.sv
-set_global_assignment -name QIP_FILE ../../hm2/hm3_socfpga.qip
-set_global_assignment -name QIP_FILE ../../hm2/config/DE0_Nano/hm2_Cramps_3x24_dpll_irq_config.qip
+set_global_assignment -name SYSTEMVERILOG_FILE ../Common/capsense.sv
 set_global_assignment -name VERILOG_FILE "../../cv-ip/edge_detect/altera_edge_detector.v"
 set_global_assignment -name VERILOG_FILE "../../cv-ip/intr_capturer/intr_capturer.v"
 set_global_assignment -name VERILOG_FILE "../../cv-ip/debounce/debounce.v"
