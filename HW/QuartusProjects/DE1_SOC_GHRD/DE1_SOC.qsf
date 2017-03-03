@@ -42,7 +42,7 @@ set_global_assignment -name NUM_PARALLEL_PROCESSORS 8
 set_global_assignment -name QIP_FILE ../../hm2/hm3_socfpga.qip
 
 # MESA board , pin and daughter card config options:
-set_global_assignment -name QIP_FILE ../../hm2/config/DE0_Nano/hm2_Cramps_3x24_dpll_irq_config.qip
+set_global_assignment -name QIP_FILE ../../hm2/config/IntelFPGA/hm2_Cramps_3x24_dpll_irq_de1soc_config.qip
 
 #============================================================
 
