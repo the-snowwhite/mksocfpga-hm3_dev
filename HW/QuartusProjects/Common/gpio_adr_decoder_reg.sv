@@ -5,7 +5,8 @@
 
 //
 //		touch sensor address:
-//		0x0308	1 bit pr sensor
+//		0x0308	1 bit pr sensor (Data read)
+//		0x030C	Hysteresis sens 0-7 (4-bit pr sensor)
 //
 //		0x1000	I/O port  0..23
 //		0x1004  	I/O port 24..47
@@ -69,8 +70,9 @@ module gpio_adr_decoder_reg(
 	
 //	Touch sensor:
 
-	input	[NumSense-1:0]								sense,
-	output												charge,
+	output [11:0] 										calibval_0,
+	output [13:0] 										counts_0,
+	output [NumSense-1:0]							touched,
 	input	[1:0]											buttons
 );
 
@@ -153,11 +155,23 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOAddrReg * NumPinsPrIOAddr;
 	wire [31:0]adc_data_out;
 
 // Touch sensor:
-	wire [NumSense-1:0]	sense_data_out;
+	wire [NumSense-1:0]	sense;
+	wire						charge;
+	reg [BusWidth-1:0]	hysteresis_reg;
+	wire [3:0] 				hysteresis[NumSense-1:0];
+	
 	wire sense_reset = ~reset_reg_N | ~buttons[1];
 //	wire sense_reset = ~reset_reg_N;
 	
-adc_ltc2308_fifo adc_ltc2308_fifo_inst
+	genvar sh;
+	generate	
+		for(sh=0;sh<NumSense;sh=sh+1) begin : sense_hystloop
+			assign hysteresis[sh] = hysteresis_reg[(4*sh)+:4];
+		end
+	endgenerate
+				
+	
+adc_fifo adc_fifo_inst
 (
 	.clock(CLOCK) ,	// input  clock_sig
 	.reset_n(reset_reg_N) ,	// input  reset_n_sig
@@ -253,6 +267,15 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 	assign mux_reg_byte		= (mux_reg_index[1:0]);
 
 	// Writes:
+	always @( posedge reset_in_r or posedge write_address) begin
+		if (reset_in_r) begin
+			hysteresis_reg <= 32'h11111111;
+		end
+		else if ( write_address ) begin
+			if (busaddress_r == 10'h030c) begin hysteresis_reg  <= busdata_in_r; end 
+		end	
+	end
+	
 	genvar il;
 	generate
 		for(il=0;il<NumIOAddrReg;il=il+1) begin : reg_initloop
@@ -306,15 +329,21 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 		end
 	endgenerate
 */
+//	wire [GPIOWidth-1:0] gpio1_data_fromhm3 = iodatafromhm3[1];
+//	wire [GPIOWidth-1:0] gpio1_out_data = {gpio1_data_fromhm3[GPIOWidth-1:5],4'bz,charge};
+//	wire [GPIOWidth-1:0] gpio1_input_data;
+//	assign gpio_input_data[1] = {gpio1_input_data[GPIOWidth-1:5],sense,charge};
+
 	bidir_io #(.IOWidth(GPIOWidth * NumGPIO),.PortNumWidth(PortNumWidth)) bidir_io_inst
 	(
 		.clk(reg_clk),
 		.portselnum(portnumsel),
 		.out_ena({out_ena[1],out_ena[0]}) ,	// input  out_ena_sig
 		.od({od[1],od[0]}) ,	// input  od_sig
-		.out_data({iodatafromhm3[1],iodatafromhm3[0]}) ,  // input [IOIOWidth-1:0] out_data_sig
+//		.out_data({iodatafromhm3[1][GPIOWidth-1:5],4'bz,charge, iodatafromhm3[0]}) ,  // input [IOIOWidth-1:0] out_data_sig
+		.out_data({iodatafromhm3[1][GPIOWidth-1:5],4'bz,charge, iodatafromhm3[0]}) ,  // input [IOIOWidth-1:0] out_data_sig
 		.gpioport({gpioport[1],gpioport[0]}) ,	// inout [IOIOWidth-1:0] gpioport_sig
-		.gpio_in_data({gpio_input_data[1],gpio_input_data[0]}) 	// output [IOIOWidth-1:0] read_data_sig
+		.data_from_gpio({gpio_input_data[1],gpio_input_data[0]}) 	// output [IOIOWidth-1:0] read_data_sig
 	);
 
 
@@ -331,7 +360,8 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 		else if (read_address) begin
 //			if (adc_address_valid) begin busdata_to_cpu <= adc_data_out;	end
 			if ((busaddress_r == 'h0300) || (busaddress_r == 'h0304)) begin busdata_to_cpu <= adc_data_out;	end
-			if (busaddress_r == 'h0308) begin busdata_to_cpu <= sense_data_out;	end
+			if (busaddress_r == 'h0308) begin busdata_to_cpu <= touched;	end
+			else if (busaddress_r == 'h030C) begin busdata_to_cpu <= hysteresis_reg;	end
 			else if(busaddress_r == 'h1000) begin busdata_to_cpu <= {8'b0,gpio_input_data[0][23:0]}; end
 			else if(busaddress_r == 'h1004) begin busdata_to_cpu <= {8'b0,gpio_input_data[1][11:0],gpio_input_data[0][35:24]}; end
 			else if(busaddress_r == 'h1008) begin busdata_to_cpu <= {8'b0,gpio_input_data[1][35:12]}; end
@@ -356,7 +386,7 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 		end
 	end
 	endgenerate
-
+/*
 		capsense capsense_inst
 	(
 		.clk(reg_clk) ,	// input  clk_sig
@@ -373,6 +403,32 @@ adc_ltc2308_fifo adc_ltc2308_fifo_inst
 	// freqwuency in Mhz  , times in us
 	defparam capsense_inst.clockfrequency = 200;
 	defparam capsense_inst.periodtime = 5;
+*/
+
+// wire [11:0] calibval_0;
+// wire [13:0] counts_0;
+
+assign sense = gpio_input_data[1][5:1];
+
+		capsense2 capsense2_inst
+	(
+		.clk(reg_clk) ,	// input  clk_sig
+		.reset(sense_reset) ,	// input  reset_sig
+		.sense(sense) ,	// input [num-1:0] sense_sig
+		.hysteresis(hysteresis),
+		.calibval_0(calibval_0),
+		.counts_0(counts_0),
+		.charge(charge) ,	// output  charge_sig
+		.touched(touched) 	// output [num-1:0] touched_sig
+	);
+
+	defparam capsense2_inst.num = NumSense;
+	// States
+	defparam capsense2_inst.CHARGE = 1;
+	defparam capsense2_inst.DISCHARGE = 2;
+	// freqwuency in Mhz  , times in us
+	defparam capsense2_inst.clockfrequency = 200;
+	defparam capsense2_inst.periodtime = 5;
 
 	
 	
