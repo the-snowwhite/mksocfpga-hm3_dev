@@ -168,6 +168,7 @@ begin
     if(tag = TPPWMTag)	    then return "TPPWM"; end if;
     if(tag = LEDTag)	    then return "LED"; end if;
     if(tag = NANOADCTag)	    then return "NANOADC"; end if;
+    if(tag = CAPSENSETag)	    then return "CAPSENSE"; end if;
     if(tag = SSerialTag)    then return "SSerial"; end if;
     return "unknown";
 end;
@@ -243,8 +244,13 @@ begin
         elsif(pin = SSerialRX2Pin)    then return "Serial Receive 2 (in)";
         elsif(pin = SSerialRX3Pin)    then return "Serial Receive 3 (in)";
         elsif(pin = SSerialRX4Pin)    then return "Serial Receive 4 (in)";
-        elsif(pin = SSerialRX5Pin)    then return "Serial Receive 5 (in)";
-        end if;
+        elsif(pin = SSerialRX5Pin)    then return "Serial Receive 5 (in)"; end if;
+    elsif(tag = CAPSENSETag) then
+        if(pin = CapChargePin)       then return "Cap Charge (out)";
+        elsif(pin = CapSensePin0)    then return "Cap Sense 0 (in)"; 
+        elsif(pin = CapSensePin1)    then return "Cap Sense 1 (in)"; 
+        elsif(pin = CapSensePin2)    then return "Cap Sense 2 (in)"; 
+        elsif(pin = CapSensePin3)    then return "Cap Sense 3 (in)"; end if;
     end if;
     return "???";
 end function;

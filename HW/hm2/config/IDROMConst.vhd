@@ -80,10 +80,13 @@ package IDROMConst is
 	constant LEDNumRegs : std_logic_vector(7 downto 0) := x"01";
 	constant LEDMPBitMask : std_logic_vector(31 downto 0) := x"00000000";
 
-	constant NANOADCAddr : std_logic_vector(7 downto 0) := x"03";
-	constant NANOADCNumRegs : std_logic_vector(7 downto 0) := x"01";
-	constant NANOADCEnable : std_logic_vector(7 downto 0) := x"02";
+	constant NANOADCAddr : std_logic_vector(7 downto 0) := x"02";
+	constant NANOADCNumRegs : std_logic_vector(7 downto 0) := x"02";
 	constant NANOADCBitMask : std_logic_vector(31 downto 0) := x"00000000";
+
+	constant CAPSENSEAddr : std_logic_vector(7 downto 0) := x"03";
+	constant CAPSENSENumRegs : std_logic_vector(7 downto 0) := x"02";
+	constant CAPSENSEBitMask : std_logic_vector(31 downto 0) := x"00000000";
 
 	constant IDROMAddr : std_logic_vector(7 downto 0) := x"04";
 	constant Cookie : std_logic_vector(31 downto 0) := x"55AACAFE";
@@ -790,6 +793,12 @@ package IDROMConst is
 
 	constant LEDTag : std_logic_vector(7 downto 0) := x"80";
 	constant NANOADCTag : std_logic_vector(7 downto 0) := x"84";
+	constant CAPSENSETag : std_logic_vector(7 downto 0) := x"88";
+                constant CapChargePin : std_logic_vector(7 downto 0) := x"81";
+                constant CapSensePin0 : std_logic_vector(7 downto 0) := x"02";
+                constant CapSensePin1 : std_logic_vector(7 downto 0) := x"03";
+                constant CapSensePin2 : std_logic_vector(7 downto 0) := x"04";
+                constant CapSensePin3 : std_logic_vector(7 downto 0) := x"05";
 
 	constant GlobalChan: std_logic_vector(7 downto 0) := x"80";
 

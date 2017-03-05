@@ -1,12 +1,12 @@
 /*
 //		adc addresses:
-//		0x0300	for start and status
-//		0x0304	for data
+//		0x0200	for start and status
+//		0x0204	for data
 
 //
-//		touch sensor address:
-//		0x0308	1 bit pr sensor (Data read)
-//		0x030C	Hysteresis sens 0-7 (4-bit pr sensor)
+//		cap sensor address:
+//		0x0300	     1 bit pr sensor (Data read)
+//		0x0304	     Hysteresis sens 0-7 (4-bit pr sensor)
 //
 //		0x1000	I/O port  0..23
 //		0x1004  	I/O port 24..47
@@ -84,7 +84,7 @@ parameter NumIOAddrReg		= 6;
 parameter NumGPIO 			= 2;
 
 parameter NumSense			= 4;
-
+parameter ADC					= "";
 // local param
 parameter IoRegWidth			= 24;
 parameter AdcOutShift		= 1;
@@ -129,29 +129,29 @@ parameter TotalNumregs 		= Mux_regPrIOReg * NumIOAddrReg * NumPinsPrIOAddr;
 	wire [PortNumWidth-1:0]		portnumsel[(GPIOWidth * NumGPIO)-1:0];
 
 	wire read_address 			= read_reg_r[ReadInShift];
-	wire read_adc_address 		= read_reg_r[1];
-	wire read_adc_out		 		= read_reg_r[AdcOutShift];
 	reg write_address;
 
-	wire adc_address_valid = ( (busaddress_r == 16'h0300) || (busaddress_r == 16'h0304)) ? 1'b1 : 1'b0;
 //	wire io_address_valid = ((busaddress_r >= 16'h1000) && (busaddress_r < 16'h1020)) ? 1'b1 : 1'b0;
 	wire ddr_address_valid = ((busaddress_r >= 16'h1100) && (busaddress_r < 16'h1120)) ? 1'b1 : 1'b0;
 	wire mux_address_valid = ((busaddress_r >= 16'h1120) && (busaddress_r < 16'h1200)) ? 1'b1 : 1'b0;
 	wire od_address_valid = ((busaddress_r >= 16'h1300) && (busaddress_r < 16'h1320)) ? 1'b1 : 1'b0;
 
-	wire adc_read_valid = (adc_address_valid && read_adc_address) ?  1'b1 : 1'b0;
 //	wire io_read_valid = (io_address_valid && read_address) ?  1'b1 : 1'b0;
 //	wire ddr_read_valid = (ddr_address_valid && read_address) ?  1'b1 : 1'b0;
 	wire mux_read_valid = (mux_address_valid && read_address) ?  1'b1 : 1'b0;
 //	wire od_read_valid = (od_address_valid && read_address) ?  1'b1 : 1'b0;
 
-	wire adc_write_valid = (adc_address_valid && write_address) ?  1'b1 : 1'b0;
 //	wire io_write_valid = (io_address_valid && write_address) ?  1'b1 : 1'b0;
 //	wire ddr_write_valid = (ddr_address_valid && write_address) ?  1'b1 : 1'b0;
 	wire mux_write_valid = (mux_address_valid && write_address) ?  1'b1 : 1'b0;
 //	wire od_write_valid = (od_address_valid && write_address) ?  1'b1 : 1'b0;
 
 // ADC module:
+	wire read_adc_address 		= read_reg_r[1];
+	wire read_adc_out		 		= read_reg_r[AdcOutShift];
+	wire adc_address_valid = ( (busaddress_r == 16'h0200) || (busaddress_r == 16'h0204)) ? 1'b1 : 1'b0;
+	wire adc_read_valid = (adc_address_valid && read_adc_address) ?  1'b1 : 1'b0;
+	wire adc_write_valid = (adc_address_valid && write_address) ?  1'b1 : 1'b0;
 	wire [31:0]adc_data_out;
 
 // Touch sensor:
@@ -188,6 +188,8 @@ adc_fifo adc_fifo_inst
 	.ADC_SDI_o(ADC_SDI_o) ,	// output  ADC_SDI_o_sig
 	.ADC_SDO_i(ADC_SDO_i) 	// input  ADC_SDO_i_sig
 );
+
+	defparam adc_fifo_inst.ADC = ADC;
 
 // I/O stuff:
 
@@ -272,7 +274,7 @@ adc_fifo adc_fifo_inst
 			hysteresis_reg <= 32'h11111111;
 		end
 		else if ( write_address ) begin
-			if (busaddress_r == 10'h030c) begin hysteresis_reg  <= busdata_in_r; end 
+			if (busaddress_r == 10'h0304) begin hysteresis_reg  <= busdata_in_r; end 
 		end	
 	end
 	
@@ -359,9 +361,9 @@ adc_fifo adc_fifo_inst
 		end
 		else if (read_address) begin
 //			if (adc_address_valid) begin busdata_to_cpu <= adc_data_out;	end
-			if ((busaddress_r == 'h0300) || (busaddress_r == 'h0304)) begin busdata_to_cpu <= adc_data_out;	end
-			if (busaddress_r == 'h0308) begin busdata_to_cpu <= touched;	end
-			else if (busaddress_r == 'h030C) begin busdata_to_cpu <= hysteresis_reg;	end
+			if ((busaddress_r == 'h0200) || (busaddress_r == 'h0204)) begin busdata_to_cpu <= adc_data_out;	end
+			if (busaddress_r == 'h0300) begin busdata_to_cpu <= touched;	end
+			else if (busaddress_r == 'h0304) begin busdata_to_cpu <= hysteresis_reg;	end
 			else if(busaddress_r == 'h1000) begin busdata_to_cpu <= {8'b0,gpio_input_data[0][23:0]}; end
 			else if(busaddress_r == 'h1004) begin busdata_to_cpu <= {8'b0,gpio_input_data[1][11:0],gpio_input_data[0][35:24]}; end
 			else if(busaddress_r == 'h1008) begin busdata_to_cpu <= {8'b0,gpio_input_data[1][35:12]}; end

@@ -30,5 +30,6 @@ package boardtype;
 	parameter NumGPIO 				= 2;
 	parameter MuxGPIOIOWidth 	= IOWidth/NumGPIO;
 	parameter MuxLedWidth 		= LEDCount/NumGPIO;
-	parameter ADC						= "DE1";
+	parameter ADC					= "DE1-SoC";
+	parameter NumCapSense		= 4;
 endpackage //_HeaderIncluded

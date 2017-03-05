@@ -959,11 +959,6 @@ set_global_assignment -name FLOW_ENABLE_RTL_VIEWER ON
 set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
 set_global_assignment -name ENABLE_SIGNALTAP OFF
 
-
-
-
-
-
 set_global_assignment -name VERILOG_FILE ../Common/altera_up_adv_adc.v
 set_global_assignment -name SYSTEMVERILOG_FILE ../Common/adc_fifo.sv
 set_global_assignment -name VERILOG_FILE ../Common/hexto7segment.v

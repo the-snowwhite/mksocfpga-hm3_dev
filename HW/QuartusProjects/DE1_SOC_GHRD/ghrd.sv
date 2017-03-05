@@ -433,6 +433,12 @@ endgenerate
 
 assign LEDR[7:6] = ~hm2_leds_sig[1:0];
 
+generate
+	if((ADC == "DE1") || (ADC == "ATLAS")) begin
+		`define HasADC 1
+	end
+endgenerate
+
 gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 (
 	.CLOCK(clklow_sig) ,	// input  CLOCK_sig
@@ -448,13 +454,15 @@ gpio_adr_decoder_reg gpio_adr_decoder_reg_inst
 	.gpioport( GPIO ),
 	.iodatatohm3 ( io_bitsin_sig ),
 	.busdata_to_cpu ( busdata_out ),
-// ADC
+	// ADC
+`ifdef HasADC
 	.adc_clk(adc_clk_40),	// input  adc_clk_sig
 	.ADC_CONVST_o(ADC_CS_N),	// output  ADC_CONVST_o_sig
 	.ADC_SCK_o(ADC_SCLK),	// output  ADC_SCK_o_sig
 	.ADC_SDI_o(ADC_DIN),	// output  ADC_SDI_o_sig
 	.ADC_SDO_i(ADC_DOUT),	// input  ADC_SDO_i_sig
-// CAP_Sensors
+`endif
+	// CAP_Sensors
 //	.sense({ARDUINO_IO[9],ARDUINO_IO[10],ARDUINO_IO[11],ARDUINO_IO[12]}),
 //	.charge(ARDUINO_IO[13]),
 	.calibval_0(calibval_0),
@@ -470,7 +478,8 @@ defparam gpio_adr_decoder_reg_inst.MuxGPIOIOWidth = MuxGPIOIOWidth;
 defparam gpio_adr_decoder_reg_inst.NumIOAddrReg = NumIOAddrReg;
 //defparam gpio_adr_decoder_reg_inst.MuxLedWidth = MuxLedWidth;
 defparam gpio_adr_decoder_reg_inst.NumGPIO = NumGPIO;
-defparam gpio_adr_decoder_reg_inst.NumSense = 4;
+defparam gpio_adr_decoder_reg_inst.NumSense = NumCapSense;
+defparam gpio_adr_decoder_reg_inst.ADC = ADC;
 
 
 HostMot3_cfg HostMot3_inst

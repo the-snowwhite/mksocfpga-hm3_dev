@@ -30,5 +30,6 @@ package boardtype;
 	parameter NumGPIO 				= 2;
 	parameter MuxGPIOIOWidth 	= IOWidth/NumGPIO;
 	parameter MuxLedWidth 		= LEDCount/NumGPIO;
-	parameter ADC						= "ATLAS";
+	parameter ADC						= "DE0-Nano-SoC";
+	parameter NumCapSense		= 4;
 endpackage //_HeaderIncluded
