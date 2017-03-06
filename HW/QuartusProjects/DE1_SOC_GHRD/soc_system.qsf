@@ -13,10 +13,10 @@ set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 
 #============================================================
 # common MESA Hostmot 2 Sources:
-
+set_global_assignment -name QIP_FILE ../../hm2/hm3_socfpga.qip
 # MESA board , pin and daughter card config options:
+set_global_assignment -name QIP_FILE ../../hm2/config/IntelFPGA/hm2_Cramps_3x24_dpll_irq_de1soc_config.qip
 #============================================================
-
 
 #============================================================
 # ADC
@@ -963,8 +963,6 @@ set_global_assignment -name VERILOG_FILE ../Common/altera_up_adv_adc.v
 set_global_assignment -name SYSTEMVERILOG_FILE ../Common/adc_fifo.sv
 set_global_assignment -name VERILOG_FILE ../Common/hexto7segment.v
 set_global_assignment -name SYSTEMVERILOG_FILE ../Common/capsense2.sv
-set_global_assignment -name QIP_FILE ../../hm2/hm3_socfpga.qip
-set_global_assignment -name QIP_FILE ../../hm2/config/DE0_Nano/hm2_Cramps_3x24_dpll_irq_config.qip
 set_global_assignment -name VERILOG_FILE "../../cv-ip/edge_detect/altera_edge_detector.v"
 set_global_assignment -name VERILOG_FILE "../../cv-ip/debounce/debounce.v"
 set_global_assignment -name QIP_FILE "../../cv-ip/altsource_probe/hps_reset.qip"
