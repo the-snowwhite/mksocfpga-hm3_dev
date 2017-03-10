@@ -209,6 +209,22 @@
          type = "String";
       }
    }
+   element uioreg_io_0
+   {
+      datum _sortIndex
+      {
+         value = "11";
+         type = "int";
+      }
+   }
+   element uioreg_io_0.slave
+   {
+      datum baseAddress
+      {
+         value = "262144";
+         type = "String";
+      }
+   }
 }
 ]]></parameter>
  <parameter name="clockCrossingAdapter" value="HANDSHAKE" />
@@ -236,6 +252,21 @@
    type="conduit"
    dir="end" />
  <interface name="clk" internal="clk_0.clk_in" type="clock" dir="end" />
+ <interface
+   name="clk_100mhz"
+   internal="hps_0.h2f_user0_clock"
+   type="clock"
+   dir="start" />
+ <interface
+   name="clk_200mhz"
+   internal="hps_0.h2f_user2_clock"
+   type="clock"
+   dir="start" />
+ <interface
+   name="clk_40mhz"
+   internal="hps_0.h2f_user1_clock"
+   type="clock"
+   dir="start" />
  <interface
    name="dipsw_pio_external_connection"
    internal="dipsw_pio.external_connection"
@@ -278,6 +309,11 @@
    dir="end" />
  <interface name="memory" internal="hps_0.memory" type="conduit" dir="end" />
  <interface name="reset" internal="clk_0.clk_in_reset" type="reset" dir="end" />
+ <interface
+   name="uioreg_io_0"
+   internal="uioreg_io_0.pins"
+   type="conduit"
+   dir="end" />
  <module name="button_pio" kind="altera_avalon_pio" version="16.1" enabled="1">
   <parameter name="bitClearingEdgeCapReg" value="true" />
   <parameter name="bitModifyingOutReg" value="false" />
@@ -659,11 +695,11 @@
   <parameter name="REF_CLK_FREQ_PARAM_VALID" value="false" />
   <parameter name="S2FCLK_COLDRST_Enable" value="false" />
   <parameter name="S2FCLK_PENDINGRST_Enable" value="false" />
-  <parameter name="S2FCLK_USER0CLK_Enable" value="false" />
-  <parameter name="S2FCLK_USER1CLK_Enable" value="false" />
-  <parameter name="S2FCLK_USER1CLK_FREQ" value="100.0" />
-  <parameter name="S2FCLK_USER2CLK" value="5" />
-  <parameter name="S2FCLK_USER2CLK_Enable" value="false" />
+  <parameter name="S2FCLK_USER0CLK_Enable" value="true" />
+  <parameter name="S2FCLK_USER1CLK_Enable" value="true" />
+  <parameter name="S2FCLK_USER1CLK_FREQ" value="40.0" />
+  <parameter name="S2FCLK_USER2CLK" value="3" />
+  <parameter name="S2FCLK_USER2CLK_Enable" value="true" />
   <parameter name="S2FCLK_USER2CLK_FREQ" value="100.0" />
   <parameter name="S2FINTERRUPT_CAN_Enable" value="false" />
   <parameter name="S2FINTERRUPT_CLOCKPERIPHERAL_Enable" value="false" />
@@ -786,9 +822,9 @@
   <parameter name="desired_gpio_db_clk_hz" value="32000" />
   <parameter name="desired_l4_mp_clk_mhz" value="100.0" />
   <parameter name="desired_l4_sp_clk_mhz" value="100.0" />
-  <parameter name="desired_mpu_clk_mhz" value="800.0" />
+  <parameter name="desired_mpu_clk_mhz" value="900.0" />
   <parameter name="desired_nand_clk_mhz" value="12.5" />
-  <parameter name="desired_qspi_clk_mhz" value="400.0" />
+  <parameter name="desired_qspi_clk_mhz" value="360.0" />
   <parameter name="desired_sdmmc_clk_mhz" value="200.0" />
   <parameter name="desired_spi_m_clk_mhz" value="200.0" />
   <parameter name="desired_usb_mp_clk_mhz" value="200.0" />
@@ -840,14 +876,14 @@
   <parameter name="show_warning_as_error_msg" value="false" />
   <parameter name="spi_m_clk_div" value="0" />
   <parameter name="usb_mp_clk_div" value="0" />
-  <parameter name="use_default_mpu_clk" value="true" />
+  <parameter name="use_default_mpu_clk" value="false" />
  </module>
  <module
    name="intr_capturer_0"
    kind="intr_capturer"
    version="100.99.98.97"
    enabled="1">
-  <parameter name="AUTO_INTERRUPT_RECEIVER_INTERRUPTS_USED" value="7" />
+  <parameter name="AUTO_INTERRUPT_RECEIVER_INTERRUPTS_USED" value="15" />
   <parameter name="NUM_INTR" value="32" />
  </module>
  <module
@@ -950,6 +986,11 @@
    enabled="1">
   <parameter name="id" value="-1395322110" />
  </module>
+ <module name="uioreg_io_0" kind="uioreg_io" version="1.1" enabled="1">
+  <parameter name="ADDRESS_WIDTH" value="14" />
+  <parameter name="DATA_WIDTH" value="32" />
+  <parameter name="IRQ_EN" value="1" />
+ </module>
  <connection
    kind="avalon"
    version="16.1"
@@ -1002,6 +1043,15 @@
    end="button_pio.s1">
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0x000100c0" />
+  <parameter name="defaultConnection" value="false" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="16.1"
+   start="hps_0.h2f_lw_axi_master"
+   end="uioreg_io_0.slave">
+  <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x00040000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -1097,6 +1147,7 @@
    version="16.1"
    start="clk_0.clk"
    end="intr_capturer_0.clock" />
+ <connection kind="clock" version="16.1" start="clk_0.clk" end="uioreg_io_0.clock" />
  <connection
    kind="clock"
    version="16.1"
@@ -1136,6 +1187,13 @@
  <connection
    kind="interrupt"
    version="16.1"
+   start="hps_0.f2h_irq0"
+   end="uioreg_io_0.slv_irq">
+  <parameter name="irqNumber" value="3" />
+ </connection>
+ <connection
+   kind="interrupt"
+   version="16.1"
    start="intr_capturer_0.interrupt_receiver"
    end="jtag_uart.irq">
   <parameter name="irqNumber" value="2" />
@@ -1153,6 +1211,13 @@
    start="intr_capturer_0.interrupt_receiver"
    end="dipsw_pio.irq">
   <parameter name="irqNumber" value="0" />
+ </connection>
+ <connection
+   kind="interrupt"
+   version="16.1"
+   start="intr_capturer_0.interrupt_receiver"
+   end="uioreg_io_0.slv_irq">
+  <parameter name="irqNumber" value="3" />
  </connection>
  <connection
    kind="reset"
@@ -1189,6 +1254,11 @@
    version="16.1"
    start="clk_0.clk_reset"
    end="jtag_uart.reset" />
+ <connection
+   kind="reset"
+   version="16.1"
+   start="clk_0.clk_reset"
+   end="uioreg_io_0.reset" />
  <connection
    kind="reset"
    version="16.1"

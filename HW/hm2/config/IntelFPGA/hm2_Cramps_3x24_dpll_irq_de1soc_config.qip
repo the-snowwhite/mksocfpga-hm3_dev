@@ -2,11 +2,11 @@
 # library pin;
 # use pin.Pintypes.all;
 
-set_global_assignment -name VHDL_FILE ../../hm2/config/IntelFPGA/hostmot3_cfg.vhd
+#set_global_assignment -name VHDL_FILE ../../hm2/config/IntelFPGA/hostmot3_cfg.vhd
 
 # change the names of the 2 files below to recompile a new bitfile --->
 # Dev kit board specific:
-set_global_assignment -name SYSTEMVERILOG_FILE ../../hm2/config/IntelFPGA/de1soc_3_24.sv
+set_global_assignment -name SYSTEMVERILOG_FILE ../../hm2/config/IntelFPGA/de1soc_3_24.pkg
 
 # I/O Daughterboard adaptor specific:
-set_global_assignment -name VHDL_FILE ../../hm2/config/PIN_Cramps_gpio0_3x24_dpll_irq_adc_cap_spi.vhd -library pin
+#set_global_assignment -name VHDL_FILE ../../hm2/config/PIN_Cramps_gpio0_3x24_dpll_irq_adc_cap_spi.vhd -library pin

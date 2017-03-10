@@ -21,11 +21,11 @@ module capsense
 	// Declare states
 	parameter CHARGE = 1, DISCHARGE = 2;
 
-// freqwuency in Mhz  , times in us
-	parameter clockfrequency = 200;
+// freqwuency in hz  , times in us
+	parameter clockfrequency = 200000000;
 	parameter periodtime = 5;
 
-	parameter period_count = (clockfrequency * periodtime);
+	parameter period_count = (clockfrequency/1000000 * periodtime);
 
 	reg [11:0] counter;
 	reg [7:0] avg_cnt;
@@ -40,7 +40,7 @@ module capsense
 	reg [11:0] counts[num];
 	reg [11:0] c_counts[num];
 	reg [8:0] trigbar[num];
-		
+
 	// Declare state register
 	reg		[1:0]state;
 
@@ -50,19 +50,19 @@ module capsense
 	wire [11:0] avgsum_slice_max[num];
 
 	wire [11:0] actual_count = period_count - counter;
-	
+
 	assign calibval_0 = calibval[0];
 	assign counts_0 = counts[0];
-	
+
 	genvar ii;
 	integer i1, i2, i3, i4, i5, i6, l1, l2, l3;
 	generate for(ii = 0; ii < num; ii = ii + 1) begin: GEN_LOOP
-		
+
 		assign counts_slice[ii] = counts[ii][11:0];
 		assign avgsum_slice[ii] = avgsum[ii][15:4];
 		assign avgsum_slice_min[ii] = avgsum[ii][15:4] - 1;
 		assign avgsum_slice_max[ii] = avgsum[ii][15:4] + hysteresis[ii];
-	
+
 		always @(posedge clk) begin
 			sense_reg[ii][0] <= sense[ii];
 			sense_reg[ii][1] <= sense_reg[ii][0];
@@ -95,13 +95,13 @@ module capsense
 						if (avgsum_slice[i2] > calibvalmax[i2] || avgsum_slice[i2] < calibvalmin[i2]) begin
 							trigbar[i2] <= (trigbar[i2] << 1) | 9'h01;
 						end else if (avgsum_slice[i2] <= calibval[i2] && avgsum_slice[i2] >= calibvalmin[i2]) begin
-							trigbar[i2] <= trigbar[i2] >> 1;							
+							trigbar[i2] <= trigbar[i2] >> 1;
 						end
 						if (touched[i2] == 1'b0) begin
 							touched[i2] <= trigbar[i2][6];
 						end
 						else begin
-							touched[i2] <= trigbar[i2][2];						
+							touched[i2] <= trigbar[i2][2];
 						end
 					end
 				end
@@ -146,7 +146,7 @@ module capsense
 	always @ (posedge clk or posedge reset) begin
 		if (reset) begin
 			for(l1 = 0; l1 < num; l1 = l1 + 1) begin: lGEN_LOOP1
-				counts[l1] <= 0;	
+				counts[l1] <= 0;
 				c_counts[l1] <= 0;
 			end
 			charge <= 1'b1;

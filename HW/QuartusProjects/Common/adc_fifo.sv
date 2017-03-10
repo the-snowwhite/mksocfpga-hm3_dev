@@ -23,7 +23,7 @@ module adc_fifo(
     input   ADC_SDO_i
 );
 
-parameter ADC = "";
+parameter ADC_TYPE = "";
 
 ////////////////////////////////////
 // avalon slave port
@@ -206,7 +206,7 @@ altera_up_adv_adc altera_up_adv_adc_inst
 
 defparam altera_up_adv_adc_inst.T_SCLK = 'b00000100;
 defparam altera_up_adv_adc_inst.NUM_CH = 'b0111;
-defparam altera_up_adv_adc_inst.BOARD = ADC;
+defparam altera_up_adv_adc_inst.BOARD = ADC_TYPE;
 defparam altera_up_adv_adc_inst.BOARD_REV = "Autodetect";
 /*
 adc_ltc2308 adc_ltc2308_inst(
